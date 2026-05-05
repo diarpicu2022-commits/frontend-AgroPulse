@@ -1,82 +1,95 @@
-import React, { useState } from 'react'
-
-const initialAlerts = [
-  { id:1, level:'CRITICAL', message:'Temperatura superior a 35°C en Zona A', time:'Hace 5 min',  read:false },
-  { id:2, level:'WARNING',  message:'CO₂ elevado: 1240 ppm en Zona B',       time:'Hace 18 min', read:false },
-  { id:3, level:'INFO',     message:'Riego automático completado — Zona C',   time:'Hace 1h',     read:true  },
-  { id:4, level:'WARNING',  message:'Humedad del suelo por debajo del 40%',   time:'Hace 2h',     read:true  },
-  { id:5, level:'INFO',     message:'Cultivo Tomate Cherry avanzó a GROWING', time:'Hace 3h',     read:true  },
-]
-
-const levelConfig = {
-  CRITICAL: { color:'var(--color-alert-red)',    icon:'⚠', badge:'badge-critical', label:'Crítico' },
-  WARNING:  { color:'var(--color-alert-yellow)', icon:'◉', badge:'badge-warn',     label:'Advertencia' },
-  INFO:     { color:'var(--color-mint)',          icon:'◈', badge:'badge-ok',       label:'Info' },
-}
+﻿import { useState, useEffect } from 'react'
+import { Bell } from 'lucide-react'
+import api from '../services/api'
 
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState(initialAlerts)
-  const [filter, setFilter] = useState('ALL')
+  const [alerts, setAlerts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ message: '', level: 'INFO' })
+  const [error, setError] = useState(null)
 
-  const filtered = filter==='ALL' ? alerts : alerts.filter(a=>a.level===filter)
-  const unread   = alerts.filter(a=>!a.read).length
+  useEffect(() => { loadAlerts() }, [])
 
-  const markRead = (id) => setAlerts(prev=>prev.map(a=>a.id===id?{...a,read:true}:a))
-  const dismiss  = (id) => setAlerts(prev=>prev.filter(a=>a.id!==id))
+  const loadAlerts = async () => {
+    try {
+      const data = await api.alerts.list()
+      setAlerts(data.alerts || [])
+      setError(null)
+    } catch (err) { setError(err.message) }
+    setLoading(false)
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      await api.alerts.create(form)
+      setShowForm(false); setForm({ message: '', level: 'INFO' }); loadAlerts()
+    } catch (err) { alert('Error: ' + err.message) }
+  }
+
+  const handleMarkRead = async (id) => {
+    try { await api.alerts.markRead(id); loadAlerts() }
+    catch (err) { alert('Error: ' + err.message) }
+  }
+
+  const handleDelete = async (id) => {
+    if (confirm('¿Eliminar?')) {
+      try { await api.alerts.delete(id); loadAlerts() }
+      catch (err) { alert('Error: ' + err.message) }
+    }
+  }
+
+  const levelStyle = {
+    CRITICAL: 'bg-red-50 border-red-200 text-red-700',
+    WARNING:  'bg-yellow-50 border-yellow-200 text-yellow-700',
+    INFO:     'bg-blue-50 border-blue-200 text-blue-700'
+  }
+  const levelIcon = { CRITICAL: '🔴', WARNING: '🟡', INFO: '🔵' }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <div style={{display:'flex',alignItems:'center',gap:12}}>
-          <h2>Alertas</h2>
-          {unread>0&&<span className="badge badge-critical">{unread} sin leer</span>}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-gray-800">🔔 Alertas</h2>
+        <button onClick={() => setShowForm(!showForm)} className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-medium">
+          {showForm ? 'Cancelar' : '+ Nueva'}
+        </button>
+      </div>
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">⚠️ {error}</div>}
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+          <input type="text" placeholder="Mensaje de alerta" value={form.message} onChange={e => setForm({...form, message: e.target.value})} className="w-full border rounded-xl px-4 py-2 text-sm" required />
+          <select value={form.level} onChange={e => setForm({...form, level: e.target.value})} className="w-full border rounded-xl px-4 py-2 text-sm">
+            <option value="INFO">Info</option>
+            <option value="WARNING">Warning</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
+          <button type="submit" className="w-full bg-primary text-white py-2 rounded-xl font-medium">Crear Alerta</button>
+        </form>
+      )}
+      {loading ? (
+        <div className="flex items-center justify-center h-40"><div className="animate-spin text-4xl">🌿</div></div>
+      ) : alerts.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">
+          <Bell size={48} className="mx-auto mb-3 opacity-40" />
+          <p>No hay alertas recientes</p>
+          <p className="text-xs mt-1">El sistema monitoreará automáticamente</p>
         </div>
-        <p>Implementa: Patrón Observer (AlertObserver), Pila LIFO (AlertStack), Patrón Proxy (control de acceso)</p>
-      </div>
-
-      <div style={{display:'flex',gap:8,marginBottom:20}}>
-        {['ALL','CRITICAL','WARNING','INFO'].map(f=>(
-          <button key={f} className={`btn ${filter===f?'btn-primary':'btn-outline'}`}
-            style={{fontSize:'0.75rem',padding:'4px 12px'}} onClick={()=>setFilter(f)}>
-            {f==='ALL'?'Todas':levelConfig[f]?.label??f}
-          </button>
-        ))}
-      </div>
-
-      <div style={{display:'flex',flexDirection:'column',gap:10}}>
-        {filtered.map(alert=>{
-          const cfg = levelConfig[alert.level]
-          return (
-            <div key={alert.id} className="card" style={{
-              borderLeft:`3px solid ${cfg.color}`,
-              opacity: alert.read ? 0.65 : 1,
-              padding:'16px 20px',
-            }}>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                <div style={{display:'flex',alignItems:'center',gap:12}}>
-                  <span style={{fontSize:'1.2rem'}}>{cfg.icon}</span>
-                  <div>
-                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                      <span className={`badge ${cfg.badge}`}>{cfg.label}</span>
-                      <span style={{fontSize:'0.7rem',color:'var(--text-muted)',fontFamily:'var(--font-display)'}}>{alert.time}</span>
-                    </div>
-                    <div style={{fontSize:'0.9rem',color:'var(--text-primary)'}}>{alert.message}</div>
-                  </div>
-                </div>
-                <div style={{display:'flex',gap:8}}>
-                  {!alert.read&&<button className="btn btn-outline" style={{fontSize:'0.7rem',padding:'3px 10px'}} onClick={()=>markRead(alert.id)}>Leer</button>}
-                  <button className="btn btn-danger" style={{fontSize:'0.7rem',padding:'3px 10px'}} onClick={()=>dismiss(alert.id)}>✕</button>
+      ) : (
+        <div className="space-y-3">
+          {alerts.map(a => (
+            <div key={a.id} className={`rounded-2xl border p-4 ${levelStyle[a.level] || 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+              <div className="flex items-start gap-2">
+                <span className="text-lg">{levelIcon[a.level] || '⚪'}</span>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{a.message}</p>
+                  <p className="text-xs opacity-70 mt-1">{a.level} · {new Date(a.created_at).toLocaleString('es-CO')}</p>
                 </div>
               </div>
             </div>
-          )
-        })}
-        {filtered.length===0&&(
-          <div className="card" style={{textAlign:'center',padding:'40px',color:'var(--text-muted)'}}>
-            ◈ No hay alertas en esta categoría
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

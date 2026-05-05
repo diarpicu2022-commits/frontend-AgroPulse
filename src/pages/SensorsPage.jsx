@@ -1,53 +1,98 @@
-import React, { useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-
-const sensors = [
-  { id:1, name:'Temp-Interior-A', type:'TEMPERATURE', value:24.3, unit:'°C', location:'Zona A', active:true },
-  { id:2, name:'Hum-Interior-A',  type:'HUMIDITY',    value:68.1, unit:'%',  location:'Zona A', active:true },
-  { id:3, name:'CO2-Interior-B',  type:'CO2',         value:847,  unit:'ppm',location:'Zona B', active:true },
-  { id:4, name:'SuMoist-Campo-C', type:'SOIL_MOISTURE',value:52.7,unit:'%',  location:'Zona C', active:true },
-  { id:5, name:'pH-Campo-D',      type:'PH',          value:6.4,  unit:'pH', location:'Zona D', active:false},
-  { id:6, name:'Temp-Exterior',   type:'TEMPERATURE', value:16.8, unit:'°C', location:'Exterior',active:true},
-]
-
-const typeColors = { TEMPERATURE:'#e8871a', HUMIDITY:'#5b9bd5', CO2:'#d4a017', SOIL_MOISTURE:'#6dab7f', PH:'#a8d8a8', LIGHT:'#f4a144' }
-const typeIcons  = { TEMPERATURE:'🌡', HUMIDITY:'💧', CO2:'🌬', SOIL_MOISTURE:'🪨', PH:'⚗', LIGHT:'☀' }
+﻿import { useState, useEffect } from 'react'
+import { Activity } from 'lucide-react'
+import api from '../services/api'
 
 export default function SensorsPage() {
-  const [filter, setFilter] = useState('ALL')
+  const [sensors, setSensors] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ name: '', type: 'TEMPERATURE_INTERNAL', location: '' })
+  const [error, setError] = useState(null)
 
-  const filtered = filter==='ALL' ? sensors : sensors.filter(s=>s.type===filter)
-  const types    = ['ALL', ...new Set(sensors.map(s=>s.type))]
+  useEffect(() => { loadSensors() }, [])
+
+  const loadSensors = async () => {
+    try {
+      const data = await api.sensors.list()
+      setSensors(data.sensors || [])
+      setError(null)
+    } catch (err) { setError(err.message) }
+    setLoading(false)
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      await api.sensors.create(form)
+      setShowForm(false)
+      setForm({ name: '', type: 'TEMPERATURE_INTERNAL', location: '' })
+      loadSensors()
+    } catch (err) { alert('Error: ' + err.message) }
+  }
+
+  const handleDelete = async (id) => {
+    if (confirm('¿Eliminar?')) {
+      try { await api.sensors.delete(id); loadSensors() }
+      catch (err) { alert('Error: ' + err.message) }
+    }
+  }
+
+  const typeLabel = {
+    TEMPERATURE_INTERNAL: { label: '🌡️ Temp. Interior', unit: '°C' },
+    TEMPERATURE_EXTERNAL: { label: '🌡️ Temp. Exterior', unit: '°C' },
+    HUMIDITY:             { label: '💧 Humedad',         unit: '%' },
+    SOIL_MOISTURE:        { label: '🌱 Humedad Suelo',   unit: '%' },
+  }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h2>Sensores</h2>
-        <p>Implementa: Abstract Factory (familias indoor/outdoor/field), Decorator (NoiseFilter + MovingAverage), Bridge (WiFi/LoRa)</p>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-gray-800">📡 Sensores</h2>
+        <button onClick={() => setShowForm(!showForm)} className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-medium">
+          {showForm ? 'Cancelar' : '+ Nuevo'}
+        </button>
       </div>
-      <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
-        {types.map(t=>(
-          <button key={t} className={`btn ${filter===t?'btn-primary':'btn-outline'}`}
-            style={{fontSize:'0.75rem',padding:'4px 12px'}} onClick={()=>setFilter(t)}>
-            {t==='ALL'?'Todos':t}
-          </button>
-        ))}
-      </div>
-      <div className="grid-3">
-        {filtered.map(s=>(
-          <div key={s.id} className="card sensor-card" style={{opacity:s.active?1:0.5,'--accent-color':typeColors[s.type]}}>
-            <div className="card-header">
-              <span className="card-label">{typeIcons[s.type]} {s.name}</span>
-              <span className={`badge ${s.active?'badge-ok':'badge-warn'}`}>{s.active?'Activo':'Inactivo'}</span>
-            </div>
-            <div className="sensor-value mono">{s.value}</div>
-            <div className="sensor-unit">{s.unit} — {s.location}</div>
-            <div style={{marginTop:12,fontSize:'0.7rem',color:'var(--text-muted)',fontFamily:'var(--font-display)'}}>
-              TIPO: {s.type}
-            </div>
-          </div>
-        ))}
-      </div>
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">⚠️ {error}</div>}
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+          <input type="text" placeholder="Nombre del sensor" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full border rounded-xl px-4 py-2 text-sm" required />
+          <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full border rounded-xl px-4 py-2 text-sm">
+            <option value="TEMPERATURE_INTERNAL">Temp. Interior</option>
+            <option value="TEMPERATURE_EXTERNAL">Temp. Exterior</option>
+            <option value="HUMIDITY">Humedad</option>
+            <option value="SOIL_MOISTURE">Humedad Suelo</option>
+          </select>
+          <input type="text" placeholder="Ubicación" value={form.location} onChange={e => setForm({...form, location: e.target.value})} className="w-full border rounded-xl px-4 py-2 text-sm" />
+          <button type="submit" className="w-full bg-primary text-white py-2 rounded-xl font-medium">Guardar</button>
+        </form>
+      )}
+      {loading ? (
+        <div className="flex items-center justify-center h-40"><div className="animate-spin text-4xl">🌿</div></div>
+      ) : sensors.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">
+          <Activity size={48} className="mx-auto mb-3 opacity-40" />
+          <p>No hay sensores</p>
+          <button onClick={() => setShowForm(true)} className="text-primary text-sm mt-2">Crear uno nuevo</button>
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {sensors.map(s => {
+            const info = typeLabel[s.type] || { label: s.type, unit: '' }
+            return (
+              <div key={s.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-800">{s.name}</h3>
+                    <p className="text-sm text-gray-500">{info.label}</p>
+                    <p className="text-xs text-gray-400">{s.location}</p>
+                  </div>
+                  <button onClick={() => handleDelete(s.id)} className="text-red-500 text-sm">Eliminar</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

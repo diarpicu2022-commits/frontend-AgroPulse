@@ -1,0 +1,8 @@
+// ── Supabase configuration (converted from supabase.ts) ──────────────────────
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
+export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+
+export const supabaseConfig = {
+  url: SUPABASE_URL,
+  anonKey: SUPABASE_ANON_KEY
+}
