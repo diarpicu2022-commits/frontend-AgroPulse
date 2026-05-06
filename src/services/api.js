@@ -1,5 +1,5 @@
 // ── API Client (converted from api-client.ts) ────────────────────────────────
-const API_URL = import.meta.env.VITE_API_URL || 'https://agropulse-versions-production.up.railway.app'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
 // User context store for custom headers (updated from AuthContext)
 let _userCtx = {}
@@ -18,15 +18,23 @@ async function request(endpoint, options = {}) {
     ...options,
   }
 
+  let res
   try {
-    const res  = await fetch(url, config)
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Error en la petición')
-    return data
-  } catch (error) {
-    console.error('API Error:', error)
-    throw error
+    res = await fetch(url, config)
+  } catch (networkErr) {
+    const msg = `No se pudo conectar con el servidor (${API_URL}). Verifica que el backend esté activo.`
+    throw new Error(msg)
   }
+
+  let data
+  try {
+    data = await res.json()
+  } catch {
+    throw new Error(`El servidor (${res.status}) devolvió una respuesta inválida en ${endpoint}`)
+  }
+
+  if (!res.ok) throw new Error(data.error || data.message || `Error ${res.status} en ${endpoint}`)
+  return data
 }
 
 // Auth
@@ -41,6 +49,16 @@ const auth = {
     request('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, password, fullName }) }),
 
   me: () => request('/api/auth/me'),
+
+  listUsers: (adminEmail) =>
+    request('/api/auth/users', { headers: { 'X-Admin-Email': adminEmail } }),
+
+  changeRole: (userId, role, adminEmail) =>
+    request(`/api/auth/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+      headers: { 'X-Admin-Email': adminEmail },
+    }),
 }
 
 // Sensors

@@ -14,18 +14,27 @@ export default function UsersPage() {
   const loadUsers = async () => {
     setLoading(true)
     try {
-      // Fetch local REST users
+      // REST API users (local DB + Google synced users)
       const restData = await api.users.list()
       const restUsers = (restData.users || []).map(u => ({ ...u, source: 'local' }))
 
-      // Fetch Supabase users (Google OAuth + registered via Supabase)
+      // Supabase users — solo si está configurado y la sesión está activa
       let supabaseUsers = []
       if (supabase) {
-        const { data } = await supabase.from('users').select('*').eq('active', 1)
-        supabaseUsers = (data || []).map(u => ({ ...u, source: 'supabase' }))
+        const { data, error: sbErr } = await supabase
+          .from('users')
+          .select('id, username, full_name, email, role, avatar, active')
+          .eq('active', 1)
+        if (!sbErr && data) {
+          supabaseUsers = data.map(u => ({
+            ...u,
+            fullName: u.full_name,
+            source: 'supabase',
+          }))
+        }
       }
 
-      // Merge: prefer REST record when same email exists in both
+      // Merge: deduplica por email, preferir registro REST
       const emailsSeen = new Set(restUsers.map(u => u.email?.toLowerCase()).filter(Boolean))
       const onlyInSupabase = supabaseUsers.filter(u => !emailsSeen.has(u.email?.toLowerCase()))
       setUsers([...restUsers, ...onlyInSupabase])

@@ -1,30 +1,25 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Settings } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+import api from '../services/api'
 
 export default function AdminPanel() {
   const { user } = useAuth()
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [users, setUsers]       = useState([])
+  const [loading, setLoading]   = useState(true)
   const [changing, setChanging] = useState(null)
-  const [error, setError] = useState('')
+  const [error, setError]       = useState('')
 
   useEffect(() => { loadUsers() }, [])
 
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_URL}/api/auth/users`, {
-        headers: { 'X-Admin-Email': user.email, 'Content-Type': 'application/json' }
-      })
-      if (!response.ok) throw new Error('No tienes permisos para ver usuarios')
-      const data = await response.json()
+      const data = await api.auth.listUsers(user.email)
       setUsers(data.users || [])
       setError('')
     } catch (err) {
-      setError(err.message || 'Error cargando usuarios')
+      setError(err.message)
       setUsers([])
     } finally { setLoading(false) }
   }
@@ -32,18 +27,11 @@ export default function AdminPanel() {
   const changeRole = async (userId, newRole) => {
     try {
       setChanging(userId)
-      const response = await fetch(`${API_URL}/api/auth/users/${userId}/role`, {
-        method: 'PUT',
-        headers: { 'X-Admin-Email': user.email, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole })
-      })
-      if (!response.ok) {
-        const errData = await response.json()
-        throw new Error(errData.message || 'Error cambiando rol')
-      }
+      await api.auth.changeRole(userId, newRole, user.email)
       await loadUsers()
-    } catch (err) { alert('Error: ' + err.message) }
-    finally { setChanging(null) }
+    } catch (err) {
+      setError('Error cambiando rol: ' + err.message)
+    } finally { setChanging(null) }
   }
 
   return (
@@ -52,7 +40,7 @@ export default function AdminPanel() {
         <Settings className="text-blue-600" size={24} />
         <h2 className="text-2xl font-bold text-gray-800">Gestión de Roles</h2>
       </div>
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">⚠️ {error}</div>}
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">⚠️ {error}</div>}
       {loading ? (
         <div className="text-center py-12"><div className="inline-block animate-spin">⏳</div><p className="text-gray-500 mt-2">Cargando usuarios...</p></div>
       ) : users.length === 0 ? (
