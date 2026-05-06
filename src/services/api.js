@@ -12,9 +12,7 @@ async function request(endpoint, options = {}) {
   const config = {
     headers: {
       'Content-Type': 'application/json',
-      ...(_userCtx.id         ? { 'X-User-Id': String(_userCtx.id) }       : {}),
-      ...(_userCtx.role       ? { 'X-User-Role': _userCtx.role }            : {}),
-      ...(_userCtx.adminEmail ? { 'X-Admin-Email': _userCtx.adminEmail }    : {}),
+      ...(_userCtx.adminEmail ? { 'X-Admin-Email': _userCtx.adminEmail } : {}),
       ...options.headers,
     },
     ...options,

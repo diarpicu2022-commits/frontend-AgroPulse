@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import api from '../services/api'
+import { supabase } from '../context/AuthContext'
 
 export default function UsersPage() {
   const [users, setUsers] = useState([])
@@ -11,12 +12,29 @@ export default function UsersPage() {
   useEffect(() => { loadUsers() }, [])
 
   const loadUsers = async () => {
+    setLoading(true)
     try {
-      const data = await api.users.list()
-      setUsers(data.users || [])
+      // Fetch local REST users
+      const restData = await api.users.list()
+      const restUsers = (restData.users || []).map(u => ({ ...u, source: 'local' }))
+
+      // Fetch Supabase users (Google OAuth + registered via Supabase)
+      let supabaseUsers = []
+      if (supabase) {
+        const { data } = await supabase.from('users').select('*').eq('active', 1)
+        supabaseUsers = (data || []).map(u => ({ ...u, source: 'supabase' }))
+      }
+
+      // Merge: prefer REST record when same email exists in both
+      const emailsSeen = new Set(restUsers.map(u => u.email?.toLowerCase()).filter(Boolean))
+      const onlyInSupabase = supabaseUsers.filter(u => !emailsSeen.has(u.email?.toLowerCase()))
+      setUsers([...restUsers, ...onlyInSupabase])
       setError(null)
-    } catch (err) { setError(err.message) }
-    setLoading(false)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -69,11 +87,18 @@ export default function UsersPage() {
                   </div>
                 )}
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-800">{u.username}</h3>
-                  <p className="text-sm text-gray-500">{u.email || u.fullName || 'Sin nombre'}</p>
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">{u.role}</span>
+                  <h3 className="font-semibold text-gray-800">{u.username || u.full_name}</h3>
+                  <p className="text-sm text-gray-500">{u.email || u.fullName || u.full_name || 'Sin nombre'}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">{u.role}</span>
+                    {u.source === 'supabase' && (
+                      <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">Google OAuth</span>
+                    )}
+                  </div>
                 </div>
-                <button onClick={() => handleDelete(u.id)} className="text-red-500 text-sm">Eliminar</button>
+                {u.source !== 'supabase' && (
+                  <button onClick={() => handleDelete(u.id)} className="text-red-500 text-sm">Eliminar</button>
+                )}
               </div>
             </div>
           ))}

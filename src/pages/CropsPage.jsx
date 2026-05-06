@@ -66,11 +66,23 @@ Responde SOLO con JSON válido sin markdown, con este formato exacto:
     setEditingId(null)
   }
 
+  const toApiPayload = (f) => ({
+    name:             f.name,
+    variety:          f.variety,
+    tempMin:          f.temp_min,
+    tempMax:          f.temp_max,
+    humidityMin:      f.humidity_min,
+    humidityMax:      f.humidity_max,
+    soilMoistureMin:  f.soil_moisture_min,
+    soilMoistureMax:  f.soil_moisture_max,
+    active:           f.active,
+  })
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      if (editingId) await api.crops.update(editingId, form)
-      else await api.crops.create(form)
+      if (editingId) await api.crops.update(editingId, toApiPayload(form))
+      else await api.crops.create(toApiPayload(form))
       setShowForm(false); resetForm(); loadCrops()
     } catch (err) { alert('Error: ' + err.message) }
   }
