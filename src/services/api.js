@@ -63,7 +63,7 @@ const auth = {
 
 // Sensors
 const sensors = {
-  list:   ()         => request('/api/sensors'),
+  list:   (greenhouseId = null) => request(greenhouseId ? `/api/sensors?greenhouseId=${greenhouseId}` : '/api/sensors'),
   get:    (id)       => request(`/api/sensors/${id}`),
   create: (data)     => request('/api/sensors',         { method: 'POST',   body: JSON.stringify(data) }),
   update: (id, data) => request(`/api/sensors/${id}`,   { method: 'PUT',    body: JSON.stringify(data) }),
@@ -93,11 +93,18 @@ const greenhouses = {
 
 // Actuators
 const actuators = {
-  list:   ()         => request('/api/actuators'),
+  list:   (greenhouseId = null) => request(greenhouseId ? `/api/actuators?greenhouseId=${greenhouseId}` : '/api/actuators'),
   get:    (id)       => request(`/api/actuators/${id}`),
   create: (data)     => request('/api/actuators',       { method: 'POST',   body: JSON.stringify(data) }),
   update: (id, data) => request(`/api/actuators/${id}`, { method: 'PUT',    body: JSON.stringify(data) }),
   delete: (id)       => request(`/api/actuators/${id}`, { method: 'DELETE' }),
+}
+
+// Device (ESP32 config)
+const device = {
+  register: (data)         => request('/api/device/register',        { method: 'POST', body: JSON.stringify(data) }),
+  config:   (greenhouseId) => request(`/api/device/config/${greenhouseId}`),
+  gpios:    (greenhouseId) => request(`/api/device/gpios/${greenhouseId}`),
 }
 
 // Users (admin)
@@ -156,5 +163,5 @@ const tickets = {
   delete: (id)       => request(`/api/tickets/${id}`,    { method: 'DELETE' }),
 }
 
-const api = { auth, sensors, crops, greenhouses, actuators, users, readings, alerts, logs, rules, reports, tickets }
+const api = { auth, sensors, crops, greenhouses, actuators, device, users, readings, alerts, logs, rules, reports, tickets }
 export default api
