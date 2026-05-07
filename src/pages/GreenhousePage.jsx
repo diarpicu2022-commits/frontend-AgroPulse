@@ -200,6 +200,7 @@ export default function GreenhousePage() {
                     </span>
                   </div>
                   {g.location && <p className="text-sm text-gray-500 mt-0.5">📍 {g.location}</p>}
+                  <p className="text-xs text-gray-400 font-mono">ID invernadero: <span className="font-bold text-gray-600">{g.id}</span></p>
                   {g.description && <p className="text-xs text-gray-400 mt-1">{g.description}</p>}
                 </div>
                 <div className="flex gap-2 shrink-0 ml-3">
