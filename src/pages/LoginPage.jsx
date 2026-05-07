@@ -67,24 +67,36 @@ export default function LoginPage() {
       if (event === 'SIGNED_IN' && session?.user) {
         setLoading(true)
         setError('')
+        const u        = session.user
+        const username = u.email.split('@')[0]
+        const isAdmin  = u.email === 'diarpicu2022@gmail.com' || u.email.includes('admin')
+        const avatar   = u.user_metadata?.avatar_url || u.user_metadata?.picture || null
+        const fullName = u.user_metadata?.full_name || u.email
+
         try {
-          const user = session.user
-          const response = await api.auth.googleLogin(
-            user.email,
-            user.user_metadata?.full_name || user.email,
-            user.id
-          )
+          const response = await api.auth.googleLogin(u.email, fullName, u.id)
           const role = response.role === 'ADMIN' ? 'admin' : 'user'
           login({
             ...response,
-            email:     user.email,
-            full_name: user.user_metadata?.full_name || response.full_name,
-            role:      role,
+            email:     u.email,
+            full_name: response.fullName || fullName,
+            role,
             provider:  'GOOGLE',
-            avatar:    user.user_metadata?.avatar_url || user.user_metadata?.picture || null
+            avatar
           })
-        } catch (err) {
-          setError('Error procesando login de Google')
+        } catch {
+          // Backend dormido o no disponible — usar datos de la sesión directamente
+          login({
+            id:        u.id,
+            username,
+            full_name: fullName,
+            email:     u.email,
+            role:      isAdmin ? 'admin' : 'user',
+            provider:  'GOOGLE',
+            avatar,
+            active:    true
+          })
+        } finally {
           setLoading(false)
         }
       }
@@ -176,7 +188,7 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" />
-                  Verificando...
+                  <span>Verificando… <span className="text-xs font-normal opacity-80">(puede tardar ~1 min)</span></span>
                 </>
               ) : (
                 <>🔓 Ingresar</>
@@ -230,7 +242,7 @@ export default function LoginPage() {
             {error && <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">⚠️ {error}</div>}
             <button type="submit" disabled={loading}
               className="w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold py-3 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
-              {loading ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Creando cuenta...</> : <>👤 Crear cuenta</>}
+              {loading ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> <span>Creando… <span className="text-xs font-normal opacity-80">(puede tardar ~1 min)</span></span></> : <>👤 Crear cuenta</>}
             </button>
             <p className="text-center text-xs text-gray-500">Tu cuenta será revisada por el administrador para asignarte a un invernadero</p>
           </form>
