@@ -117,9 +117,10 @@ const users = {
 
 // Readings
 const readings = {
-  list: (sensorId = null, limit = 100) => {
-    if (!sensorId) return request(`/api/readings?limit=${limit}`)
-    return request(`/api/readings?sensor=${sensorId}&limit=${limit}`)
+  list: (sensorId = null, limit = 100, greenhouseId = null) => {
+    if (sensorId)     return request(`/api/readings?sensor=${sensorId}&limit=${limit}`)
+    if (greenhouseId) return request(`/api/readings?greenhouseId=${greenhouseId}&limit=${limit}`)
+    return request(`/api/readings?limit=${limit}`)
   },
   create: (data) => request('/api/readings', { method: 'POST', body: JSON.stringify(data) }),
 }

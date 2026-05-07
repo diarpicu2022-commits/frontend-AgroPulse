@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Home, Activity, Leaf, Bell, Bot, Settings, LogOut,
-  Cpu, Zap, RefreshCw, BarChart3, ChevronRight, Mail,
+  Cpu, Zap, BarChart3, ChevronRight, Mail,
   Sprout, X, Menu, Key
 } from 'lucide-react'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -16,7 +16,6 @@ import AlertsPage     from './pages/AlertsPage'
 import AnalyticsPage  from './pages/AnalyticsPage'
 import AIPage         from './pages/AIPage'
 import MLPage         from './pages/MLPage'
-import SimulationPage from './pages/SimulationPage'
 import SupportPage    from './pages/SupportPage'
 import LogsPage       from './pages/LogsPage'
 import UsersPage      from './pages/UsersPage'
@@ -46,7 +45,6 @@ function AppInner() {
     { id: 'reports',     label: 'Reportes',         icon: Mail },
     { id: 'greenhouses', label: 'Invernadero',      icon: Sprout },
     { id: 'crops',       label: 'Cultivos',         icon: Leaf },
-    { id: 'simulate',    label: 'Simular',          icon: RefreshCw },
     { id: 'ai',          label: 'IA',               icon: Bot },
     { id: 'ml',          label: 'ML',               icon: Cpu },
     { id: 'alerts',      label: 'Alertas',          icon: Bell },
@@ -63,7 +61,6 @@ function AppInner() {
     { id: 'rules',       label: 'Automatización',   icon: Cpu },
     { id: 'reports',     label: 'Reportes',         icon: Mail },
     { id: 'crops',       label: 'Cultivos',         icon: Leaf },
-    { id: 'simulate',    label: 'Simular',          icon: RefreshCw },
     { id: 'ai',          label: 'IA',               icon: Bot },
     { id: 'ml',          label: 'ML',               icon: Cpu },
     { id: 'alerts',      label: 'Alertas',          icon: Bell },
@@ -193,7 +190,6 @@ function AppInner() {
         {page === 'reports'     && <ReportsPage />}
         {page === 'greenhouses' && <GreenhousePage />}
         {page === 'crops'       && <CropsPage />}
-        {page === 'simulate'    && <SimulationPage />}
         {page === 'ai'          && <AIPage />}
         {page === 'ml'          && <MLPage />}
         {page === 'alerts'      && <AlertsPage />}
