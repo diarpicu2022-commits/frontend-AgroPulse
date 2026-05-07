@@ -74,8 +74,10 @@ export default function Dashboard() {
           else setAutoAlerts([])
         }
       }
-      const alertsData = await api.alerts.list()
-      if (alertsData && alertsData.alerts) setAlerts(alertsData.alerts.slice(0, 5))
+      try {
+        const alertsData = await api.alerts.list()
+        if (alertsData && alertsData.alerts) setAlerts(alertsData.alerts.slice(0, 5))
+      } catch { /* alerts table may not be ready */ }
       setLastUpdate(new Date().toLocaleTimeString('es-CO'))
       setError(null)
     } catch (err) { setError(err.message) }

@@ -35,84 +35,35 @@ export function AuthProvider({ children }) {
       const avatarUrl = authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || null
       const fullName  = authUser.user_metadata?.full_name || authUser.email
 
-      try {
-        // Look for existing user by email
-        const { data: existing } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', authUser.email)
-          .eq('active', 1)
-          .single()
-
-        if (existing) { setUser(existing); return }
-
-        // Look by username
-        const { data: byUsername } = await supabase
-          .from('users')
-          .select('*')
-          .eq('username', username)
-          .eq('active', 1)
-          .single()
-
-        if (byUsername) { setUser(byUsername); return }
-
-        // Create user in Supabase
-        const { data: newUser, error: createError } = await supabase
-          .from('users')
-          .insert({
-            username: username,
-            full_name: fullName,
-            email: authUser.email,
-            avatar: avatarUrl,
-            role: isAdmin ? 'ADMIN' : 'OPERATOR',
-            active: 1
-          })
-          .select()
-          .single()
-
-        if (createError) {
-          console.error('Error creando usuario Google:', createError)
-        }
-
-        // Sync with REST API
-        try {
-          await fetch(`${API_URL}/api/auth/sync-google-user`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              username:  username,
-              email:     authUser.email,
-              full_name: fullName,
-              avatar:    avatarUrl,
-              role:      isAdmin ? 'ADMIN' : 'OPERATOR'
-            })
-          })
-        } catch (syncErr) {
-          console.error('Error sincronizando con REST:', syncErr)
-        }
-
-        const userToSet = newUser || {
-          id:        authUser.id,
-          username:  username,
-          full_name: fullName,
-          email:     authUser.email,
-          avatar:    avatarUrl,
-          role:      isAdmin ? 'ADMIN' : 'OPERATOR',
-          active:    1
-        }
-        setUser(userToSet)
-      } catch (err) {
-        console.error('Error buscando usuario:', err)
-        setUser({
-          id:        authUser.id,
-          username:  username,
-          full_name: fullName,
-          email:     authUser.email,
-          avatar:    avatarUrl,
-          role:      isAdmin ? 'ADMIN' : 'OPERATOR',
-          active:    1
-        })
+      const fallback = {
+        id:        authUser.id,
+        username,
+        full_name: fullName,
+        email:     authUser.email,
+        avatar:    avatarUrl,
+        role:      isAdmin ? 'admin' : 'user',
+        provider:  'GOOGLE',
+        active:    true
       }
+
+      try {
+        // Call Spring Boot backend to find or create the Google user
+        const response = await fetch(`${API_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: authUser.email, googleId: authUser.id, name: fullName })
+        })
+        if (response.ok) {
+          const data = await response.json()
+          const role = (data.role === 'ADMIN' || isAdmin) ? 'admin' : 'user'
+          setUser({ ...data, email: authUser.email, role, provider: 'GOOGLE', avatar: avatarUrl, active: true })
+          return
+        }
+      } catch (err) {
+        // Backend cold start or unavailable — use session data
+      }
+
+      setUser(fallback)
     }
 
     let resolved = false

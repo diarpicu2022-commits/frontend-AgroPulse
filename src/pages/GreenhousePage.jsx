@@ -50,11 +50,19 @@ export default function GreenhousePage() {
   }
 
   const loadDeviceConfig = async (id) => {
+    const empty = { sensors: [], actuators: [] }
+    const emptyGpios = { usedGpios: [], availableForSensors: [], availableForActuators: [] }
     try {
-      const [cfg, gpios] = await Promise.all([api.device.config(id), api.device.gpios(id)])
+      const [cfg, gpios] = await Promise.all([
+        api.device.config(id).catch(() => empty),
+        api.device.gpios(id).catch(() => emptyGpios),
+      ])
       setDeviceConfig(prev => ({ ...prev, [id]: cfg }))
       setGpioOpts(prev => ({ ...prev, [id]: gpios }))
-    } catch (err) { setError(err.message) }
+    } catch (err) {
+      setDeviceConfig(prev => ({ ...prev, [id]: empty }))
+      setGpioOpts(prev => ({ ...prev, [id]: emptyGpios }))
+    }
   }
 
   const toggleTab = (id, tab) => {
