@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Fira Sans', sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fira Code', monospace;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #86efac;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #16a34a;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600
+           text-white font-medium rounded-xl shadow-md hover:shadow-lg
+           transition-all duration-200 transform hover:scale-105;
+  }
+
+  .btn-secondary {
+    @apply bg-white border border-gray-200 text-gray-700 hover:bg-gray-50
+           font-medium rounded-xl transition-all duration-200;
+  }
+
+  .btn-danger {
+    @apply bg-red-50 border border-red-200 text-red-600 hover:bg-red-100
+           font-medium rounded-xl transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100;
+  }
+
+  .card-hover {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100
+           hover:shadow-md hover:border-green-200 transition-all duration-200;
+  }
+
+  .input-field {
+    @apply w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm
+           focus:border-green-500 focus:outline-none transition-colors;
+  }
+
+  .badge-green  { @apply text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700; }
+  .badge-blue   { @apply text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700; }
+  .badge-yellow { @apply text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700; }
+  .badge-red    { @apply text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700; }
+  .badge-gray   { @apply text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600; }
+  .badge-purple { @apply text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700; }
+}

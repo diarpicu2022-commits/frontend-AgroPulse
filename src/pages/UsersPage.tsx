@@ -1,0 +1,130 @@
+import { useState, useEffect } from 'react'
+import { userRepository } from '../repositories'
+import { supabase } from '../context/AuthContext'
+import type { UserDto, UserRole } from '../types'
+
+interface MergedUser extends UserDto {
+  source?: 'local' | 'supabase'
+  full_name?: string
+}
+
+interface UserForm {
+  username: string
+  password: string
+  fullName: string
+  role: UserRole
+}
+
+export default function UsersPage() {
+  const [users, setUsers]     = useState<MergedUser[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm]       = useState<UserForm>({ username: '', password: '', fullName: '', role: 'USER' })
+  const [error, setError]     = useState<string | null>(null)
+
+  useEffect(() => { loadUsers() }, [])
+
+  const loadUsers = async () => {
+    setLoading(true)
+    try {
+      // REST API users (local DB + Google synced users)
+      const restData = await userRepository.list()
+      const restUsers: MergedUser[] = (restData.users || []).map(u => ({ ...u, source: 'local' as const }))
+
+      // Supabase users — solo si está configurado y la sesión está activa
+      let supabaseUsers: MergedUser[] = []
+      if (supabase) {
+        const { data, error: sbErr } = await supabase
+          .from('users')
+          .select('id, username, full_name, email, role, avatar, active')
+          .eq('active', 1)
+        if (!sbErr && data) {
+          supabaseUsers = (data as Record<string, unknown>[]).map(u => ({
+            ...(u as unknown as UserDto),
+            fullName: u.full_name as string | undefined,
+            source:   'supabase' as const,
+          }))
+        }
+      }
+
+      // Merge: deduplica por email, preferir registro REST
+      const emailsSeen = new Set(restUsers.map(u => u.email?.toLowerCase()).filter(Boolean))
+      const onlyInSupabase = supabaseUsers.filter(u => !emailsSeen.has(u.email?.toLowerCase()))
+      setUsers([...restUsers, ...onlyInSupabase])
+      setError(null)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await userRepository.create(form as unknown as Partial<UserDto>)
+      setShowForm(false); setForm({ username: '', password: '', fullName: '', role: 'USER' }); loadUsers()
+    } catch (err) { alert('Error: ' + (err as Error).message) }
+  }
+
+  const handleDelete = async (id: number) => {
+    if (confirm('¿Eliminar usuario?')) {
+      try { await userRepository.remove(id); loadUsers() }
+      catch (err) { alert('Error: ' + (err as Error).message) }
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-gray-800">👥 Usuarios</h2>
+        <button onClick={() => setShowForm(!showForm)} className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-medium">
+          {showForm ? 'Cancelar' : '+ Nuevo'}
+        </button>
+      </div>
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">⚠️ {error}</div>}
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+          <input type="text" placeholder="Usuario" value={form.username} onChange={e => setForm({...form, username: e.target.value})} className="w-full border rounded-xl px-4 py-2 text-sm" required />
+          <input type="password" placeholder="Contraseña" value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="w-full border rounded-xl px-4 py-2 text-sm" required />
+          <input type="text" placeholder="Nombre completo" value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} className="w-full border rounded-xl px-4 py-2 text-sm" />
+          <select value={form.role} onChange={e => setForm({...form, role: e.target.value as UserRole})} className="w-full border rounded-xl px-4 py-2 text-sm">
+            <option value="USER">Usuario</option>
+            <option value="ADMIN">Administrador</option>
+          </select>
+          <button type="submit" className="w-full bg-primary text-white py-2 rounded-xl font-medium">Crear Usuario</button>
+        </form>
+      )}
+      {loading ? <div className="text-center py-8">Cargando...</div> : (
+        <div className="grid gap-3">
+          {users.map(u => (
+            <div key={u.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+              <div className="flex items-center gap-3">
+                {u.avatar ? (
+                  <img src={u.avatar} alt="avatar" className="w-12 h-12 rounded-full object-cover ring-2 ring-green-200" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-lg">
+                    {(u.username || u.fullName || u.full_name || '?')[0].toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-800">{u.username || u.full_name}</h3>
+                  <p className="text-sm text-gray-500">{u.email || u.fullName || u.full_name || 'Sin nombre'}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">{u.role}</span>
+                    {u.source === 'supabase' && (
+                      <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">Google OAuth</span>
+                    )}
+                  </div>
+                </div>
+                {u.source !== 'supabase' && (
+                  <button onClick={() => handleDelete(u.id)} className="text-red-500 text-sm">Eliminar</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
