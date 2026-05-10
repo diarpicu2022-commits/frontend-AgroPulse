@@ -40,6 +40,7 @@ export interface SensorDto {
   active: boolean
   greenhouseId?: number
   deviceSource?: string
+  location?: string
 }
 
 export interface ActuatorDto {

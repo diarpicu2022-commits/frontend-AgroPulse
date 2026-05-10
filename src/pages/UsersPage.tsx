@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Users, Plus, X, Trash2, Chrome } from 'lucide-react'
+import anime from 'animejs'
 import { userRepository } from '../repositories'
 import { supabase } from '../context/AuthContext'
 import type { UserDto, UserRole } from '../types'
@@ -16,22 +18,43 @@ interface UserForm {
 }
 
 export default function UsersPage() {
-  const [users, setUsers]     = useState<MergedUser[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm]       = useState<UserForm>({ username: '', password: '', fullName: '', role: 'USER' })
-  const [error, setError]     = useState<string | null>(null)
+  const [users,     setUsers]    = useState<MergedUser[]>([])
+  const [loading,   setLoading]  = useState(true)
+  const [showForm,  setShowForm] = useState(false)
+  const [form,      setForm]     = useState<UserForm>({ username: '', password: '', fullName: '', role: 'USER' })
+  const [error,     setError]    = useState<string | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => { loadUsers() }, [])
+
+  useEffect(() => {
+    if (!listRef.current || loading || users.length === 0) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({
+      targets:    Array.from(listRef.current.children) as Element[],
+      opacity:    [0, 1],
+      translateY: [10, 0],
+      delay:      anime.stagger(40),
+      duration:   320,
+      easing:     'easeOutCubic',
+    })
+  }, [loading, users.length])
+
+  useEffect(() => {
+    if (!formRef.current || !showForm) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({ targets: formRef.current, opacity: [0, 1], scaleY: [0.94, 1], duration: 260, easing: 'easeOutBack' })
+  }, [showForm])
 
   const loadUsers = async () => {
     setLoading(true)
     try {
-      // REST API users (local DB + Google synced users)
-      const restData = await userRepository.list()
+      const restData    = await userRepository.list()
       const restUsers: MergedUser[] = (restData.users || []).map(u => ({ ...u, source: 'local' as const }))
 
-      // Supabase users — solo si está configurado y la sesión está activa
       let supabaseUsers: MergedUser[] = []
       if (supabase) {
         const { data, error: sbErr } = await supabase
@@ -47,16 +70,12 @@ export default function UsersPage() {
         }
       }
 
-      // Merge: deduplica por email, preferir registro REST
-      const emailsSeen = new Set(restUsers.map(u => u.email?.toLowerCase()).filter(Boolean))
-      const onlyInSupabase = supabaseUsers.filter(u => !emailsSeen.has(u.email?.toLowerCase()))
-      setUsers([...restUsers, ...onlyInSupabase])
+      const emailsSeen    = new Set(restUsers.map(u => u.email?.toLowerCase()).filter(Boolean))
+      const onlySupabase  = supabaseUsers.filter(u => !emailsSeen.has(u.email?.toLowerCase()))
+      setUsers([...restUsers, ...onlySupabase])
       setError(null)
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { setError((err as Error).message) }
+    finally { setLoading(false) }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,61 +87,110 @@ export default function UsersPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (confirm('¿Eliminar usuario?')) {
+    if (confirm('¿Eliminar este usuario?')) {
       try { await userRepository.remove(id); loadUsers() }
       catch (err) { alert('Error: ' + (err as Error).message) }
     }
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-800">👥 Usuarios</h2>
-        <button onClick={() => setShowForm(!showForm)} className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-medium">
-          {showForm ? 'Cancelar' : '+ Nuevo'}
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="section-title">Usuarios</h2>
+          <p className="section-subtitle">{users.length} usuario{users.length !== 1 ? 's' : ''} registrado{users.length !== 1 ? 's' : ''}</p>
+        </div>
+        <button onClick={() => setShowForm(!showForm)} className={showForm ? 'btn-secondary px-4 py-2 text-sm' : 'btn-primary px-4 py-2 text-sm'}>
+          {showForm ? <><X size={14} /> Cancelar</> : <><Plus size={14} /> Nuevo</>}
         </button>
       </div>
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">⚠️ {error}</div>}
+
+      {error && <div className="alert-danger text-sm">{error}</div>}
+
+      {/* Form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
-          <input type="text" placeholder="Usuario" value={form.username} onChange={e => setForm({...form, username: e.target.value})} className="w-full border rounded-xl px-4 py-2 text-sm" required />
-          <input type="password" placeholder="Contraseña" value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="w-full border rounded-xl px-4 py-2 text-sm" required />
-          <input type="text" placeholder="Nombre completo" value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} className="w-full border rounded-xl px-4 py-2 text-sm" />
-          <select value={form.role} onChange={e => setForm({...form, role: e.target.value as UserRole})} className="w-full border rounded-xl px-4 py-2 text-sm">
-            <option value="USER">Usuario</option>
-            <option value="ADMIN">Administrador</option>
-          </select>
-          <button type="submit" className="w-full bg-primary text-white py-2 rounded-xl font-medium">Crear Usuario</button>
+        <form ref={formRef} onSubmit={handleSubmit} className="card p-5 space-y-4">
+          <h3 className="font-semibold text-gray-800">Nuevo Usuario</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Usuario *</label>
+              <input type="text" placeholder="usuario123" value={form.username}
+                onChange={e => setForm({ ...form, username: e.target.value })} className="input-field" required />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Contraseña *</label>
+              <input type="password" placeholder="••••••••" value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })} className="input-field" required />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nombre completo</label>
+              <input type="text" placeholder="Nombre completo" value={form.fullName}
+                onChange={e => setForm({ ...form, fullName: e.target.value })} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Rol</label>
+              <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as UserRole })} className="input-field">
+                <option value="USER">Usuario</option>
+                <option value="ADMIN">Administrador</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" className="w-full btn-primary py-2.5 text-sm">Crear usuario</button>
         </form>
       )}
-      {loading ? <div className="text-center py-8">Cargando...</div> : (
-        <div className="grid gap-3">
-          {users.map(u => (
-            <div key={u.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-              <div className="flex items-center gap-3">
-                {u.avatar ? (
-                  <img src={u.avatar} alt="avatar" className="w-12 h-12 rounded-full object-cover ring-2 ring-green-200" />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-lg">
-                    {(u.username || u.fullName || u.full_name || '?')[0].toUpperCase()}
+
+      {/* List */}
+      {loading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-20 rounded-3xl" />)}
+        </div>
+      ) : (
+        <div ref={listRef} className="space-y-3">
+          {users.map(u => {
+            const displayName = u.full_name || (u as unknown as { fullName?: string }).fullName || u.username || '?'
+            const initials    = displayName[0].toUpperCase()
+            const isAdmin     = u.role === 'ADMIN' || u.role === 'admin'
+            return (
+              <div key={u.id} className="card p-4">
+                <div className="flex items-center gap-4">
+                  {u.avatar ? (
+                    <img src={u.avatar} alt="avatar" className="w-11 h-11 rounded-2xl object-cover ring-2 ring-green-200 shrink-0" />
+                  ) : (
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white font-bold shadow-glow-sm shrink-0">
+                      {initials}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-800 truncate">{displayName}</h3>
+                    <p className="text-xs text-gray-500 truncate">{u.email || 'Sin email'}</p>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      <span className={isAdmin ? 'badge-red' : 'badge-blue'}>{isAdmin ? 'Admin' : 'Usuario'}</span>
+                      {u.source === 'supabase' && (
+                        <span className="badge-gray">
+                          <Chrome size={9} /> Google OAuth
+                        </span>
+                      )}
+                    </div>
                   </div>
-                )}
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-800">{u.username || u.full_name}</h3>
-                  <p className="text-sm text-gray-500">{u.email || u.fullName || u.full_name || 'Sin nombre'}</p>
-                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">{u.role}</span>
-                    {u.source === 'supabase' && (
-                      <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">Google OAuth</span>
-                    )}
-                  </div>
+                  {u.source !== 'supabase' && (
+                    <button onClick={() => handleDelete(u.id)}
+                      className="p-2 rounded-xl hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors shrink-0">
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
-                {u.source !== 'supabase' && (
-                  <button onClick={() => handleDelete(u.id)} className="text-red-500 text-sm">Eliminar</button>
-                )}
               </div>
+            )
+          })}
+          {users.length === 0 && (
+            <div className="empty-state card p-10">
+              <Users size={40} className="empty-state-icon" />
+              <p className="empty-state-title">No hay usuarios registrados</p>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

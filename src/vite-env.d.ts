@@ -2,15 +2,20 @@
 
 declare module 'animejs' {
   interface AnimeParams {
-    targets?: string | Element | Element[] | NodeList | null
+    targets?: string | Element | Element[] | NodeList | Record<string, unknown> | null
     opacity?: number | number[] | [number, number]
-    translateY?: number | number[] | [number, number]
-    translateX?: number | number[] | [number, number]
+    translateY?: number | number[] | [number, number] | [string, string]
+    translateX?: number | number[] | [number, number] | [string, string]
     scaleY?: number | number[] | [number, number]
     scale?: number | number[] | [number, number]
+    val?: number | number[] | [number, number]
     delay?: number | AnimeStagger
     duration?: number
     easing?: string
+    direction?: string
+    loop?: boolean | number
+    update?: (anim: unknown) => void
+    complete?: (anim: unknown) => void
     [key: string]: unknown
   }
 

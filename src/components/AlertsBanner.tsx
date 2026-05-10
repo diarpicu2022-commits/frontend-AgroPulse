@@ -1,3 +1,6 @@
+import { useRef, useEffect } from 'react'
+import { AlertTriangle, Thermometer, Droplets, Leaf, X, type LucideIcon } from 'lucide-react'
+import anime from 'animejs'
 import type { AutoAlert } from '../types'
 
 interface AlertsBannerProps {
@@ -5,57 +8,64 @@ interface AlertsBannerProps {
   onDismiss: (idx: number) => void
 }
 
+const ALERT_CONFIG: Record<string, { icon: LucideIcon; cls: string }> = {
+  TEMPERATURE:   { icon: Thermometer,   cls: 'alert-warning' },
+  HUMIDITY:      { icon: Droplets,      cls: 'alert-info'    },
+  SOIL_MOISTURE: { icon: Leaf,          cls: 'alert-success' },
+  CRITICAL:      { icon: AlertTriangle, cls: 'alert-danger'  },
+}
+
 export default function AlertsBanner({ alerts, onDismiss }: AlertsBannerProps) {
-  if (!alerts || alerts.length === 0) return null
+  const containerRef = useRef<HTMLDivElement>(null)
+  const prevLen      = useRef(0)
 
-  const getAlertColor = (type: string): string => {
-    const colors: Record<string, string> = {
-      'TEMPERATURE':   'bg-orange-100 border-orange-300 text-orange-800',
-      'HUMIDITY':      'bg-blue-100 border-blue-300 text-blue-800',
-      'SOIL_MOISTURE': 'bg-green-100 border-green-300 text-green-800',
-      'CRITICAL':      'bg-red-100 border-red-300 text-red-800',
+  useEffect(() => {
+    if (!containerRef.current || alerts.length === 0 || alerts.length <= prevLen.current) {
+      prevLen.current = alerts.length
+      return
     }
-    return colors[type] || 'bg-yellow-100 border-yellow-300 text-yellow-800'
-  }
+    prevLen.current = alerts.length
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({
+      targets:    Array.from(containerRef.current.children) as Element[],
+      opacity:    [0, 1],
+      translateX: [-12, 0],
+      delay:      anime.stagger(70),
+      duration:   280,
+      easing:     'easeOutCubic',
+    })
+  }, [alerts.length])
 
-  const getAlertIcon = (type: string): string => {
-    const icons: Record<string, string> = {
-      'TEMPERATURE':   '🌡️',
-      'HUMIDITY':      '💧',
-      'SOIL_MOISTURE': '🌱',
-      'CRITICAL':      '🚨',
-    }
-    return icons[type] || '⚠️'
-  }
+  if (!alerts.length) return null
 
   return (
-    <div className="space-y-2 mb-4">
-      {alerts.map((alert, idx) => (
-        <div
-          key={idx}
-          className={`border-l-4 rounded-lg p-4 flex items-center justify-between animate-bounce ${getAlertColor(alert.type)}`}
-          style={{ animationDelay: `${idx * 100}ms`, animationDuration: '2s' }}
-        >
-          <div className="flex items-center gap-3 flex-1">
-            <span className="text-2xl">{getAlertIcon(alert.type)}</span>
-            <div>
-              <p className="font-semibold text-sm">{alert.title}</p>
-              <p className="text-xs opacity-90">{alert.message}</p>
-              {alert.timestamp && (
-                <p className="text-xs opacity-70 mt-1">
-                  {new Date(alert.timestamp).toLocaleTimeString('es-CO')}
-                </p>
-              )}
+    <div ref={containerRef} className="space-y-2">
+      {alerts.map((alert, idx) => {
+        const cfg = ALERT_CONFIG[alert.type] ?? { icon: AlertTriangle, cls: 'alert-warning' }
+        const AlertIcon = cfg.icon
+        return (
+          <div key={idx} className={cfg.cls}>
+            <AlertIcon size={15} className="shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm leading-snug">{alert.title}</p>
+              <p className="text-xs opacity-80 mt-0.5">{alert.message}</p>
             </div>
+            {alert.timestamp && (
+              <span className="text-[11px] opacity-55 shrink-0 hidden sm:block">
+                {new Date(alert.timestamp).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <button
+              onClick={() => onDismiss(idx)}
+              aria-label="Descartar"
+              className="shrink-0 p-1 rounded-lg hover:bg-black/10 transition-colors"
+            >
+              <X size={13} />
+            </button>
           </div>
-          <button
-            onClick={() => onDismiss(idx)}
-            className="ml-4 text-lg hover:opacity-70 transition-opacity"
-          >
-            ✕
-          </button>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
-import { Sprout, Sparkles } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Sprout, Sparkles, Plus, X, Edit2, Trash2 } from 'lucide-react'
+import anime from 'animejs'
 import { cropRepository } from '../repositories'
 import { callAI } from '../services/ai-service'
 import type { CropDto } from '../types'
@@ -16,74 +17,61 @@ interface CropForm {
   active: number | boolean
 }
 
-interface RangeBarProps {
-  label: string
-  min: number
-  max: number
-  unit: string
-  color: string
-}
+interface RangeBarProps { label: string; min: number; max: number; unit: string; color: string }
 
 const RangeBar = ({ label, min, max, unit, color }: RangeBarProps) => (
   <div className="space-y-1">
     <div className="flex justify-between text-xs">
       <span className="text-gray-500">{label}</span>
-      <span className="font-medium text-gray-700">{min} - {max} {unit}</span>
+      <span className="font-medium text-gray-700">{min}–{max} {unit}</span>
     </div>
-    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-      <div className={`h-full rounded-full ${color}`} style={{ marginLeft: `${(min / (max * 1.5)) * 100}%`, width: `${((max - min) / (max * 1.5)) * 100}%` }} />
+    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className={`h-full rounded-full ${color}`}
+        style={{ marginLeft: `${(min / (max * 1.5)) * 100}%`, width: `${((max - min) / (max * 1.5)) * 100}%` }} />
     </div>
   </div>
 )
 
 export default function CropsPage() {
-  const [crops, setCrops]         = useState<CropDto[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [showForm, setShowForm]   = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [aiLoading, setAiLoading] = useState(false)
+  const [crops,      setCrops]      = useState<CropDto[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [showForm,   setShowForm]   = useState(false)
+  const [editingId,  setEditingId]  = useState<number | null>(null)
+  const [aiLoading,  setAiLoading]  = useState(false)
   const [aiProvider, setAiProvider] = useState('')
-  const [error, setError]         = useState<string | null>(null)
-  const [form, setForm]           = useState<CropForm>({
+  const [error,      setError]      = useState<string | null>(null)
+  const [form, setForm] = useState<CropForm>({
     name: '', variety: '',
     temp_min: 15, temp_max: 25,
     humidity_min: 50, humidity_max: 70,
     soil_moisture_min: 40, soil_moisture_max: 60,
     active: 0,
   })
-
-  const fillRangesWithAI = async () => {
-    if (!form.name.trim()) { alert('Ingresa el nombre del cultivo primero'); return }
-    setAiLoading(true)
-    setAiProvider('')
-    const prompt = `Dame los rangos óptimos para cultivo de invernadero de "${form.name}"${form.variety ? ` variedad "${form.variety}"` : ''}.
-Responde SOLO con JSON válido sin markdown, con este formato exacto:
-{"temp_min":18,"temp_max":26,"humidity_min":60,"humidity_max":80,"soil_moisture_min":50,"soil_moisture_max":70}`
-    try {
-      const result = await callAI(prompt, '')
-      const text = result.text.trim()
-      const jsonStr = text.match(/\{[\s\S]*\}/)?.[0]
-      if (jsonStr) {
-        const ranges = JSON.parse(jsonStr) as Partial<CropForm>
-        setForm(f => ({
-          ...f,
-          temp_min:          ranges.temp_min          ?? f.temp_min,
-          temp_max:          ranges.temp_max          ?? f.temp_max,
-          humidity_min:      ranges.humidity_min      ?? f.humidity_min,
-          humidity_max:      ranges.humidity_max      ?? f.humidity_max,
-          soil_moisture_min: ranges.soil_moisture_min ?? f.soil_moisture_min,
-          soil_moisture_max: ranges.soil_moisture_max ?? f.soil_moisture_max,
-        }))
-        setAiProvider(result.provider || 'IA')
-      } else {
-        alert('La IA no pudo generar rangos. Intenta de nuevo.')
-      }
-    } catch (err) {
-      alert('Error consultando IA: ' + (err as Error).message)
-    } finally { setAiLoading(false) }
-  }
+  const listRef = useRef<HTMLDivElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => { loadCrops() }, [])
+
+  useEffect(() => {
+    if (!listRef.current || loading || crops.length === 0) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({
+      targets:    Array.from(listRef.current.children) as Element[],
+      opacity:    [0, 1],
+      translateY: [14, 0],
+      delay:      anime.stagger(55),
+      duration:   360,
+      easing:     'easeOutCubic',
+    })
+  }, [loading, crops.length])
+
+  useEffect(() => {
+    if (!formRef.current || !showForm) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({ targets: formRef.current, opacity: [0, 1], scaleY: [0.94, 1], duration: 280, easing: 'easeOutBack' })
+  }, [showForm])
 
   const loadCrops = async () => {
     try {
@@ -99,15 +87,37 @@ Responde SOLO con JSON válido sin markdown, con este formato exacto:
     setEditingId(null)
   }
 
+  const fillRangesWithAI = async () => {
+    if (!form.name.trim()) { alert('Ingresa el nombre del cultivo primero'); return }
+    setAiLoading(true); setAiProvider('')
+    const prompt = `Dame los rangos óptimos para cultivo de invernadero de "${form.name}"${form.variety ? ` variedad "${form.variety}"` : ''}.
+Responde SOLO con JSON válido sin markdown:
+{"temp_min":18,"temp_max":26,"humidity_min":60,"humidity_max":80,"soil_moisture_min":50,"soil_moisture_max":70}`
+    try {
+      const result = await callAI(prompt, '')
+      const jsonStr = result.text.trim().match(/\{[\s\S]*\}/)?.[0]
+      if (jsonStr) {
+        const ranges = JSON.parse(jsonStr) as Partial<CropForm>
+        setForm(f => ({
+          ...f,
+          temp_min:          ranges.temp_min          ?? f.temp_min,
+          temp_max:          ranges.temp_max          ?? f.temp_max,
+          humidity_min:      ranges.humidity_min      ?? f.humidity_min,
+          humidity_max:      ranges.humidity_max      ?? f.humidity_max,
+          soil_moisture_min: ranges.soil_moisture_min ?? f.soil_moisture_min,
+          soil_moisture_max: ranges.soil_moisture_max ?? f.soil_moisture_max,
+        }))
+        setAiProvider(result.provider || 'IA')
+      } else { alert('La IA no pudo generar rangos. Intenta de nuevo.') }
+    } catch (err) { alert('Error consultando IA: ' + (err as Error).message) }
+    finally { setAiLoading(false) }
+  }
+
   const toApiPayload = (f: CropForm): Partial<CropDto> => ({
-    name:             f.name,
-    temp_min:         f.temp_min,
-    temp_max:         f.temp_max,
-    humidity_min:     f.humidity_min,
-    humidity_max:     f.humidity_max,
-    soil_moisture_min: f.soil_moisture_min,
-    soil_moisture_max: f.soil_moisture_max,
-    active:           f.active as boolean | number,
+    name: f.name, temp_min: f.temp_min, temp_max: f.temp_max,
+    humidity_min: f.humidity_min, humidity_max: f.humidity_max,
+    soil_moisture_min: f.soil_moisture_min, soil_moisture_max: f.soil_moisture_max,
+    active: f.active as boolean | number,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,124 +146,169 @@ Responde SOLO con JSON válido sin markdown, con este formato exacto:
   }
 
   const handleDelete = async (id: number, name: string) => {
-    if (confirm(`¿Estás seguro de eliminar el cultivo "${name}"?`)) {
+    if (confirm(`¿Eliminar el cultivo "${name}"?`)) {
       try { await cropRepository.remove(id); loadCrops() }
       catch (err) { alert('Error: ' + (err as Error).message) }
     }
   }
 
+  const numInput = (label: string, key: keyof CropForm, borderCls: string) => (
+    <div>
+      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label}</label>
+      <input type="number" step="0.1" value={form[key] as number}
+        onChange={e => setForm({ ...form, [key]: parseFloat(e.target.value) })}
+        className={`input-field border-${borderCls}`} />
+    </div>
+  )
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-3xl font-bold text-gray-800">🌿 Cultivos</h2>
-          <p className="text-sm text-gray-600 mt-1">Crear, editar y gestionar cultivos</p>
+          <h2 className="section-title">Cultivos</h2>
+          <p className="section-subtitle">Gestión de cultivos y rangos óptimos</p>
         </div>
         {!showForm && (
-          <button onClick={() => { setShowForm(true); resetForm() }}
-            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center gap-2">
-            ✨ Nuevo Cultivo
+          <button onClick={() => { setShowForm(true); resetForm() }} className="btn-primary px-4 py-2 text-sm">
+            <Plus size={14} /> Nuevo cultivo
           </button>
         )}
       </div>
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">⚠️ {error}</div>}
 
+      {error && <div className="alert-danger text-sm">{error}</div>}
+
+      {/* Form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-md border-2 border-green-200 p-6 space-y-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-800">{editingId ? '✏️ Editar Cultivo' : '➕ Nuevo Cultivo'}</h3>
-            <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
+        <form ref={formRef} onSubmit={handleSubmit} className="card p-5 space-y-5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800">{editingId ? 'Editar Cultivo' : 'Nuevo Cultivo'}</h3>
+            <button type="button" onClick={() => { setShowForm(false); resetForm() }}
+              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+              <X size={16} />
+            </button>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del cultivo *</label>
-              <input type="text" placeholder="Tomate, Lechuga, etc." value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-green-500 focus:outline-none transition-colors" required />
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nombre del cultivo *</label>
+              <input type="text" placeholder="Tomate, Lechuga..." value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })} className="input-field" required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Variedad</label>
-              <input type="text" placeholder="Variedad (opcional)" value={form.variety} onChange={e => setForm({...form, variety: e.target.value})} className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-green-500 focus:outline-none transition-colors" />
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Variedad</label>
+              <input type="text" placeholder="Variedad (opcional)" value={form.variety}
+                onChange={e => setForm({ ...form, variety: e.target.value })} className="input-field" />
             </div>
           </div>
+
           <div className="flex items-center gap-3">
             <button type="button" onClick={fillRangesWithAI} disabled={aiLoading}
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 disabled:from-gray-400 disabled:to-gray-400 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md transition-all transform hover:scale-105 disabled:scale-100">
-              {aiLoading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Consultando IA...</> : <><Sparkles size={15} /> Rellenar rangos con IA</>}
+              className="flex items-center gap-2 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 disabled:opacity-50 text-white px-4 py-2.5 rounded-2xl text-sm font-semibold shadow-sm transition-all">
+              {aiLoading
+                ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Consultando...</>
+                : <><Sparkles size={14} /> Rellenar con IA</>
+              }
             </button>
-            {aiProvider && <span className="text-xs bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full font-medium">✨ {aiProvider}</span>}
+            {aiProvider && <span className="badge-purple">{aiProvider}</span>}
           </div>
-          <div className="bg-orange-50 rounded-xl p-4 border-2 border-orange-100">
-            <p className="text-sm font-semibold text-orange-900 mb-3">🌡️ Rango de Temperatura</p>
+
+          {/* Temp range */}
+          <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
+            <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-3">Temperatura (°C)</p>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-xs font-medium text-gray-700 mb-1">Mínima (°C)</label><input type="number" step="0.1" value={form.temp_min} onChange={e => setForm({...form, temp_min: parseFloat(e.target.value)})} className="w-full border-2 border-orange-200 rounded-lg px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" /></div>
-              <div><label className="block text-xs font-medium text-gray-700 mb-1">Máxima (°C)</label><input type="number" step="0.1" value={form.temp_max} onChange={e => setForm({...form, temp_max: parseFloat(e.target.value)})} className="w-full border-2 border-orange-200 rounded-lg px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" /></div>
+              {numInput('Mínima', 'temp_min', 'orange-200')}
+              {numInput('Máxima', 'temp_max', 'orange-200')}
             </div>
           </div>
-          <div className="bg-cyan-50 rounded-xl p-4 border-2 border-cyan-100">
-            <p className="text-sm font-semibold text-cyan-900 mb-3">💧 Rango de Humedad</p>
+
+          {/* Humidity range */}
+          <div className="bg-sky-50 rounded-2xl p-4 border border-sky-100">
+            <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide mb-3">Humedad Aire (%)</p>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-xs font-medium text-gray-700 mb-1">Mínima (%)</label><input type="number" min="0" max="100" value={form.humidity_min} onChange={e => setForm({...form, humidity_min: parseInt(e.target.value)})} className="w-full border-2 border-cyan-200 rounded-lg px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none" /></div>
-              <div><label className="block text-xs font-medium text-gray-700 mb-1">Máxima (%)</label><input type="number" min="0" max="100" value={form.humidity_max} onChange={e => setForm({...form, humidity_max: parseInt(e.target.value)})} className="w-full border-2 border-cyan-200 rounded-lg px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none" /></div>
+              {numInput('Mínima', 'humidity_min', 'sky-200')}
+              {numInput('Máxima', 'humidity_max', 'sky-200')}
             </div>
           </div>
-          <div className="bg-green-50 rounded-xl p-4 border-2 border-green-100">
-            <p className="text-sm font-semibold text-green-900 mb-3">🌱 Rango de Humedad del Suelo</p>
+
+          {/* Soil range */}
+          <div className="bg-green-50 rounded-2xl p-4 border border-green-100">
+            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-3">Humedad Suelo (%)</p>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-xs font-medium text-gray-700 mb-1">Mínima (%)</label><input type="number" min="0" max="100" value={form.soil_moisture_min} onChange={e => setForm({...form, soil_moisture_min: parseInt(e.target.value)})} className="w-full border-2 border-green-200 rounded-lg px-3 py-2 text-sm focus:border-green-500 focus:outline-none" /></div>
-              <div><label className="block text-xs font-medium text-gray-700 mb-1">Máxima (%)</label><input type="number" min="0" max="100" value={form.soil_moisture_max} onChange={e => setForm({...form, soil_moisture_max: parseInt(e.target.value)})} className="w-full border-2 border-green-200 rounded-lg px-3 py-2 text-sm focus:border-green-500 focus:outline-none" /></div>
+              {numInput('Mínima', 'soil_moisture_min', 'green-200')}
+              {numInput('Máxima', 'soil_moisture_max', 'green-200')}
             </div>
           </div>
-          <div>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" checked={form.active === 1 || form.active === true} onChange={e => setForm({...form, active: e.target.checked ? 1 : 0})} className="w-4 h-4 text-green-600 rounded cursor-pointer" />
-              <span className="text-sm font-medium text-gray-700">✅ Cultivo Activo</span>
-            </label>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button type="submit" className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-2.5 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2">
-              {editingId ? '💾 Actualizar' : '✨ Crear'}
+
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input type="checkbox" checked={form.active === 1 || form.active === true}
+              onChange={e => setForm({ ...form, active: e.target.checked ? 1 : 0 })}
+              className="w-4 h-4 text-green-600 rounded cursor-pointer" />
+            <span className="text-sm font-medium text-gray-700">Cultivo activo</span>
+          </label>
+
+          <div className="flex gap-3">
+            <button type="submit" className="flex-1 btn-primary py-2.5 text-sm">
+              {editingId ? 'Actualizar' : 'Crear cultivo'}
             </button>
-            <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="flex-1 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 py-2.5 rounded-xl font-semibold transition-colors">Cancelar</button>
+            <button type="button" onClick={() => { setShowForm(false); resetForm() }}
+              className="flex-1 btn-secondary py-2.5 text-sm">Cancelar</button>
           </div>
         </form>
       )}
 
+      {/* List */}
       {loading ? (
-        <div className="flex items-center justify-center h-40"><div className="animate-spin text-4xl">🌿</div></div>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton h-36 rounded-3xl" />)}
+        </div>
       ) : crops.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <Sprout size={48} className="mx-auto mb-3 opacity-40" />
-          <p className="text-lg font-medium">No hay cultivos</p>
-          <button onClick={() => { setShowForm(true); resetForm() }} className="text-green-600 text-sm mt-3 hover:text-green-700 font-semibold">➕ Crear el primer cultivo</button>
+        <div className="empty-state card p-10">
+          <Sprout size={40} className="empty-state-icon" />
+          <p className="empty-state-title">No hay cultivos registrados</p>
+          <p className="empty-state-sub">Crea un cultivo para habilitar alertas automáticas.</p>
+          <button onClick={() => { setShowForm(true); resetForm() }} className="btn-primary px-4 py-2 text-sm mt-4">
+            <Plus size={14} /> Nuevo cultivo
+          </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div ref={listRef} className="space-y-3">
           {crops.map(c => {
             const isActive = c.active === 1 || c.active === true
-            const variety = (c as unknown as { variety?: string }).variety
+            const variety  = (c as unknown as { variety?: string }).variety
             return (
-              <div key={c.id} className={`bg-white rounded-2xl shadow-sm border-2 p-5 transition-all duration-200 hover:shadow-md ${isActive ? 'border-green-200 bg-green-50/30' : 'border-gray-200'}`}>
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">{isActive ? '🌿' : '🍂'}</span>
-                      <div>
-                        <p className="text-base font-bold text-gray-800">{c.name}</p>
-                        {variety && <p className="text-xs text-gray-500">{variety}</p>}
-                      </div>
+              <div key={c.id} className={`card p-5 transition-all duration-200 ${isActive ? 'ring-1 ring-green-200' : ''}`}>
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-2xl ${isActive ? 'bg-green-100' : 'bg-gray-100'}`}>
+                      <Sprout size={18} className={isActive ? 'text-green-600' : 'text-gray-400'} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800">{c.name}</h3>
+                      {variety && <p className="text-xs text-gray-500">{variety}</p>}
                     </div>
                   </div>
-                  <span className={`text-xs px-3 py-1 rounded-full font-semibold ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                    {isActive ? '✅ Activo' : '⏸️ Inactivo'}
+                  <span className={isActive ? 'badge-green' : 'badge-gray'}>
+                    {isActive ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>
-                <div className="space-y-3 mb-4">
-                  {c.temp_min != null && c.temp_max != null && <RangeBar label="🌡️ Temperatura" min={c.temp_min} max={c.temp_max} unit="°C" color="bg-orange-400" />}
-                  {c.humidity_min != null && c.humidity_max != null && <RangeBar label="💧 Humedad" min={c.humidity_min} max={c.humidity_max} unit="%" color="bg-cyan-400" />}
-                  {c.soil_moisture_min != null && c.soil_moisture_max != null && <RangeBar label="🌱 Humedad Suelo" min={c.soil_moisture_min} max={c.soil_moisture_max} unit="%" color="bg-green-400" />}
+
+                <div className="space-y-2.5 mb-4">
+                  {c.temp_min != null && c.temp_max != null &&
+                    <RangeBar label="Temperatura" min={c.temp_min} max={c.temp_max} unit="°C" color="bg-orange-400" />}
+                  {c.humidity_min != null && c.humidity_max != null &&
+                    <RangeBar label="Humedad" min={c.humidity_min} max={c.humidity_max} unit="%" color="bg-sky-400" />}
+                  {c.soil_moisture_min != null && c.soil_moisture_max != null &&
+                    <RangeBar label="Humedad Suelo" min={c.soil_moisture_min} max={c.soil_moisture_max} unit="%" color="bg-green-400" />}
                 </div>
-                <div className="flex gap-2 pt-3 border-t border-gray-200">
-                  <button onClick={() => handleEdit(c)} className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2">✏️ Editar</button>
-                  <button onClick={() => handleDelete(c.id, c.name)} className="flex-1 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2">🗑️ Eliminar</button>
+
+                <div className="flex gap-2 pt-3 border-t border-gray-100">
+                  <button onClick={() => handleEdit(c)} className="flex-1 btn-secondary py-2 text-xs">
+                    <Edit2 size={12} /> Editar
+                  </button>
+                  <button onClick={() => handleDelete(c.id, c.name)} className="flex-1 btn-danger py-2 text-xs">
+                    <Trash2 size={12} /> Eliminar
+                  </button>
                 </div>
               </div>
             )

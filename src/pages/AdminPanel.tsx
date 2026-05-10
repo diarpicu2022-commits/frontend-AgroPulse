@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
-import { Settings } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { ShieldCheck, Users, Loader2 } from 'lucide-react'
+import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
 import { userRepository } from '../repositories'
 import type { AppUser, UserDto, UserRole } from '../types'
@@ -12,12 +13,27 @@ export default function AdminPanel({ user }: AdminPanelProps) {
   const { user: authUser } = useAuth()
   const adminUser = user || authUser
 
-  const [users, setUsers]       = useState<UserDto[]>([])
-  const [loading, setLoading]   = useState(true)
+  const [users,    setUsers]    = useState<UserDto[]>([])
+  const [loading,  setLoading]  = useState(true)
   const [changing, setChanging] = useState<number | null>(null)
-  const [error, setError]       = useState('')
+  const [error,    setError]    = useState('')
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { loadUsers() }, [])
+
+  useEffect(() => {
+    if (!listRef.current || loading || users.length === 0) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({
+      targets:    Array.from(listRef.current.children) as Element[],
+      opacity:    [0, 1],
+      translateY: [10, 0],
+      delay:      anime.stagger(40),
+      duration:   320,
+      easing:     'easeOutCubic',
+    })
+  }, [loading, users.length])
 
   const loadUsers = async () => {
     try {
@@ -42,52 +58,75 @@ export default function AdminPanel({ user }: AdminPanelProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center gap-3">
-        <Settings className="text-blue-600" size={24} />
-        <h2 className="text-2xl font-bold text-gray-800">Gestión de Roles</h2>
+        <div className="p-2.5 bg-blue-100 rounded-2xl">
+          <ShieldCheck size={20} className="text-blue-600" />
+        </div>
+        <div>
+          <h2 className="section-title">Gestión de Roles</h2>
+          <p className="section-subtitle">Asigna roles a los usuarios del sistema</p>
+        </div>
       </div>
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">⚠️ {error}</div>}
+
+      {error && <div className="alert-danger text-sm">{error}</div>}
+
       {loading ? (
-        <div className="text-center py-12"><div className="inline-block animate-spin">⏳</div><p className="text-gray-500 mt-2">Cargando usuarios...</p></div>
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-20 rounded-3xl" />)}
+        </div>
       ) : users.length === 0 ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center"><p className="text-gray-600">No hay usuarios registrados</p></div>
+        <div className="empty-state card p-10">
+          <Users size={40} className="empty-state-icon" />
+          <p className="empty-state-title">No hay usuarios registrados</p>
+        </div>
       ) : (
-        <div className="grid gap-3">
+        <div ref={listRef} className="space-y-3">
           {users.map(u => {
             const isCurrentUser = u.username === adminUser?.username
-            const isAdmin = u.role === 'ADMIN' || u.role === 'admin'
+            const isAdmin       = u.role === 'ADMIN' || u.role === 'admin'
+            const displayName   = u.full_name || u.username || '?'
+            const initials      = displayName[0].toUpperCase()
             return (
-              <div key={u.id} className="bg-white rounded-lg shadow border border-gray-200 p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1">
-                    {u.avatar ? (
-                      <img src={u.avatar} alt="avatar" className="w-10 h-10 rounded-full object-cover ring-2 ring-green-200" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold">
-                        {(u.username || u.full_name || '?')[0].toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <h3 className="font-semibold text-gray-800">{u.username}</h3>
-                      <p className="text-sm text-gray-500">{u.email}</p>
+              <div key={u.id} className="card p-4">
+                <div className="flex items-center gap-4">
+                  {u.avatar ? (
+                    <img src={u.avatar} alt="avatar" className="w-11 h-11 rounded-2xl object-cover ring-2 ring-green-200 shrink-0" />
+                  ) : (
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white font-bold shadow-glow-sm shrink-0">
+                      {initials}
                     </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-gray-800 truncate">{displayName}</h3>
+                      {isCurrentUser && <span className="badge-gray text-[10px]">Tú</span>}
+                    </div>
+                    <p className="text-xs text-gray-500 truncate">{u.email}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${isAdmin ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {isAdmin ? '🔴 Administrador' : '🔵 Usuario'}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={isAdmin ? 'badge-red' : 'badge-blue'}>
+                      {isAdmin ? 'Admin' : 'Usuario'}
                     </span>
                     {!isCurrentUser && (
-                      <select
-                        value={u.role as UserRole}
-                        onChange={(e) => changeRole(u.id, e.target.value)}
-                        disabled={changing === u.id}
-                        className="px-3 py-1 border border-gray-300 rounded text-sm font-medium cursor-pointer hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                        <option value="USER">Usuario</option>
-                        <option value="ADMIN">Administrador</option>
-                      </select>
+                      <div className="relative">
+                        {changing === u.id && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-xl">
+                            <Loader2 size={14} className="animate-spin text-green-600" />
+                          </div>
+                        )}
+                        <select
+                          value={u.role as UserRole}
+                          onChange={e => changeRole(u.id, e.target.value)}
+                          disabled={changing === u.id}
+                          className="input-field py-1.5 text-xs font-medium cursor-pointer disabled:opacity-50"
+                        >
+                          <option value="USER">Usuario</option>
+                          <option value="ADMIN">Administrador</option>
+                        </select>
+                      </div>
                     )}
-                    {isCurrentUser && <span className="text-xs text-gray-500 px-2">Tú</span>}
                   </div>
                 </div>
               </div>
@@ -95,8 +134,10 @@ export default function AdminPanel({ user }: AdminPanelProps) {
           })}
         </div>
       )}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700">
-        <p><strong>💡 Info:</strong> Cambios de rol toman efecto inmediatamente. Los usuarios con rol ADMIN pueden acceder al panel de administración.</p>
+
+      <div className="alert-info text-sm">
+        <ShieldCheck size={14} className="shrink-0 mt-0.5" />
+        <span>Cambios de rol toman efecto inmediatamente. Los usuarios ADMIN acceden al panel de administración.</span>
       </div>
     </div>
   )
