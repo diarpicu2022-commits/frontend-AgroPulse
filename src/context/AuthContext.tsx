@@ -55,30 +55,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         active:    true,
       }
 
+      const controller = new AbortController()
+      const fetchTimer = setTimeout(() => controller.abort(), 8000)
       try {
         const response = await fetch(`${API_URL}/api/auth/login`, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ email: authUser.email, googleId: authUser.id, name: fullName }),
+          signal:  controller.signal,
         })
+        clearTimeout(fetchTimer)
         if (response.ok) {
           const data = await response.json() as AppUser
           const role = data.role === 'ADMIN' || isAdmin ? 'admin' : 'user'
           setUser({ ...data, email: authUser.email, role, provider: 'GOOGLE', avatar: avatarUrl, active: true })
           return
         }
-      } catch { /* backend cold start — fall back to session data */ }
+      } catch { clearTimeout(fetchTimer) }
 
       setUser(fallback)
     }
 
     let resolved = false
     const safeFinish = () => { if (!resolved) { resolved = true; setAuthLoading(false) } }
-    const timer = setTimeout(safeFinish, 4000)
+    // Safety net: fires after 10s even if findOrCreateUser hangs
+    const timer = setTimeout(safeFinish, 10000)
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      clearTimeout(timer)
       if (session?.user) await findOrCreateUser(session.user).catch(() => {})
+      clearTimeout(timer)
       safeFinish()
     }).catch(() => { clearTimeout(timer); safeFinish() })
 

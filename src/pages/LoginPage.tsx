@@ -95,26 +95,6 @@ export default function LoginPage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => {
-    if (!supabase) return
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        setLoading(true); setError('')
-        const u        = session.user
-        const uname    = u.email?.split('@')[0] ?? 'user'
-        const isAdmin  = u.email === 'diarpicu2022@gmail.com' || (u.email?.includes('admin') ?? false)
-        const avatar   = (u.user_metadata?.avatar_url ?? u.user_metadata?.picture ?? null) as string | null
-        const fullName = (u.user_metadata?.full_name ?? u.email) as string
-        try {
-          const response = await userRepository.googleLogin(u.email!, fullName, u.id) as AppUser
-          login({ ...response, email: u.email, full_name: response.fullName || fullName, role: response.role === 'ADMIN' ? 'admin' : 'user', provider: 'GOOGLE', avatar })
-        } catch { login({ id: 0, username: uname, full_name: fullName, email: u.email, role: isAdmin ? 'admin' : 'user', provider: 'GOOGLE', avatar, active: true }) }
-        finally { setLoading(false) }
-      }
-    })
-    return () => subscription?.unsubscribe()
-  }, [supabase])
-
   const switchTab = (t: Tab) => { setTab(t); setError(''); setSuccess('') }
 
   const tabs: { id: Tab; label: string }[] = [
@@ -139,7 +119,7 @@ export default function LoginPage() {
         <div className="glass-dark border border-white/10 rounded-[28px] shadow-glass-dark overflow-hidden">
 
           {/* Header */}
-          <div className="pt-8 pb-6 px-8 text-center border-b border-white/8">
+          <div className="pt-8 pb-6 px-8 text-center">
             <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-glow-green mb-4 animate-glow-pulse">
               <Sprout size={26} className="text-white" />
             </div>

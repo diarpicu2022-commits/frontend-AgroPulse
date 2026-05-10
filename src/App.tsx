@@ -116,12 +116,50 @@ const USER_GROUPS: NavGroup[] = [
 const ALL_ITEMS = (groups: NavGroup[]): NavItem[] =>
   groups.flatMap(g => g.items)
 
+function AuthLoadingScreen() {
+  const wrapRef  = useRef<HTMLDivElement>(null)
+  const iconRef  = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+
+    anime({ targets: wrapRef.current, opacity: [0, 1], scale: [0.92, 1], duration: 500, easing: 'easeOutCubic' })
+
+    anime({
+      targets:   iconRef.current,
+      scale:     [1, 1.08, 1],
+      duration:  1800,
+      direction: 'alternate',
+      loop:      true,
+      easing:    'easeInOutSine',
+    })
+  }, [])
+
+  return (
+    <div className="min-h-screen flex items-center justify-center"
+         style={{ background: 'linear-gradient(135deg, #0A150D 0%, #162A1C 60%, #0D1F12 100%)' }}>
+      <div ref={wrapRef} className="flex flex-col items-center gap-5">
+        <div ref={iconRef}
+             className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl
+                        flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.4)]">
+          <Sprout size={24} className="text-white" />
+        </div>
+        <div className="w-5 h-5 border-2 border-green-500/30 border-t-green-400 rounded-full animate-spin" />
+        <p className="text-sm text-white/40 font-medium tracking-wide">Verificando sesión…</p>
+      </div>
+    </div>
+  )
+}
+
 function AppInner() {
-  const { user, logout } = useAuth()
+  const { user, authLoading, logout } = useAuth()
   const [page, setPage]               = useState<PageId>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const sidebarRef   = useRef<HTMLElement>(null)
   const mainRef      = useRef<HTMLElement>(null)
+
+  if (authLoading) return <AuthLoadingScreen />
 
   if (!user) return <LoginPage />
 
