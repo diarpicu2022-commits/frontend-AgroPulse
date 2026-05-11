@@ -29,6 +29,31 @@ export function saveAccess(userId: number, ids: number[]): void {
   } catch {}
 }
 
+// Email-keyed access — more reliable than ID for Google OAuth users
+export function saveAccessByEmail(email: string, ids: number[]): void {
+  try {
+    const raw = localStorage.getItem('agropulse_access_email')
+    const all = raw ? (JSON.parse(raw) as Record<string, number[]>) : {}
+    all[email.toLowerCase()] = ids
+    localStorage.setItem('agropulse_access_email', JSON.stringify(all))
+  } catch {}
+}
+
+export function readAccessByEmail(email: string): number[] {
+  try {
+    const raw = localStorage.getItem('agropulse_access_email')
+    if (!raw) return []
+    const all = JSON.parse(raw) as Record<string, number[]>
+    return all[email.toLowerCase()] ?? []
+  } catch { return [] }
+}
+
+function resolveAccess(userId: number, email?: string | null): number[] {
+  const byId    = readAccess(userId)
+  const byEmail = email ? readAccessByEmail(email) : []
+  return [...new Set([...byId, ...byEmail])]
+}
+
 export function cacheProfile(email: string, data: { avatar?: string | null; full_name?: string | null }): void {
   try {
     const raw = localStorage.getItem('agropulse_profile_cache')
@@ -126,14 +151,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           if (authUser.email) cacheProfile(authUser.email, { avatar: avatarUrl, full_name: fullName })
           setUser(finalUser)
-          setAllowedGreenhouseIds(isAdminRole(role) ? null : readAccess(data.id || 0))
+          setAllowedGreenhouseIds(isAdminRole(role) ? null : resolveAccess(data.id || 0, authUser.email))
           return
         }
       } catch { clearTimeout(fetchTimer) }
 
       if (authUser.email) cacheProfile(authUser.email, { avatar: avatarUrl, full_name: fullName })
       setUser(fallback)
-      setAllowedGreenhouseIds(isAdmin ? null : readAccess(0))
+      setAllowedGreenhouseIds(isAdmin ? null : resolveAccess(0, authUser.email))
     }
 
     let resolved = false
@@ -158,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData)
     if (userData.email && userData.avatar) cacheProfile(userData.email, { avatar: userData.avatar, full_name: userData.full_name })
     const admin = isAdminRole(userData.role)
-    setAllowedGreenhouseIds(admin ? null : readAccess(userData.id))
+    setAllowedGreenhouseIds(admin ? null : resolveAccess(userData.id, userData.email))
     setUserContext({
       id:         userData.id,
       role:       userData.role,
@@ -168,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshAccess = () => {
     if (!user) return
-    if (!isAdminRole(user.role)) setAllowedGreenhouseIds(readAccess(user.id))
+    if (!isAdminRole(user.role)) setAllowedGreenhouseIds(resolveAccess(user.id, user.email))
   }
 
   const logout = async () => {

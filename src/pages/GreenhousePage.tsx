@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Building2, UserPlus, Cpu, Zap, ChevronDown, ChevronUp, Wifi, Loader2 } from 'lucide-react'
 import anime from 'animejs'
-import { useAuth, saveAccess, readAccess } from '../context/AuthContext'
+import { useAuth, saveAccess, readAccess, saveAccessByEmail, readAccessByEmail } from '../context/AuthContext'
 import { greenhouseRepository, sensorRepository, actuatorRepository, deviceRepository } from '../repositories'
 import { userRepository } from '../repositories'
 import type {
@@ -159,22 +159,27 @@ export default function GreenhousePage() {
         if (current.find(u => u.id === uid)) return prev
         return { ...prev, [ghId]: [...current, targetUser] }
       })
-      // Sync to localStorage so operator's access control stays in sync
+      // Sync to localStorage by both ID and email for robust access control
       const currentAccess = readAccess(uid)
       if (!currentAccess.includes(ghId)) saveAccess(uid, [...currentAccess, ghId])
+      if (targetUser.email) {
+        const currentByEmail = readAccessByEmail(targetUser.email)
+        if (!currentByEmail.includes(ghId)) saveAccessByEmail(targetUser.email, [...currentByEmail, ghId])
+      }
       setAssignUserId('')
     } catch (err) { alert('Error asignando usuario: ' + (err as Error).message) }
     finally { setAssigning(false) }
   }
 
   const handleRemoveUser = async (ghId: number, userId: number) => {
+    const removedUser = (ghUsers[ghId] ?? []).find(u => u.id === userId)
     // Optimistic removal
     setGhUsers(prev => ({ ...prev, [ghId]: (prev[ghId] ?? []).filter(u => u.id !== userId) }))
     saveAccess(userId, readAccess(userId).filter(id => id !== ghId))
+    if (removedUser?.email) saveAccessByEmail(removedUser.email, readAccessByEmail(removedUser.email).filter(id => id !== ghId))
     try {
       await greenhouseRepository.removeUser(ghId, userId)
     } catch (err) {
-      // Revert on error
       await loadGhUsers(ghId)
       alert('Error removiendo usuario: ' + (err as Error).message)
     }

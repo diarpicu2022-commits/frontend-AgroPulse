@@ -3,7 +3,7 @@ import { ShieldCheck, Users, Loader2, Sprout, ChevronDown, ChevronUp } from 'luc
 import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
 import { userRepository, greenhouseRepository } from '../repositories'
-import { saveAccess, readAccess, getCachedProfile } from '../context/AuthContext'
+import { saveAccess, readAccess, saveAccessByEmail, readAccessByEmail, getCachedProfile } from '../context/AuthContext'
 import type { AppUser, UserDto, UserRole, GreenhouseDto } from '../types'
 
 interface AdminPanelProps { user: AppUser }
@@ -75,6 +75,15 @@ export default function AdminPanel({ user }: AdminPanelProps) {
       ? [...new Set([...current, ghId])]
       : current.filter(id => id !== ghId)
     saveAccess(userId, updated)
+    // Also save by email for reliable cross-session access control
+    const u = users.find(u => u.id === userId)
+    if (u?.email) {
+      const byEmail = readAccessByEmail(u.email)
+      const updatedByEmail = checked
+        ? [...new Set([...byEmail, ghId])]
+        : byEmail.filter(id => id !== ghId)
+      saveAccessByEmail(u.email, updatedByEmail)
+    }
     setAccessMap(prev => ({ ...prev, [userId]: updated }))
   }
 
