@@ -68,6 +68,7 @@ export interface CropDto {
   id: number
   name: string
   active: boolean | number
+  greenhouseId?: number
   temp_min?: number
   temp_max?: number
   humidity_min?: number
@@ -89,6 +90,7 @@ export interface AlertDto {
   message: string
   timestamp?: string
   read?: boolean
+  greenhouseId?: number
 }
 
 export interface UserDto {

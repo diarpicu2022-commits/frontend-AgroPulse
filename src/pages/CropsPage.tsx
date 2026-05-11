@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
-import { Sprout, Sparkles, Plus, X, Edit2, Trash2 } from 'lucide-react'
+import { Sprout, Sparkles, Plus, X, Edit2, Trash2, Building2 } from 'lucide-react'
 import anime from 'animejs'
-import { cropRepository } from '../repositories'
+import { cropRepository, greenhouseRepository } from '../repositories'
 import { callAI } from '../services/ai-service'
-import type { CropDto } from '../types'
+import type { CropDto, GreenhouseDto } from '../types'
 
 interface CropForm {
   name: string
   variety: string
+  greenhouse_id: number | ''
   temp_min: number
   temp_max: number
   humidity_min: number
@@ -17,45 +18,63 @@ interface CropForm {
   active: number | boolean
 }
 
-interface RangeBarProps { label: string; min: number; max: number; unit: string; color: string }
+interface RangeBarProps { label: string; min: number; max: number; unit: string; color: string; scaleMax: number }
 
-const RangeBar = ({ label, min, max, unit, color }: RangeBarProps) => (
-  <div className="space-y-1">
-    <div className="flex justify-between text-xs">
-      <span className="text-gray-500">{label}</span>
-      <span className="font-medium text-gray-700">{min}–{max} {unit}</span>
+// Fixed scale so the bar position makes intuitive sense (15–25 °C shows in the cool-moderate zone)
+const RangeBar = ({ label, min, max, unit, color, scaleMax }: RangeBarProps) => {
+  const leftPct  = Math.max(0, (min / scaleMax) * 100)
+  const widthPct = Math.max(2, ((max - min) / scaleMax) * 100)
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs">
+        <span className="text-gray-500">{label}</span>
+        <span className="font-medium text-gray-700">{min}–{max} {unit}</span>
+      </div>
+      <div className="relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`absolute top-0 h-full rounded-full ${color}`}
+          style={{ left: `${leftPct}%`, width: `${widthPct}%` }} />
+      </div>
+      <div className="flex justify-between text-[10px] text-gray-400">
+        <span>0</span>
+        <span>{scaleMax} {unit}</span>
+      </div>
     </div>
-    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-      <div className={`h-full rounded-full ${color}`}
-        style={{ marginLeft: `${(min / (max * 1.5)) * 100}%`, width: `${((max - min) / (max * 1.5)) * 100}%` }} />
-    </div>
-  </div>
-)
+  )
+}
 
 const CROPS_CACHE = 'agropulse_crops_v1'
 const saveCropsCache = (list: CropDto[]) => {
   try { localStorage.setItem(CROPS_CACHE, JSON.stringify(list)) } catch {}
 }
 
+const EMPTY_FORM: CropForm = {
+  name: '', variety: '', greenhouse_id: '',
+  temp_min: 15, temp_max: 25,
+  humidity_min: 50, humidity_max: 70,
+  soil_moisture_min: 40, soil_moisture_max: 60,
+  active: 0,
+}
+
 export default function CropsPage() {
-  const [crops,      setCrops]      = useState<CropDto[]>([])
-  const [loading,    setLoading]    = useState(true)
-  const [showForm,   setShowForm]   = useState(false)
-  const [editingId,  setEditingId]  = useState<number | null>(null)
-  const [aiLoading,  setAiLoading]  = useState(false)
-  const [aiProvider, setAiProvider] = useState('')
-  const [error,      setError]      = useState<string | null>(null)
-  const [form, setForm] = useState<CropForm>({
-    name: '', variety: '',
-    temp_min: 15, temp_max: 25,
-    humidity_min: 50, humidity_max: 70,
-    soil_moisture_min: 40, soil_moisture_max: 60,
-    active: 0,
-  })
+  const [crops,       setCrops]       = useState<CropDto[]>([])
+  const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
+  const [filterGhId,  setFilterGhId]  = useState<number | ''>('')
+  const [loading,     setLoading]     = useState(true)
+  const [showForm,    setShowForm]    = useState(false)
+  const [editingId,   setEditingId]   = useState<number | null>(null)
+  const [aiLoading,   setAiLoading]   = useState(false)
+  const [aiProvider,  setAiProvider]  = useState('')
+  const [error,       setError]       = useState<string | null>(null)
+  const [form, setForm] = useState<CropForm>(EMPTY_FORM)
   const listRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
-  useEffect(() => { loadCrops() }, [])
+  useEffect(() => {
+    loadCrops()
+    greenhouseRepository.list()
+      .then(d => setGreenhouses(d.greenhouses ?? []))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!listRef.current || loading || crops.length === 0) return
@@ -79,7 +98,6 @@ export default function CropsPage() {
   }, [showForm])
 
   const loadCrops = async () => {
-    // Show cache immediately so page never looks empty after refresh
     try {
       const raw = localStorage.getItem(CROPS_CACHE)
       if (raw) { setCrops(JSON.parse(raw) as CropDto[]); setLoading(false) }
@@ -93,10 +111,7 @@ export default function CropsPage() {
     setLoading(false)
   }
 
-  const resetForm = () => {
-    setForm({ name: '', variety: '', temp_min: 15, temp_max: 25, humidity_min: 50, humidity_max: 70, soil_moisture_min: 40, soil_moisture_max: 60, active: 0 })
-    setEditingId(null)
-  }
+  const resetForm = () => { setForm(EMPTY_FORM); setEditingId(null) }
 
   const fillRangesWithAI = async () => {
     if (!form.name.trim()) { alert('Ingresa el nombre del cultivo primero'); return }
@@ -125,7 +140,9 @@ Responde SOLO con JSON válido sin markdown:
   }
 
   const toApiPayload = (f: CropForm): Partial<CropDto> => ({
-    name: f.name, temp_min: f.temp_min, temp_max: f.temp_max,
+    name: f.name,
+    ...(f.greenhouse_id !== '' ? { greenhouseId: f.greenhouse_id as number } : {}),
+    temp_min: f.temp_min, temp_max: f.temp_max,
     humidity_min: f.humidity_min, humidity_max: f.humidity_max,
     soil_moisture_min: f.soil_moisture_min, soil_moisture_max: f.soil_moisture_max,
     active: f.active as boolean | number,
@@ -147,6 +164,7 @@ Responde SOLO con JSON válido sin markdown:
           id:                (created as CropDto)?.id ?? Date.now(),
           name:              form.name,
           active:            form.active,
+          ...(form.greenhouse_id !== '' ? { greenhouseId: form.greenhouse_id as number } : {}),
           temp_min:          form.temp_min,
           temp_max:          form.temp_max,
           humidity_min:      form.humidity_min,
@@ -165,6 +183,7 @@ Responde SOLO con JSON válido sin markdown:
     setForm({
       name:              crop.name,
       variety:           (crop as unknown as { variety?: string }).variety || '',
+      greenhouse_id:     crop.greenhouseId ?? '',
       temp_min:          crop.temp_min          || 15,
       temp_max:          crop.temp_max          || 25,
       humidity_min:      crop.humidity_min      || 50,
@@ -193,19 +212,38 @@ Responde SOLO con JSON válido sin markdown:
     </div>
   )
 
+  const ghName = (id?: number) =>
+    id ? (greenhouses.find(g => g.id === id)?.name ?? `Inv. ${id}`) : null
+
+  const displayCrops = filterGhId !== ''
+    ? crops.filter(c => c.greenhouseId === filterGhId)
+    : crops
+
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="section-title">Cultivos</h2>
-          <p className="section-subtitle">Gestión de cultivos y rangos óptimos</p>
+          <p className="section-subtitle">Gestión de cultivos y rangos óptimos por invernadero</p>
         </div>
-        {!showForm && (
-          <button onClick={() => { setShowForm(true); resetForm() }} className="btn-primary px-4 py-2 text-sm">
-            <Plus size={14} /> Nuevo cultivo
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {greenhouses.length > 0 && (
+            <select
+              value={filterGhId}
+              onChange={e => setFilterGhId(e.target.value === '' ? '' : parseInt(e.target.value))}
+              className="input-field py-2 text-sm max-w-[200px]"
+            >
+              <option value="">Todos los invernaderos</option>
+              {greenhouses.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          )}
+          {!showForm && (
+            <button onClick={() => { setShowForm(true); resetForm() }} className="btn-primary px-4 py-2 text-sm">
+              <Plus size={14} /> Nuevo cultivo
+            </button>
+          )}
+        </div>
       </div>
 
       {error && <div className="alert-danger text-sm">{error}</div>}
@@ -219,6 +257,22 @@ Responde SOLO con JSON válido sin markdown:
               className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
               <X size={16} />
             </button>
+          </div>
+
+          {/* Greenhouse selector */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Invernadero *
+            </label>
+            <select
+              value={form.greenhouse_id}
+              onChange={e => setForm({ ...form, greenhouse_id: e.target.value === '' ? '' : parseInt(e.target.value) })}
+              className="input-field"
+              required
+            >
+              <option value="">Seleccionar invernadero...</option>
+              {greenhouses.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -294,10 +348,12 @@ Responde SOLO con JSON válido sin markdown:
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton h-36 rounded-3xl" />)}
         </div>
-      ) : crops.length === 0 ? (
+      ) : displayCrops.length === 0 ? (
         <div className="empty-state card p-10">
           <Sprout size={40} className="empty-state-icon" />
-          <p className="empty-state-title">No hay cultivos registrados</p>
+          <p className="empty-state-title">
+            {filterGhId !== '' ? 'Sin cultivos en este invernadero' : 'No hay cultivos registrados'}
+          </p>
           <p className="empty-state-sub">Crea un cultivo para habilitar alertas automáticas.</p>
           <button onClick={() => { setShowForm(true); resetForm() }} className="btn-primary px-4 py-2 text-sm mt-4">
             <Plus size={14} /> Nuevo cultivo
@@ -305,9 +361,10 @@ Responde SOLO con JSON válido sin markdown:
         </div>
       ) : (
         <div ref={listRef} className="space-y-3">
-          {crops.map(c => {
+          {displayCrops.map(c => {
             const isActive = c.active === 1 || c.active === true
             const variety  = (c as unknown as { variety?: string }).variety
+            const ghLabel  = ghName(c.greenhouseId)
             return (
               <div key={c.id} className={`card p-5 transition-all duration-200 ${isActive ? 'ring-1 ring-green-200' : ''}`}>
                 <div className="flex items-start justify-between gap-3 mb-4">
@@ -318,6 +375,11 @@ Responde SOLO con JSON válido sin markdown:
                     <div>
                       <h3 className="font-semibold text-gray-800">{c.name}</h3>
                       {variety && <p className="text-xs text-gray-500">{variety}</p>}
+                      {ghLabel && (
+                        <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                          <Building2 size={10} /> {ghLabel}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <span className={isActive ? 'badge-green' : 'badge-gray'}>
@@ -325,13 +387,13 @@ Responde SOLO con JSON válido sin markdown:
                   </span>
                 </div>
 
-                <div className="space-y-2.5 mb-4">
+                <div className="space-y-3 mb-4">
                   {c.temp_min != null && c.temp_max != null &&
-                    <RangeBar label="Temperatura" min={c.temp_min} max={c.temp_max} unit="°C" color="bg-orange-400" />}
+                    <RangeBar label="Temperatura" min={c.temp_min} max={c.temp_max} unit="°C" color="bg-orange-400" scaleMax={60} />}
                   {c.humidity_min != null && c.humidity_max != null &&
-                    <RangeBar label="Humedad" min={c.humidity_min} max={c.humidity_max} unit="%" color="bg-sky-400" />}
+                    <RangeBar label="Humedad aire" min={c.humidity_min} max={c.humidity_max} unit="%" color="bg-sky-400" scaleMax={100} />}
                   {c.soil_moisture_min != null && c.soil_moisture_max != null &&
-                    <RangeBar label="Humedad Suelo" min={c.soil_moisture_min} max={c.soil_moisture_max} unit="%" color="bg-green-400" />}
+                    <RangeBar label="Humedad suelo" min={c.soil_moisture_min} max={c.soil_moisture_max} unit="%" color="bg-green-400" scaleMax={100} />}
                 </div>
 
                 <div className="flex gap-2 pt-3 border-t border-gray-100">
