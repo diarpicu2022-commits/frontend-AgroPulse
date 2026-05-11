@@ -148,26 +148,36 @@ export default function GreenhousePage() {
   const handleAssign = async (ghId: number) => {
     if (!assignUserId || assigning) return
     const uid = parseInt(assignUserId)
+    const targetUser = allUsers.find(u => u.id === uid)
+    if (!targetUser) return
     setAssigning(true)
     try {
       await greenhouseRepository.assignUser(ghId, uid)
+      // Optimistic update — add user to local list immediately (backend GET may lag)
+      setGhUsers(prev => {
+        const current = prev[ghId] ?? []
+        if (current.find(u => u.id === uid)) return prev
+        return { ...prev, [ghId]: [...current, targetUser] }
+      })
       // Sync to localStorage so operator's access control stays in sync
-      const current = readAccess(uid)
-      if (!current.includes(ghId)) saveAccess(uid, [...current, ghId])
+      const currentAccess = readAccess(uid)
+      if (!currentAccess.includes(ghId)) saveAccess(uid, [...currentAccess, ghId])
       setAssignUserId('')
-      await loadGhUsers(ghId)
     } catch (err) { alert('Error asignando usuario: ' + (err as Error).message) }
     finally { setAssigning(false) }
   }
 
   const handleRemoveUser = async (ghId: number, userId: number) => {
+    // Optimistic removal
+    setGhUsers(prev => ({ ...prev, [ghId]: (prev[ghId] ?? []).filter(u => u.id !== userId) }))
+    saveAccess(userId, readAccess(userId).filter(id => id !== ghId))
     try {
       await greenhouseRepository.removeUser(ghId, userId)
-      // Sync removal to localStorage
-      saveAccess(userId, readAccess(userId).filter(id => id !== ghId))
+    } catch (err) {
+      // Revert on error
       await loadGhUsers(ghId)
+      alert('Error removiendo usuario: ' + (err as Error).message)
     }
-    catch (err) { alert('Error removiendo usuario: ' + (err as Error).message) }
   }
 
   const handleAddSensor = async (ghId: number) => {
