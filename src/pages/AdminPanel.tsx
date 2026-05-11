@@ -3,7 +3,7 @@ import { ShieldCheck, Users, Loader2, Sprout, ChevronDown, ChevronUp } from 'luc
 import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
 import { userRepository, greenhouseRepository } from '../repositories'
-import { saveAccess, readAccess } from '../context/AuthContext'
+import { saveAccess, readAccess, getCachedProfile } from '../context/AuthContext'
 import type { AppUser, UserDto, UserRole, GreenhouseDto } from '../types'
 
 interface AdminPanelProps { user: AppUser }
@@ -14,6 +14,7 @@ export default function AdminPanel({ user }: AdminPanelProps) {
 
   const [users,       setUsers]       = useState<UserDto[]>([])
   const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
+  const [accessMap,   setAccessMap]   = useState<Record<number, number[]>>({})
   const [loading,     setLoading]     = useState(true)
   const [changing,    setChanging]    = useState<number | null>(null)
   const [expanded,    setExpanded]    = useState<number | null>(null)
@@ -39,6 +40,13 @@ export default function AdminPanel({ user }: AdminPanelProps) {
     })
   }, [loading, users.length])
 
+  useEffect(() => {
+    if (users.length === 0) return
+    const map: Record<number, number[]> = {}
+    users.forEach(u => { map[u.id] = readAccess(u.id) })
+    setAccessMap(map)
+  }, [users.length])
+
   const loadUsers = async () => {
     try {
       setLoading(true)
@@ -62,13 +70,12 @@ export default function AdminPanel({ user }: AdminPanelProps) {
   }
 
   const toggleGreenhouseAccess = (userId: number, ghId: number, checked: boolean) => {
-    const current = readAccess(userId)
+    const current = accessMap[userId] ?? []
     const updated = checked
       ? [...new Set([...current, ghId])]
       : current.filter(id => id !== ghId)
     saveAccess(userId, updated)
-    // Trigger a re-render by updating local state copy
-    setUsers(prev => [...prev])
+    setAccessMap(prev => ({ ...prev, [userId]: updated }))
   }
 
   return (
@@ -102,7 +109,8 @@ export default function AdminPanel({ user }: AdminPanelProps) {
             const isAdmin       = u.role === 'ADMIN' || u.role === 'admin'
             const displayName   = u.full_name || u.username || '?'
             const initials      = displayName[0].toUpperCase()
-            const userAccess    = readAccess(u.id)
+            const avatarUrl     = u.avatar || (u.email ? getCachedProfile(u.email)?.avatar : undefined)
+            const userAccess    = accessMap[u.id] ?? []
             const isExpanded    = expanded === u.id
 
             return (
@@ -110,8 +118,8 @@ export default function AdminPanel({ user }: AdminPanelProps) {
                 {/* User row */}
                 <div className="p-4">
                   <div className="flex items-center gap-4">
-                    {u.avatar ? (
-                      <img src={u.avatar} alt="avatar" className="w-11 h-11 rounded-2xl object-cover ring-2 ring-green-200 shrink-0" />
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="avatar" className="w-11 h-11 rounded-2xl object-cover ring-2 ring-green-200 shrink-0" />
                     ) : (
                       <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500
                                       flex items-center justify-center text-white font-bold shadow-glow-sm shrink-0">

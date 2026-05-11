@@ -29,6 +29,27 @@ export function saveAccess(userId: number, ids: number[]): void {
   } catch {}
 }
 
+export function cacheProfile(email: string, data: { avatar?: string | null; full_name?: string | null }): void {
+  try {
+    const raw = localStorage.getItem('agropulse_profile_cache')
+    const all = raw ? (JSON.parse(raw) as Record<string, { avatar?: string; full_name?: string }>) : {}
+    const key = email.toLowerCase()
+    all[key] = { ...all[key] }
+    if (data.avatar)    all[key].avatar    = data.avatar
+    if (data.full_name) all[key].full_name = data.full_name
+    localStorage.setItem('agropulse_profile_cache', JSON.stringify(all))
+  } catch {}
+}
+
+export function getCachedProfile(email: string): { avatar?: string; full_name?: string } | null {
+  try {
+    const raw = localStorage.getItem('agropulse_profile_cache')
+    if (!raw) return null
+    const all = JSON.parse(raw) as Record<string, { avatar?: string; full_name?: string }>
+    return all[email.toLowerCase()] ?? null
+  } catch { return null }
+}
+
 function isAdminRole(role: string): boolean {
   return role === 'ADMIN' || role === 'admin'
 }
@@ -103,12 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             avatar:    avatarUrl,   // Google metadata always wins
             active:    true,
           }
+          if (authUser.email) cacheProfile(authUser.email, { avatar: avatarUrl, full_name: fullName })
           setUser(finalUser)
           setAllowedGreenhouseIds(isAdminRole(role) ? null : readAccess(data.id || 0))
           return
         }
       } catch { clearTimeout(fetchTimer) }
 
+      if (authUser.email) cacheProfile(authUser.email, { avatar: avatarUrl, full_name: fullName })
       setUser(fallback)
       setAllowedGreenhouseIds(isAdmin ? null : readAccess(0))
     }
@@ -133,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (userData: AppUser) => {
     setUser(userData)
+    if (userData.email && userData.avatar) cacheProfile(userData.email, { avatar: userData.avatar, full_name: userData.full_name })
     const admin = isAdminRole(userData.role)
     setAllowedGreenhouseIds(admin ? null : readAccess(userData.id))
     setUserContext({

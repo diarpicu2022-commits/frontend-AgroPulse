@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Users, Plus, X, Trash2, Chrome } from 'lucide-react'
 import anime from 'animejs'
 import { userRepository } from '../repositories'
-import { supabase } from '../context/AuthContext'
+import { supabase, getCachedProfile } from '../context/AuthContext'
 import type { UserDto, UserRole } from '../types'
 
 interface MergedUser extends UserDto {
@@ -153,11 +153,12 @@ export default function UsersPage() {
             const displayName = u.full_name || (u as unknown as { fullName?: string }).fullName || u.username || '?'
             const initials    = displayName[0].toUpperCase()
             const isAdmin     = u.role === 'ADMIN' || u.role === 'admin'
+            const avatarUrl   = u.avatar || (u.email ? getCachedProfile(u.email)?.avatar : undefined)
             return (
               <div key={u.id} className="card p-4">
                 <div className="flex items-center gap-4">
-                  {u.avatar ? (
-                    <img src={u.avatar} alt="avatar" className="w-11 h-11 rounded-2xl object-cover ring-2 ring-green-200 shrink-0" />
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="avatar" className="w-11 h-11 rounded-2xl object-cover ring-2 ring-green-200 shrink-0" />
                   ) : (
                     <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white font-bold shadow-glow-sm shrink-0">
                       {initials}
