@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
+import { Sprout } from 'lucide-react'
 import { greenhouseRepository, readingRepository, alertRepository, cropRepository } from '../repositories'
 import SensorCard from '../components/SensorCard'
 import AlertsBanner from '../components/AlertsBanner'
@@ -26,7 +27,7 @@ const SENSOR_META: Record<string, SensorMeta> = {
 interface ChartPoint { time: string; temp: number }
 
 export default function Dashboard() {
-  useAuth()
+  const { allowedGreenhouseIds } = useAuth()
   const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
   const [selectedGh,  setSelectedGh]  = useState<GreenhouseDto | null>(null)
   const [readings,    setReadings]    = useState<SensorReadingDto[]>([])
@@ -42,7 +43,10 @@ export default function Dashboard() {
   useEffect(() => {
     greenhouseRepository.list()
       .then(data => {
-        const list = data?.greenhouses ?? []
+        const all  = data?.greenhouses ?? []
+        const list = allowedGreenhouseIds === null
+          ? all
+          : all.filter(g => allowedGreenhouseIds.includes(g.id))
         setGreenhouses(list)
         if (list.length > 0) setSelectedGh(list[0])
         else setLoading(false)
@@ -180,9 +184,14 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Greenhouse selector */}
-      {greenhouses.length > 1 && (
-        <div className="flex items-center gap-3">
+      {/* Greenhouse selector — always visible */}
+      {greenhouses.length === 0 ? (
+        <div className="alert-info text-sm">
+          <Sprout size={14} className="shrink-0" />
+          <span>Sin invernaderos asignados. Contacta al administrador para obtener acceso.</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap">
           <span className="text-sm text-gray-500 font-medium shrink-0">Invernadero</span>
           <div className="relative inline-block">
             <select
@@ -197,6 +206,9 @@ export default function Dashboard() {
             </select>
             <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
+          {selectedGh?.deviceId && (
+            <span className="badge-purple font-mono text-[10px]">ESP32: {selectedGh.deviceId}</span>
+          )}
         </div>
       )}
 

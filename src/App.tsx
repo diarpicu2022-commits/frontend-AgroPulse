@@ -27,6 +27,7 @@ import ReportsPage    from './pages/ReportsPage'
 import RulesPage      from './pages/RulesPage'
 import GreenhousePage from './pages/GreenhousePage'
 import SettingsPage   from './pages/SettingsPage'
+import NoAccessPage   from './pages/NoAccessPage'
 
 type PageId =
   | 'dashboard' | 'analytics' | 'sensors' | 'actuators' | 'rules' | 'reports'
@@ -153,21 +154,29 @@ function AuthLoadingScreen() {
 }
 
 function AppInner() {
-  const { user, authLoading, logout } = useAuth()
+  const { user, authLoading, allowedGreenhouseIds, logout } = useAuth()
   const [page, setPage]               = useState<PageId>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const sidebarRef   = useRef<HTMLElement>(null)
-  const mainRef      = useRef<HTMLElement>(null)
+  const navRef  = useRef<HTMLElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
 
-  // ALL hooks must be declared before any early returns (React rules of hooks)
+  // Stagger nav items when mobile sidebar opens (not the container — CSS handles the slide)
   useEffect(() => {
-    if (!user || !sidebarOpen || !sidebarRef.current) return
+    if (!user || !sidebarOpen || !navRef.current) return
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduced) return
-    anime({ targets: sidebarRef.current, translateX: ['-100%', '0%'], opacity: [0.8, 1], duration: 280, easing: 'easeOutCubic' })
+    const btns = navRef.current.querySelectorAll('button')
+    if (btns.length > 0) {
+      anime({
+        targets: Array.from(btns),
+        opacity: [0, 1], translateX: [-6, 0],
+        delay: anime.stagger(12),
+        duration: 160, easing: 'easeOutCubic',
+      })
+    }
   }, [sidebarOpen, user])
 
-  // Entrance animation when the main app first mounts after login
+  // Entrance animation on login
   useEffect(() => {
     if (!user || !mainRef.current) return
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -178,7 +187,9 @@ function AppInner() {
   if (authLoading) return <AuthLoadingScreen />
   if (!user) return <LoginPage />
 
-  const isAdmin  = user.role === 'ADMIN' || user.role === 'admin'
+  const isAdmin = user.role === 'ADMIN' || user.role === 'admin'
+  if (!isAdmin && allowedGreenhouseIds !== null && allowedGreenhouseIds.length === 0) return <NoAccessPage />
+
   const groups   = isAdmin ? ADMIN_GROUPS : USER_GROUPS
   const allItems = ALL_ITEMS(groups)
 
@@ -210,7 +221,6 @@ function AppInner() {
 
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside
-        ref={sidebarRef}
         className={`fixed top-0 left-0 h-full w-64 sidebar-bg z-40 flex flex-col
           border-r border-sidebar-border shadow-glass-dark
           transform transition-transform duration-300 ease-out
@@ -231,10 +241,11 @@ function AppInner() {
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-1.5 hover:bg-white/8 rounded-lg transition-colors lg:hidden text-white/60 hover:text-white cursor-pointer"
+              className="p-2.5 hover:bg-white/10 rounded-xl transition-colors lg:hidden
+                         text-white/60 hover:text-white cursor-pointer touch-manipulation"
               aria-label="Cerrar menú"
             >
-              <X size={16} />
+              <X size={18} />
             </button>
           </div>
 
@@ -250,7 +261,7 @@ function AppInner() {
               <p className="text-xs font-semibold text-white/90 truncate">{(user as AppUser).full_name || user.username}</p>
               <div className="flex items-center gap-1 mt-0.5">
                 <div className="live-dot scale-75" />
-                <p className="text-[10px] text-white/40">{isAdmin ? 'Admin' : 'Usuario'}</p>
+                <p className="text-[10px] text-white/40">{isAdmin ? 'Admin' : 'Operario'}</p>
               </div>
             </div>
             <Wifi size={12} className="text-green-400/60 shrink-0" />
@@ -258,7 +269,7 @@ function AppInner() {
         </div>
 
         {/* Nav groups */}
-        <nav className="flex-1 overflow-y-auto scrollbar-none py-3 px-2 space-y-5">
+        <nav ref={navRef} className="flex-1 overflow-y-auto py-3 px-2 space-y-5">
           {groups.map(group => (
             <div key={group.label}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/25 px-3 mb-1">
@@ -330,7 +341,7 @@ function AppInner() {
             </div>
 
             <div className="text-right hidden sm:block">
-              <p className="text-xs text-gray-400">{isAdmin ? 'Administrador' : 'Usuario'}</p>
+              <p className="text-xs text-gray-400">{isAdmin ? 'Administrador' : 'Operario'}</p>
               <p className="text-xs font-semibold text-gray-800">{(user as AppUser).full_name || user.username}</p>
             </div>
 

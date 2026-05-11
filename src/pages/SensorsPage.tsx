@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Activity, Plus, X, Cpu, Wifi } from 'lucide-react'
 import anime from 'animejs'
+import { useAuth } from '../context/AuthContext'
 import { sensorRepository, greenhouseRepository } from '../repositories'
 import type { SensorDto, GreenhouseDto, SensorType, Protocol } from '../types'
 
@@ -21,6 +22,7 @@ interface SensorForm {
 }
 
 export default function SensorsPage() {
+  const { allowedGreenhouseIds } = useAuth()
   const [sensors,     setSensors]     = useState<SensorDto[]>([])
   const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
   const [filterGhId,  setFilterGhId]  = useState('')
@@ -40,7 +42,12 @@ export default function SensorsPage() {
     setLoading(true)
     try {
       const data = await sensorRepository.list(filterGhId ? parseInt(filterGhId) : null)
-      setSensors(data.sensors ?? [])
+      const all  = data.sensors ?? []
+      // Operators only see sensors of allowed greenhouses
+      const filtered = allowedGreenhouseIds === null
+        ? all
+        : all.filter(s => s.greenhouseId == null || allowedGreenhouseIds.includes(s.greenhouseId))
+      setSensors(filtered)
       setError(null)
     } catch (err) { setError((err as Error).message) }
     finally { setLoading(false) }
@@ -171,7 +178,9 @@ export default function SensorsPage() {
       ) : (
         <div ref={gridRef} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {sensors.map(s => {
-            const info = TYPE_LABEL[s.type] ?? { label: s.type, unit: '' }
+            const info    = TYPE_LABEL[s.type] ?? { label: s.type, unit: '' }
+            const gh      = greenhouses.find(g => g.id === s.greenhouseId)
+            const esp32gh = s.deviceSource ? greenhouses.find(g => g.deviceId && g.deviceId === s.deviceSource) : null
             return (
               <div key={s.id} className="card-hover p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -183,11 +192,17 @@ export default function SensorsPage() {
                       <h3 className="font-semibold text-gray-800 truncate text-sm">{s.name}</h3>
                       <p className="text-xs text-gray-500 mt-0.5">{info.label} · {info.unit}</p>
                       <div className="flex flex-wrap gap-1 mt-2">
+                        {gh && (
+                          <span className="badge-teal text-[10px]">
+                            <Cpu size={8} className="inline mr-0.5" />{gh.name}
+                          </span>
+                        )}
                         {s.protocol    && <span className="badge-gray">{s.protocol}</span>}
                         {s.gpioPin != null && <span className="badge-yellow">GPIO {s.gpioPin}</span>}
                         {s.deviceSource && (
-                          <span className="badge-purple font-mono text-[10px]">
-                            <Wifi size={9} className="inline mr-0.5" />{s.deviceSource}
+                          <span className={esp32gh ? 'badge-green text-[10px]' : 'badge-purple font-mono text-[10px]'}>
+                            <Wifi size={9} className="inline mr-0.5" />
+                            {esp32gh ? `ESP32 · ${esp32gh.name}` : s.deviceSource}
                           </span>
                         )}
                         <span className={s.active ? 'badge-green' : 'badge-gray'}>

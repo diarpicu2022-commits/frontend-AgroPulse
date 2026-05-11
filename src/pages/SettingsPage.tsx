@@ -61,7 +61,7 @@ export default function SettingsPage() {
             <dd>
               <span className={isAdmin ? 'badge-red' : 'badge-blue'}>
                 <ShieldCheck size={10} />
-                {isAdmin ? 'Administrador' : 'Usuario'}
+                {isAdmin ? 'Administrador' : 'Operario'}
               </span>
             </dd>
           </div>

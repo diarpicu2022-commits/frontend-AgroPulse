@@ -10,29 +10,59 @@ export const supabase: SupabaseClient | null =
 
 const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:8080'
 
+// ── Greenhouse access store (frontend localStorage) ───────────────────────────
+export function readAccess(userId: number): number[] {
+  try {
+    const raw = localStorage.getItem('agropulse_assignments')
+    if (!raw) return []
+    const all = JSON.parse(raw) as Record<string, number[]>
+    return all[String(userId)] ?? []
+  } catch { return [] }
+}
+
+export function saveAccess(userId: number, ids: number[]): void {
+  try {
+    const raw = localStorage.getItem('agropulse_assignments')
+    const all = raw ? (JSON.parse(raw) as Record<string, number[]>) : {}
+    all[String(userId)] = ids
+    localStorage.setItem('agropulse_assignments', JSON.stringify(all))
+  } catch {}
+}
+
+function isAdminRole(role: string): boolean {
+  return role === 'ADMIN' || role === 'admin'
+}
+
+// ── Context types ─────────────────────────────────────────────────────────────
 interface AuthContextValue {
-  user: AppUser | null
-  authLoading: boolean
-  login: (userData: AppUser) => void
-  logout: () => Promise<void>
-  supabase: SupabaseClient | null
+  user:                  AppUser | null
+  authLoading:           boolean
+  allowedGreenhouseIds:  number[] | null  // null = all access (admin)
+  login:                 (userData: AppUser) => void
+  logout:                () => Promise<void>
+  refreshAccess:         () => void
+  supabase:              SupabaseClient | null
 }
 
 export const AuthContext = createContext<AuthContextValue>({
-  user: null,
-  authLoading: true,
-  login: () => {},
-  logout: async () => {},
-  supabase: null,
+  user:                 null,
+  authLoading:          true,
+  allowedGreenhouseIds: null,
+  login:                () => {},
+  logout:               async () => {},
+  refreshAccess:        () => {},
+  supabase:             null,
 })
 
 export function useAuth(): AuthContextValue {
   return useContext(AuthContext)
 }
 
+// ── Provider ─────────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser]               = useState<AppUser | null>(null)
-  const [authLoading, setAuthLoading] = useState(true)
+  const [user,                  setUser]                  = useState<AppUser | null>(null)
+  const [authLoading,           setAuthLoading]           = useState(true)
+  const [allowedGreenhouseIds,  setAllowedGreenhouseIds]  = useState<number[] | null>(null)
 
   useEffect(() => {
     if (!supabase) { setAuthLoading(false); return }
@@ -41,18 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userEmail = authUser.email?.toLowerCase() ?? ''
       const isAdmin   = userEmail === 'diarpicu2022@gmail.com' || userEmail.includes('admin')
       const username  = authUser.email?.split('@')[0] ?? 'user'
+      // Always prefer Google display name and avatar
       const avatarUrl = authUser.user_metadata?.avatar_url ?? authUser.user_metadata?.picture ?? null
-      const fullName  = authUser.user_metadata?.full_name ?? authUser.email ?? username
+      const fullName  = authUser.user_metadata?.full_name ?? authUser.user_metadata?.name ?? authUser.email ?? username
 
       const fallback: AppUser = {
-        id:        0,
-        username,
-        full_name: fullName,
-        email:     authUser.email,
-        avatar:    avatarUrl,
-        role:      isAdmin ? 'admin' : 'user',
-        provider:  'GOOGLE',
-        active:    true,
+        id: 0, username, full_name: fullName, fullName,
+        email: authUser.email, avatar: avatarUrl,
+        role: isAdmin ? 'admin' : 'user', provider: 'GOOGLE', active: true,
       }
 
       const controller = new AbortController()
@@ -68,17 +94,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (response.ok) {
           const data = await response.json() as AppUser
           const role = data.role === 'ADMIN' || isAdmin ? 'admin' : 'user'
-          setUser({ ...data, email: authUser.email, role, provider: 'GOOGLE', avatar: avatarUrl, active: true })
+          const finalUser: AppUser = {
+            ...data,
+            email:     authUser.email,
+            full_name: fullName,    // Google metadata always wins
+            fullName,
+            role, provider: 'GOOGLE',
+            avatar:    avatarUrl,   // Google metadata always wins
+            active:    true,
+          }
+          setUser(finalUser)
+          setAllowedGreenhouseIds(isAdminRole(role) ? null : readAccess(data.id || 0))
           return
         }
       } catch { clearTimeout(fetchTimer) }
 
       setUser(fallback)
+      setAllowedGreenhouseIds(isAdmin ? null : readAccess(0))
     }
 
     let resolved = false
     const safeFinish = () => { if (!resolved) { resolved = true; setAuthLoading(false) } }
-    // Safety net: fires after 10s even if findOrCreateUser hangs
     const timer = setTimeout(safeFinish, 10000)
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -97,21 +133,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (userData: AppUser) => {
     setUser(userData)
+    const admin = isAdminRole(userData.role)
+    setAllowedGreenhouseIds(admin ? null : readAccess(userData.id))
     setUserContext({
       id:         userData.id,
       role:       userData.role,
-      adminEmail: (userData.role === 'admin' || userData.role === 'ADMIN') ? userData.email : undefined,
+      adminEmail: admin ? userData.email : undefined,
     })
+  }
+
+  const refreshAccess = () => {
+    if (!user) return
+    if (!isAdminRole(user.role)) setAllowedGreenhouseIds(readAccess(user.id))
   }
 
   const logout = async () => {
     setUser(null)
+    setAllowedGreenhouseIds(null)
     setUserContext({})
     if (supabase) await supabase.auth.signOut()
   }
 
   return (
-    <AuthContext.Provider value={{ user, authLoading, login, logout, supabase }}>
+    <AuthContext.Provider value={{ user, authLoading, allowedGreenhouseIds, login, logout, refreshAccess, supabase }}>
       {children}
     </AuthContext.Provider>
   )

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { Zap, Plus, X, Edit2, Trash2, Power, PowerOff } from 'lucide-react'
 import anime from 'animejs'
+import { useAuth } from '../context/AuthContext'
 import { actuatorRepository, greenhouseRepository } from '../repositories'
+import { Wifi } from 'lucide-react'
 import type { ActuatorDto, GreenhouseDto } from '../types'
 
 const TYPE_LABEL: Record<string, string> = {
@@ -26,6 +28,7 @@ interface ActuatorForm {
 }
 
 export default function ActuatorsPage() {
+  const { allowedGreenhouseIds } = useAuth()
   const [actuators,   setActuators]   = useState<ActuatorDto[]>([])
   const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
   const [filterGhId,  setFilterGhId]  = useState('')
@@ -48,7 +51,11 @@ export default function ActuatorsPage() {
     setLoading(true)
     try {
       const data = await actuatorRepository.list(filterGhId ? parseInt(filterGhId) : null)
-      setActuators(data.actuators || [])
+      const all  = data.actuators || []
+      const filtered = allowedGreenhouseIds === null
+        ? all
+        : all.filter(a => a.greenhouseId == null || allowedGreenhouseIds.includes(a.greenhouseId))
+      setActuators(filtered)
       setError(null)
     } catch (err) { setError((err as Error).message) }
     setLoading(false)
@@ -218,8 +225,10 @@ export default function ActuatorsPage() {
       ) : (
         <div ref={listRef} className="space-y-3">
           {actuators.map(a => {
-            const label = TYPE_LABEL[a.type || ''] || (a.type || 'Actuador')
-            const isOn  = a.status === true || (a.status as unknown as string) === 'ON'
+            const label   = TYPE_LABEL[a.type || ''] || (a.type || 'Actuador')
+            const isOn    = a.status === true || (a.status as unknown as string) === 'ON'
+            const gh      = greenhouses.find(g => g.id === a.greenhouseId)
+            const esp32gh = a.deviceSource ? greenhouses.find(g => g.deviceId && g.deviceId === a.deviceSource) : null
             return (
               <div key={a.id}
                 className={`card p-4 transition-all duration-200 ${isOn ? 'ring-1 ring-green-200 bg-green-50/30' : ''}`}>
@@ -237,9 +246,19 @@ export default function ActuatorsPage() {
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">{label}</p>
                     <div className="flex flex-wrap gap-1 mt-1.5">
+                      {gh && (
+                        <span className="badge-teal text-[10px]">
+                          <Zap size={8} className="inline mr-0.5" />{gh.name}
+                        </span>
+                      )}
                       {a.gpioPin != null && <span className="badge-yellow">GPIO {a.gpioPin}</span>}
                       {a.activeLow       && <span className="badge-yellow">ActiveLow</span>}
-                      {a.deviceSource    && <span className="badge-purple font-mono text-[10px]">{a.deviceSource}</span>}
+                      {a.deviceSource && (
+                        <span className={esp32gh ? 'badge-green text-[10px]' : 'badge-purple font-mono text-[10px]'}>
+                          <Wifi size={8} className="inline mr-0.5" />
+                          {esp32gh ? `ESP32 · ${esp32gh.name}` : a.deviceSource}
+                        </span>
+                      )}
                     </div>
                   </div>
 
