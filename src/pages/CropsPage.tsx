@@ -131,9 +131,19 @@ Responde SOLO con JSON válido sin markdown:
           ? (updated ?? { ...c, ...toApiPayload(form) } as CropDto)
           : c))
       } else {
-        const created = await cropRepository.create(toApiPayload(form))
-        if (created?.id) setCrops(prev => [...prev, created])
-        else loadCrops()
+        const created = await cropRepository.create(toApiPayload(form)) as CropDto | null
+        const newCrop: CropDto = {
+          id:                (created as CropDto)?.id ?? Date.now(),
+          name:              form.name,
+          active:            form.active,
+          temp_min:          form.temp_min,
+          temp_max:          form.temp_max,
+          humidity_min:      form.humidity_min,
+          humidity_max:      form.humidity_max,
+          soil_moisture_min: form.soil_moisture_min,
+          soil_moisture_max: form.soil_moisture_max,
+        }
+        setCrops(prev => [...prev, newCrop])
       }
       setShowForm(false); resetForm()
     } catch (err) { alert('Error: ' + (err as Error).message) }

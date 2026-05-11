@@ -52,7 +52,10 @@ export default function GreenhousePage() {
 
   useEffect(() => {
     loadGreenhouses()
-    if (isAdmin) userRepository.list().then(d => setAllUsers(d.users ?? [])).catch(() => {})
+    if (isAdmin) userRepository.listAll(user?.email || '').then(d => {
+      const list = Array.isArray(d) ? (d as UserDto[]) : (d.users ?? [])
+      setAllUsers(list)
+    }).catch(() => {})
   }, [])
 
   // Animate cards when greenhouses load
