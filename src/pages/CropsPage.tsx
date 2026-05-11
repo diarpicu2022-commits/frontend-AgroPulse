@@ -66,14 +66,22 @@ export default function CropsPage() {
   const [aiProvider,  setAiProvider]  = useState('')
   const [error,       setError]       = useState<string | null>(null)
   const [form, setForm] = useState<CropForm>(EMPTY_FORM)
-  const listRef = useRef<HTMLDivElement>(null)
-  const formRef = useRef<HTMLFormElement>(null)
+  const listRef   = useRef<HTMLDivElement>(null)
+  const formRef   = useRef<HTMLFormElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadCrops()
     greenhouseRepository.list()
       .then(d => setGreenhouses(d.greenhouses ?? []))
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!headerRef.current) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({ targets: headerRef.current, opacity: [0, 1], translateY: [-10, 0], duration: 400, easing: 'easeOutCubic' })
   }, [])
 
   useEffect(() => {
@@ -222,29 +230,52 @@ Responde SOLO con JSON válido sin markdown:
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div ref={headerRef} className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="section-title">Cultivos</h2>
           <p className="section-subtitle">Gestión de cultivos y rangos óptimos por invernadero</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {greenhouses.length > 0 && (
-            <select
-              value={filterGhId}
-              onChange={e => setFilterGhId(e.target.value === '' ? '' : parseInt(e.target.value))}
-              className="input-field py-2 text-sm max-w-[200px]"
-            >
-              <option value="">Todos los invernaderos</option>
-              {greenhouses.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-          )}
-          {!showForm && (
-            <button onClick={() => { setShowForm(true); resetForm() }} className="btn-primary px-4 py-2 text-sm">
-              <Plus size={14} /> Nuevo cultivo
-            </button>
-          )}
-        </div>
+        {!showForm && filterGhId !== '' && (
+          <button onClick={() => { setShowForm(true); setForm({ ...EMPTY_FORM, greenhouse_id: filterGhId }) }}
+            className="btn-primary px-4 py-2 text-sm">
+            <Plus size={14} /> Nuevo cultivo
+          </button>
+        )}
       </div>
+
+      {/* Greenhouse filter chips */}
+      {greenhouses.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => { setFilterGhId(''); setShowForm(false) }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
+              ${filterGhId === ''
+                ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+          >
+            <Sprout size={11} /> Todos
+          </button>
+          {greenhouses.map(g => (
+            <button key={g.id}
+              onClick={() => setFilterGhId(g.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
+                ${filterGhId === g.id
+                  ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+            >
+              <Building2 size={11} /> {g.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Create gate banner */}
+      {filterGhId === '' && !showForm && (
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-2xl text-xs text-blue-700 font-medium">
+          <Building2 size={14} className="shrink-0" />
+          Selecciona un invernadero para crear cultivos
+        </div>
+      )}
 
       {error && <div className="alert-danger text-sm">{error}</div>}
 
@@ -354,10 +385,15 @@ Responde SOLO con JSON válido sin markdown:
           <p className="empty-state-title">
             {filterGhId !== '' ? 'Sin cultivos en este invernadero' : 'No hay cultivos registrados'}
           </p>
-          <p className="empty-state-sub">Crea un cultivo para habilitar alertas automáticas.</p>
-          <button onClick={() => { setShowForm(true); resetForm() }} className="btn-primary px-4 py-2 text-sm mt-4">
-            <Plus size={14} /> Nuevo cultivo
-          </button>
+          <p className="empty-state-sub">
+            {filterGhId !== '' ? 'Crea un cultivo para este invernadero.' : 'Selecciona un invernadero para comenzar.'}
+          </p>
+          {filterGhId !== '' && (
+            <button onClick={() => { setShowForm(true); setForm({ ...EMPTY_FORM, greenhouse_id: filterGhId }) }}
+              className="btn-primary px-4 py-2 text-sm mt-4">
+              <Plus size={14} /> Nuevo cultivo
+            </button>
+          )}
         </div>
       ) : (
         <div ref={listRef} className="space-y-3">

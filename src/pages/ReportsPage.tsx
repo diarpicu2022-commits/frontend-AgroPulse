@@ -1,15 +1,29 @@
 import { useState, useEffect, useRef } from 'react'
-import { Mail, Plus, X, Download, Send, Trash2, CalendarDays } from 'lucide-react'
+import { Mail, Plus, X, Download, Send, Trash2, CalendarDays, Building2, Sprout } from 'lucide-react'
 import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
-import { reportRepository } from '../repositories'
+import { reportRepository, greenhouseRepository } from '../repositories'
+import type { GreenhouseDto } from '../types'
 
 type Frequency = 'daily' | 'weekly' | 'monthly'
 
-interface ScheduleItem { id: number; email: string; frequency: Frequency }
-interface ReportForm   { email: string; frequency: Frequency }
-interface DailyCsvResponse  { success?: boolean; csv_content?: string }
-interface HistoryResponse   { history?: ScheduleItem[] }
+interface ScheduleItem {
+  id: number
+  email: string
+  frequency: Frequency
+  greenhouseId?: number
+}
+
+interface ReportForm {
+  email: string
+  frequency: Frequency
+  greenhouse_id: number | ''
+}
+
+interface DailyCsvResponse { success?: boolean; csv_content?: string }
+interface HistoryResponse  { history?: ScheduleItem[] }
+
+const REPORTS_CACHE = 'agropulse_reports_v1'
 
 const FREQUENCY_LABELS: Record<Frequency, string> = {
   daily:   'Diariamente (8 AM)',
@@ -17,17 +31,47 @@ const FREQUENCY_LABELS: Record<Frequency, string> = {
   monthly: 'Mensualmente (1º 8 AM)',
 }
 
+const FREQ_CONFIG: Record<Frequency, { label: string; color: string; bg: string; border: string }> = {
+  daily:   { label: 'Diario',  color: 'text-blue-700',   bg: 'bg-blue-50',   border: 'border-blue-100' },
+  weekly:  { label: 'Semanal', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-100' },
+  monthly: { label: 'Mensual', color: 'text-amber-700',  bg: 'bg-amber-50',  border: 'border-amber-100' },
+}
+
+function saveCache(items: ScheduleItem[]) {
+  try { localStorage.setItem(REPORTS_CACHE, JSON.stringify(items)) } catch {}
+}
+
 export default function ReportsPage() {
   const { user } = useAuth()
-  const [schedules, setSchedules] = useState<ScheduleItem[]>([])
-  const [loading,   setLoading]   = useState(true)
-  const [showForm,  setShowForm]  = useState(false)
-  const [error,     setError]     = useState<string | null>(null)
-  const [form, setForm] = useState<ReportForm>({ email: user?.email || '', frequency: 'daily' })
-  const listRef = useRef<HTMLDivElement>(null)
-  const formRef = useRef<HTMLFormElement>(null)
+  const [schedules,   setSchedules]   = useState<ScheduleItem[]>([])
+  const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
+  const [loading,     setLoading]     = useState(true)
+  const [showForm,    setShowForm]    = useState(false)
+  const [ghFilter,    setGhFilter]    = useState<number | ''>('')
+  const [error,       setError]       = useState<string | null>(null)
+  const [form, setForm] = useState<ReportForm>({ email: user?.email || '', frequency: 'daily', greenhouse_id: '' })
+  const listRef   = useRef<HTMLDivElement>(null)
+  const formRef   = useRef<HTMLFormElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { loadSchedules() }, [])
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(REPORTS_CACHE)
+      if (raw) {
+        const cached = JSON.parse(raw) as ScheduleItem[]
+        if (cached.length > 0) { setSchedules(cached); setLoading(false) }
+      }
+    } catch {}
+    loadSchedules()
+    greenhouseRepository.list().then(d => setGreenhouses(d.greenhouses || [])).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!headerRef.current) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({ targets: headerRef.current, opacity: [0, 1], translateY: [-10, 0], duration: 400, easing: 'easeOutCubic' })
+  }, [])
 
   useEffect(() => {
     if (!listRef.current || loading || schedules.length === 0) return
@@ -56,7 +100,7 @@ export default function ReportsPage() {
       const list = Array.isArray(data)
         ? (data as ScheduleItem[])
         : ((data as HistoryResponse).history ?? [])
-      setSchedules(list)
+      if (list.length > 0) { setSchedules(list); saveCache(list) }
       setError(null)
     } catch (err) { setError((err as Error).message) }
     setLoading(false)
@@ -64,16 +108,27 @@ export default function ReportsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (ghFilter === '') return
     try {
-      const result = await reportRepository.schedule(form as unknown as Record<string, unknown>) as Record<string, unknown> | null
+      const payload = { email: form.email, frequency: form.frequency, greenhouseId: ghFilter }
+      const result = await reportRepository.schedule(payload as unknown as Record<string, unknown>) as Record<string, unknown> | null
       const newItem: ScheduleItem = {
-        id:        (result?.id as number) ?? Date.now(),
-        email:     form.email,
-        frequency: form.frequency,
+        id:           (result?.id as number) ?? Date.now(),
+        email:        form.email,
+        frequency:    form.frequency,
+        greenhouseId: ghFilter as number,
       }
-      setSchedules(prev => [...prev, newItem])
+      const updated = [...schedules, newItem]
+      setSchedules(updated)
+      saveCache(updated)
       setShowForm(false)
-      setForm({ email: user?.email || '', frequency: 'daily' })
+      setForm({ email: user?.email || '', frequency: 'daily', greenhouse_id: ghFilter })
+      setTimeout(() => {
+        if (!listRef.current) return
+        const last = listRef.current.lastElementChild as HTMLElement | null
+        if (!last) return
+        anime({ targets: last, backgroundColor: ['#dcfce7', '#ffffff'], duration: 800, easing: 'easeOutCubic' })
+      }, 60)
     } catch (err) { alert('Error: ' + (err as Error).message) }
   }
 
@@ -97,23 +152,51 @@ export default function ReportsPage() {
     } catch (err) { alert('Error: ' + (err as Error).message) }
   }
 
-  const deleteSchedule = (id: number) => {
-    setSchedules(schedules.filter(s => s.id !== id))
+  const handleDelete = async (id: number) => {
+    const card = document.getElementById(`report-card-${id}`)
+    if (card) {
+      await new Promise<void>(resolve => {
+        anime({
+          targets:      card,
+          opacity:      [1, 0],
+          translateX:   [0, 24],
+          height:       [card.offsetHeight, 0],
+          marginBottom: [12, 0],
+          paddingTop:   [16, 0],
+          paddingBottom:[16, 0],
+          duration: 300,
+          easing: 'easeInCubic',
+          complete: () => resolve(),
+        })
+      })
+    }
+    const updated = schedules.filter(s => s.id !== id)
+    setSchedules(updated)
+    saveCache(updated)
   }
+
+  const ghName = (id?: number) => {
+    if (!id) return null
+    return greenhouses.find(g => g.id === id)?.name ?? `#${id}`
+  }
+
+  const displayed = ghFilter !== ''
+    ? schedules.filter(s => s.greenhouseId === ghFilter)
+    : schedules
 
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div ref={headerRef} className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="section-title">Reportes Automáticos</h2>
-          <p className="section-subtitle">Genera y recibe reportes por correo</p>
+          <p className="section-subtitle">Genera y recibe reportes por correo electrónico</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button onClick={generateDailyReport} className="btn-secondary px-4 py-2 text-sm">
             <Download size={14} /> Descargar ahora
           </button>
-          {!showForm && (
+          {!showForm && ghFilter !== '' && (
             <button onClick={() => setShowForm(true)} className="btn-primary px-4 py-2 text-sm">
               <Plus size={14} /> Agendar
             </button>
@@ -121,10 +204,44 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Greenhouse filter chips */}
+      {greenhouses.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => { setGhFilter(''); setShowForm(false) }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
+              ${ghFilter === ''
+                ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+          >
+            <Sprout size={11} /> Todos
+          </button>
+          {greenhouses.map(gh => (
+            <button key={gh.id}
+              onClick={() => setGhFilter(gh.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
+                ${ghFilter === gh.id
+                  ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+            >
+              <Building2 size={11} /> {gh.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Create gate banner */}
+      {ghFilter === '' && !showForm && (
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-2xl text-xs text-blue-700 font-medium">
+          <Building2 size={14} className="shrink-0" />
+          Selecciona un invernadero para agendar reportes
+        </div>
+      )}
+
       {error && <div className="alert-danger text-sm">{error}</div>}
 
       {/* Form */}
-      {showForm && (
+      {showForm && ghFilter !== '' && (
         <form ref={formRef} onSubmit={handleSubmit} className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-gray-800">Agendar Reporte</h3>
@@ -133,22 +250,41 @@ export default function ReportsPage() {
               <X size={16} />
             </button>
           </div>
+
+          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-100 rounded-xl text-xs text-green-700">
+            <Building2 size={13} />
+            <span className="font-semibold">Invernadero:</span> {ghName(ghFilter as number)}
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Correo electrónico</label>
             <input type="email" value={form.email}
               onChange={e => setForm({ ...form, email: e.target.value })}
               className="input-field" required />
           </div>
+
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Frecuencia</label>
-            <select value={form.frequency}
-              onChange={e => setForm({ ...form, frequency: e.target.value as Frequency })}
-              className="input-field">
-              <option value="daily">Diariamente (8 AM)</option>
-              <option value="weekly">Semanalmente (Lunes 8 AM)</option>
-              <option value="monthly">Mensualmente (1º 8 AM)</option>
-            </select>
+            <div className="grid grid-cols-3 gap-2">
+              {(['daily', 'weekly', 'monthly'] as Frequency[]).map(f => {
+                const cfg    = FREQ_CONFIG[f]
+                const active = form.frequency === f
+                return (
+                  <button key={f} type="button"
+                    onClick={() => setForm({ ...form, frequency: f })}
+                    className={`py-2.5 rounded-xl text-xs font-semibold border transition-all
+                      ${active
+                        ? `${cfg.bg} ${cfg.border} ${cfg.color} ring-1 ring-offset-1`
+                        : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                  >
+                    {cfg.label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">{FREQUENCY_LABELS[form.frequency]}</p>
           </div>
+
           <div className="flex gap-3">
             <button type="submit" className="flex-1 btn-primary py-2.5 text-sm">Agendar</button>
             <button type="button" onClick={() => setShowForm(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancelar</button>
@@ -161,40 +297,62 @@ export default function ReportsPage() {
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton h-24 rounded-3xl" />)}
         </div>
-      ) : schedules.length === 0 ? (
+      ) : displayed.length === 0 ? (
         <div className="empty-state card p-10">
           <Mail size={40} className="empty-state-icon" />
-          <p className="empty-state-title">No hay reportes agendados</p>
-          <p className="empty-state-sub">Agenda un reporte para recibir datos periódicos por email.</p>
-          <button onClick={() => setShowForm(true)} className="btn-primary px-4 py-2 text-sm mt-4">
-            <Plus size={14} /> Agendar reporte
-          </button>
+          <p className="empty-state-title">
+            {ghFilter !== '' ? `Sin reportes en ${ghName(ghFilter as number)}` : 'No hay reportes agendados'}
+          </p>
+          <p className="empty-state-sub">
+            {ghFilter !== ''
+              ? 'Agenda un reporte para este invernadero.'
+              : 'Selecciona un invernadero para comenzar.'}
+          </p>
+          {ghFilter !== '' && (
+            <button onClick={() => setShowForm(true)} className="btn-primary px-4 py-2 text-sm mt-4">
+              <Plus size={14} /> Agendar reporte
+            </button>
+          )}
         </div>
       ) : (
         <div ref={listRef} className="space-y-3">
-          {schedules.map(s => (
-            <div key={s.id} className="card p-4">
-              <div className="flex items-center gap-4">
-                <div className="p-2.5 bg-green-100 rounded-2xl shrink-0">
-                  <CalendarDays size={18} className="text-green-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-800 truncate">{s.email}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{FREQUENCY_LABELS[s.frequency] || s.frequency}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => sendReport(s.email, s.frequency)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 text-xs font-semibold transition-colors">
-                    <Send size={12} /> Enviar
-                  </button>
-                  <button onClick={() => deleteSchedule(s.id)}
-                    className="p-2 rounded-xl hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors">
-                    <Trash2 size={14} />
-                  </button>
+          {displayed.map(s => {
+            const cfg   = FREQ_CONFIG[s.frequency] || FREQ_CONFIG.daily
+            const gName = ghName(s.greenhouseId)
+            return (
+              <div key={s.id} id={`report-card-${s.id}`} className="card p-4">
+                <div className="flex items-center gap-4">
+                  <div className={`p-2.5 ${cfg.bg} rounded-2xl shrink-0 border ${cfg.border}`}>
+                    <CalendarDays size={18} className={cfg.color} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-800 truncate">{s.email}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <p className="text-xs text-gray-500">{FREQUENCY_LABELS[s.frequency] || s.frequency}</p>
+                      {gName && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-green-700 bg-green-50 border border-green-100 px-1.5 py-0.5 rounded-lg">
+                          <Building2 size={9} /> {gName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
+                      {cfg.label}
+                    </span>
+                    <button onClick={() => sendReport(s.email, s.frequency)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 text-xs font-semibold transition-colors">
+                      <Send size={12} /> Enviar
+                    </button>
+                    <button onClick={() => handleDelete(s.id)}
+                      className="p-2 rounded-xl hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
