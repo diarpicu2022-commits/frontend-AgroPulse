@@ -41,15 +41,20 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     )
   }
 
-  let data: unknown
-  try {
-    data = await res.json()
-  } catch {
-    throw new Error(`El servidor (${res.status}) devolvió una respuesta inválida en ${endpoint}`)
+  let data: unknown = null
+  const contentType = res.headers.get('content-type') ?? ''
+  if (res.status !== 204 && contentType.includes('json')) {
+    try {
+      data = await res.json()
+    } catch {
+      if (!res.ok) throw new Error(`El servidor (${res.status}) devolvió una respuesta inválida en ${endpoint}`)
+    }
+  } else if (res.status !== 204 && res.ok) {
+    try { data = await res.json() } catch { /* empty body — treat as success */ }
   }
 
   if (!res.ok) {
-    const err = data as Record<string, string>
+    const err = (data ?? {}) as Record<string, string>
     throw new Error(err.error || err.message || `Error ${res.status} en ${endpoint}`)
   }
   return data as T

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Building2, UserPlus, Cpu, Zap, ChevronDown, ChevronUp, Wifi } from 'lucide-react'
 import anime from 'animejs'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, saveAccess, readAccess } from '../context/AuthContext'
 import { greenhouseRepository, sensorRepository, actuatorRepository, deviceRepository } from '../repositories'
 import { userRepository } from '../repositories'
 import type {
@@ -144,15 +144,25 @@ export default function GreenhousePage() {
 
   const handleAssign = async (ghId: number) => {
     if (!assignUserId) return
+    const uid = parseInt(assignUserId)
     try {
-      await greenhouseRepository.assignUser(ghId, parseInt(assignUserId))
-      setAssignUserId(''); loadGhUsers(ghId)
-    } catch { alert('Error asignando usuario') }
+      await greenhouseRepository.assignUser(ghId, uid)
+      // Sync to localStorage so operator's access control stays in sync
+      const current = readAccess(uid)
+      if (!current.includes(ghId)) saveAccess(uid, [...current, ghId])
+      setAssignUserId('')
+      await loadGhUsers(ghId)
+    } catch (err) { alert('Error asignando usuario: ' + (err as Error).message) }
   }
 
   const handleRemoveUser = async (ghId: number, userId: number) => {
-    try { await greenhouseRepository.removeUser(ghId, userId); loadGhUsers(ghId) }
-    catch { alert('Error removiendo usuario') }
+    try {
+      await greenhouseRepository.removeUser(ghId, userId)
+      // Sync removal to localStorage
+      saveAccess(userId, readAccess(userId).filter(id => id !== ghId))
+      await loadGhUsers(ghId)
+    }
+    catch (err) { alert('Error removiendo usuario: ' + (err as Error).message) }
   }
 
   const handleAddSensor = async (ghId: number) => {
