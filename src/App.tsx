@@ -159,8 +159,23 @@ function AppInner() {
   const sidebarRef   = useRef<HTMLElement>(null)
   const mainRef      = useRef<HTMLElement>(null)
 
-  if (authLoading) return <AuthLoadingScreen />
+  // ALL hooks must be declared before any early returns (React rules of hooks)
+  useEffect(() => {
+    if (!user || !sidebarOpen || !sidebarRef.current) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({ targets: sidebarRef.current, translateX: ['-100%', '0%'], opacity: [0.8, 1], duration: 280, easing: 'easeOutCubic' })
+  }, [sidebarOpen, user])
 
+  // Entrance animation when the main app first mounts after login
+  useEffect(() => {
+    if (!user || !mainRef.current) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({ targets: mainRef.current, opacity: [0, 1], translateY: [12, 0], duration: 420, easing: 'easeOutCubic' })
+  }, [!!user]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (authLoading) return <AuthLoadingScreen />
   if (!user) return <LoginPage />
 
   const isAdmin  = user.role === 'ADMIN' || user.role === 'admin'
@@ -170,7 +185,6 @@ function AppInner() {
   const navigate = (id: PageId) => {
     setPage(id)
     setSidebarOpen(false)
-    // Animate main content out/in
     if (mainRef.current) {
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
       if (!reduced) {
@@ -179,21 +193,11 @@ function AppInner() {
     }
   }
 
-  // Animate sidebar on open (mobile)
-  useEffect(() => {
-    if (sidebarOpen && sidebarRef.current) {
-      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      if (!reduced) {
-        anime({ targets: sidebarRef.current, translateX: ['-100%', '0%'], opacity: [0.8, 1], duration: 280, easing: 'easeOutCubic' })
-      }
-    }
-  }, [sidebarOpen])
-
   const currentItem = allItems.find(n => n.id === page)
   const initials    = (user as AppUser).full_name || user.username || '?'
 
   return (
-    <div className="min-h-screen bg-gray-50/80 relative" style={{ backgroundImage: 'var(--tw-gradient-stops)' }}>
+    <div className="min-h-screen bg-gray-50 relative">
 
       {/* Mobile overlay */}
       {sidebarOpen && (
