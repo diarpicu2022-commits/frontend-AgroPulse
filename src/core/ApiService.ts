@@ -41,16 +41,10 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     )
   }
 
+  // Try to parse JSON body; silently ignore empty body (204, or 200 with no body)
   let data: unknown = null
-  const contentType = res.headers.get('content-type') ?? ''
-  if (res.status !== 204 && contentType.includes('json')) {
-    try {
-      data = await res.json()
-    } catch {
-      if (!res.ok) throw new Error(`El servidor (${res.status}) devolvió una respuesta inválida en ${endpoint}`)
-    }
-  } else if (res.status !== 204 && res.ok) {
-    try { data = await res.json() } catch { /* empty body — treat as success */ }
+  if (res.status !== 204) {
+    try { data = await res.json() } catch { /* empty/non-JSON body — ok for void endpoints */ }
   }
 
   if (!res.ok) {

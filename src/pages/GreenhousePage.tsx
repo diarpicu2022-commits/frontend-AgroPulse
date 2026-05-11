@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Building2, UserPlus, Cpu, Zap, ChevronDown, ChevronUp, Wifi } from 'lucide-react'
+import { Building2, UserPlus, Cpu, Zap, ChevronDown, ChevronUp, Wifi, Loader2 } from 'lucide-react'
 import anime from 'animejs'
 import { useAuth, saveAccess, readAccess } from '../context/AuthContext'
 import { greenhouseRepository, sensorRepository, actuatorRepository, deviceRepository } from '../repositories'
@@ -37,6 +37,7 @@ export default function GreenhousePage() {
   const [ghUsers,           setGhUsers]           = useState<Record<number, UserDto[]>>({})
   const [allUsers,          setAllUsers]          = useState<UserDto[]>([])
   const [assignUserId,      setAssignUserId]      = useState('')
+  const [assigning,         setAssigning]         = useState(false)
   const [deviceConfig,      setDeviceConfig]      = useState<Record<number, DeviceConfigDto>>({})
   const [gpioOpts,          setGpioOpts]          = useState<Record<number, GpioOptionsDto>>({})
   const [sensorForm,        setSensorForm]        = useState<SensorForm>({ name: '', type: 'TEMPERATURE', protocol: 'DHT22', gpioPin: '' })
@@ -93,7 +94,9 @@ export default function GreenhousePage() {
   const loadGhUsers = async (id: number) => {
     try {
       const data = await greenhouseRepository.listUsers(id)
-      setGhUsers(prev => ({ ...prev, [id]: data.users ?? [] }))
+      // Handle both { users: [...] } and plain array responses from different backends
+      const list = Array.isArray(data) ? (data as UserDto[]) : (data.users ?? [])
+      setGhUsers(prev => ({ ...prev, [id]: list }))
     } catch (err) { setError((err as Error).message) }
   }
 
@@ -143,8 +146,9 @@ export default function GreenhousePage() {
   }
 
   const handleAssign = async (ghId: number) => {
-    if (!assignUserId) return
+    if (!assignUserId || assigning) return
     const uid = parseInt(assignUserId)
+    setAssigning(true)
     try {
       await greenhouseRepository.assignUser(ghId, uid)
       // Sync to localStorage so operator's access control stays in sync
@@ -153,6 +157,7 @@ export default function GreenhousePage() {
       setAssignUserId('')
       await loadGhUsers(ghId)
     } catch (err) { alert('Error asignando usuario: ' + (err as Error).message) }
+    finally { setAssigning(false) }
   }
 
   const handleRemoveUser = async (ghId: number, userId: number) => {
@@ -337,11 +342,17 @@ export default function GreenhousePage() {
                             ))}
                           </select>
                           <button onClick={() => handleAssign(g.id)}
-                            className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1">
-                            <UserPlus size={14} /> Asignar
+                            disabled={!assignUserId || assigning}
+                            className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                            {assigning
+                              ? <><Loader2 size={14} className="animate-spin" /> Asignando…</>
+                              : <><UserPlus size={14} /> Asignar</>
+                            }
                           </button>
                         </div>
-                        {(ghUsers[g.id] ?? []).length === 0
+                        {(ghUsers[g.id] === undefined)
+                          ? <p className="text-xs text-gray-400 py-2">Cargando usuarios…</p>
+                          : (ghUsers[g.id] ?? []).length === 0
                           ? <p className="text-xs text-gray-400 py-2">Sin usuarios asignados aún</p>
                           : (
                             <div className="space-y-2">
