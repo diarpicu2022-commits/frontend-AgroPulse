@@ -52,8 +52,11 @@ export default function ReportsPage() {
 
   const loadSchedules = async () => {
     try {
-      const data = await reportRepository.history() as HistoryResponse
-      setSchedules(data.history || [])
+      const data = await reportRepository.history()
+      const list = Array.isArray(data)
+        ? (data as ScheduleItem[])
+        : ((data as HistoryResponse).history ?? [])
+      setSchedules(list)
       setError(null)
     } catch (err) { setError((err as Error).message) }
     setLoading(false)
@@ -62,8 +65,15 @@ export default function ReportsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await reportRepository.schedule(form as unknown as Record<string, unknown>)
-      setShowForm(false); setForm({ email: user?.email || '', frequency: 'daily' }); loadSchedules()
+      const result = await reportRepository.schedule(form as unknown as Record<string, unknown>) as Record<string, unknown> | null
+      const newItem: ScheduleItem = {
+        id:        (result?.id as number) ?? Date.now(),
+        email:     form.email,
+        frequency: form.frequency,
+      }
+      setSchedules(prev => [...prev, newItem])
+      setShowForm(false)
+      setForm({ email: user?.email || '', frequency: 'daily' })
     } catch (err) { alert('Error: ' + (err as Error).message) }
   }
 

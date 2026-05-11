@@ -76,7 +76,9 @@ export default function CropsPage() {
   const loadCrops = async () => {
     try {
       const data = await cropRepository.list()
-      setCrops(data.crops || [])
+      // Handle both { crops: [...] } and plain array responses
+      const list = Array.isArray(data) ? (data as CropDto[]) : (data.crops ?? [])
+      setCrops(list)
       setError(null)
     } catch (err) { setError((err as Error).message) }
     setLoading(false)
@@ -123,9 +125,17 @@ Responde SOLO con JSON válido sin markdown:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      if (editingId) await cropRepository.update(editingId, toApiPayload(form))
-      else await cropRepository.create(toApiPayload(form))
-      setShowForm(false); resetForm(); loadCrops()
+      if (editingId) {
+        const updated = await cropRepository.update(editingId, toApiPayload(form))
+        setCrops(prev => prev.map(c => c.id === editingId
+          ? (updated ?? { ...c, ...toApiPayload(form) } as CropDto)
+          : c))
+      } else {
+        const created = await cropRepository.create(toApiPayload(form))
+        if (created?.id) setCrops(prev => [...prev, created])
+        else loadCrops()
+      }
+      setShowForm(false); resetForm()
     } catch (err) { alert('Error: ' + (err as Error).message) }
   }
 
