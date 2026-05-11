@@ -151,25 +151,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           if (authUser.email) cacheProfile(authUser.email, { avatar: avatarUrl, full_name: fullName })
           setUser(finalUser)
-          if (isAdminRole(role)) {
-            setAllowedGreenhouseIds(null)
-          } else {
-            const localIds = resolveAccess(data.id || 0, authUser.email)
-            // null = unrestricted access; only restrict if local assignments exist
-            setAllowedGreenhouseIds(localIds.length > 0 ? localIds : null)
-          }
+          setAllowedGreenhouseIds(isAdminRole(role) ? null : resolveAccess(data.id || 0, authUser.email))
           return
         }
       } catch { clearTimeout(fetchTimer) }
 
       if (authUser.email) cacheProfile(authUser.email, { avatar: avatarUrl, full_name: fullName })
       setUser(fallback)
-      if (!isAdmin) {
-        const localIds = resolveAccess(0, authUser.email)
-        setAllowedGreenhouseIds(localIds.length > 0 ? localIds : null)
-      } else {
-        setAllowedGreenhouseIds(null)
-      }
+      setAllowedGreenhouseIds(isAdmin ? null : resolveAccess(0, authUser.email))
     }
 
     let resolved = false
@@ -194,12 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData)
     if (userData.email && userData.avatar) cacheProfile(userData.email, { avatar: userData.avatar, full_name: userData.full_name })
     const admin = isAdminRole(userData.role)
-    if (admin) {
-      setAllowedGreenhouseIds(null)
-    } else {
-      const localIds = resolveAccess(userData.id, userData.email)
-      setAllowedGreenhouseIds(localIds.length > 0 ? localIds : null)
-    }
+    setAllowedGreenhouseIds(admin ? null : resolveAccess(userData.id, userData.email))
     setUserContext({
       id:         userData.id,
       role:       userData.role,
@@ -211,23 +195,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user || isAdminRole(user.role)) return
     const localIds = resolveAccess(user.id, user.email)
     if (localIds.length > 0) { setAllowedGreenhouseIds(localIds); return }
-    // No local assignment — check backend for assigned greenhouses
+    // No local assignment — check backend as fallback
     const currentUser = user
     fetch(`${API_URL}/api/greenhouses`)
       .then(res => res.ok ? res.json() : null)
       .then((data: unknown) => {
-        if (!data) { setAllowedGreenhouseIds(null); return }
+        if (!data) { setAllowedGreenhouseIds([]); return }
         const ghs = (Array.isArray(data) ? data : ((data as Record<string, unknown>).greenhouses ?? [])) as { id: number }[]
         if (ghs.length > 0) {
           const ghIds = ghs.map(g => g.id)
+          // Cache so subsequent logins work without re-checking
           saveAccess(currentUser.id, ghIds)
           if (currentUser.email) saveAccessByEmail(currentUser.email, ghIds)
           setAllowedGreenhouseIds(ghIds)
         } else {
-          setAllowedGreenhouseIds(null)
+          setAllowedGreenhouseIds([])
         }
       })
-      .catch(() => setAllowedGreenhouseIds(null))
+      .catch(() => setAllowedGreenhouseIds([]))
   }
 
   const logout = async () => {

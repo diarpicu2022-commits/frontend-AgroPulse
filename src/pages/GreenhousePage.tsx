@@ -24,6 +24,8 @@ const GPIO_INPUT     = [4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 23, 25, 26, 27, 32
 const GPIO_OUTPUT    = [4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 23, 25, 26, 27, 32, 33]
 const ALL_GPIOS      = Array.from({ length: 40 }, (_, i) => i)
 
+const GH_USERS_KEY = (ghId: number) => `agropulse_gh_users_${ghId}`
+
 export default function GreenhousePage() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin' || user?.role === 'ADMIN'
@@ -95,11 +97,18 @@ export default function GreenhousePage() {
   }
 
   const loadGhUsers = async (id: number) => {
+    // Show cached list immediately
+    try {
+      const raw = localStorage.getItem(GH_USERS_KEY(id))
+      if (raw) setGhUsers(prev => ({ ...prev, [id]: JSON.parse(raw) as UserDto[] }))
+    } catch {}
     try {
       const data = await greenhouseRepository.listUsers(id)
-      // Handle both { users: [...] } and plain array responses from different backends
       const list = Array.isArray(data) ? (data as UserDto[]) : (data.users ?? [])
-      setGhUsers(prev => ({ ...prev, [id]: list }))
+      if (list.length > 0) {
+        setGhUsers(prev => ({ ...prev, [id]: list }))
+        try { localStorage.setItem(GH_USERS_KEY(id), JSON.stringify(list)) } catch {}
+      }
     } catch (err) { setError((err as Error).message) }
   }
 
@@ -151,18 +160,21 @@ export default function GreenhousePage() {
   const handleAssign = async (ghId: number) => {
     if (!assignUserId || assigning) return
     const uid = parseInt(assignUserId)
-    const targetUser = allUsers.find(u => u.id === uid)
+    // Normalize IDs — backend may return id as string despite TS typing
+    const targetUser = allUsers.find(u => Number(u.id) === uid)
     if (!targetUser) return
     setAssigning(true)
     try {
       await greenhouseRepository.assignUser(ghId, uid)
-      // Optimistic update — add user to local list immediately (backend GET may lag)
+      // Optimistic update + cache
       setGhUsers(prev => {
         const current = prev[ghId] ?? []
-        if (current.find(u => u.id === uid)) return prev
-        return { ...prev, [ghId]: [...current, targetUser] }
+        if (current.find(u => Number(u.id) === uid)) return prev
+        const next = [...current, targetUser]
+        try { localStorage.setItem(GH_USERS_KEY(ghId), JSON.stringify(next)) } catch {}
+        return { ...prev, [ghId]: next }
       })
-      // Sync to localStorage by both ID and email for robust access control
+      // Save access by both ID and email for operator lookup
       const currentAccess = readAccess(uid)
       if (!currentAccess.includes(ghId)) saveAccess(uid, [...currentAccess, ghId])
       if (targetUser.email) {
@@ -175,9 +187,12 @@ export default function GreenhousePage() {
   }
 
   const handleRemoveUser = async (ghId: number, userId: number) => {
-    const removedUser = (ghUsers[ghId] ?? []).find(u => u.id === userId)
-    // Optimistic removal
-    setGhUsers(prev => ({ ...prev, [ghId]: (prev[ghId] ?? []).filter(u => u.id !== userId) }))
+    const removedUser = (ghUsers[ghId] ?? []).find(u => Number(u.id) === userId)
+    setGhUsers(prev => {
+      const next = (prev[ghId] ?? []).filter(u => Number(u.id) !== userId)
+      try { localStorage.setItem(GH_USERS_KEY(ghId), JSON.stringify(next)) } catch {}
+      return { ...prev, [ghId]: next }
+    })
     saveAccess(userId, readAccess(userId).filter(id => id !== ghId))
     if (removedUser?.email) saveAccessByEmail(removedUser.email, readAccessByEmail(removedUser.email).filter(id => id !== ghId))
     try {

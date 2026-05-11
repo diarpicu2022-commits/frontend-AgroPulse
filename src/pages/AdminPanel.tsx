@@ -75,8 +75,8 @@ export default function AdminPanel({ user }: AdminPanelProps) {
       ? [...new Set([...current, ghId])]
       : current.filter(id => id !== ghId)
     saveAccess(userId, updated)
-    // Also save by email for reliable cross-session access control
-    const u = users.find(u => u.id === userId)
+    // Normalize IDs — backend may return id as string despite TS typing
+    const u = users.find(u => Number(u.id) === Number(userId))
     if (u?.email) {
       const byEmail = readAccessByEmail(u.email)
       const updatedByEmail = checked

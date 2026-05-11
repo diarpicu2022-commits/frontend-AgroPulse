@@ -32,6 +32,11 @@ const RangeBar = ({ label, min, max, unit, color }: RangeBarProps) => (
   </div>
 )
 
+const CROPS_CACHE = 'agropulse_crops_v1'
+const saveCropsCache = (list: CropDto[]) => {
+  try { localStorage.setItem(CROPS_CACHE, JSON.stringify(list)) } catch {}
+}
+
 export default function CropsPage() {
   const [crops,      setCrops]      = useState<CropDto[]>([])
   const [loading,    setLoading]    = useState(true)
@@ -74,11 +79,15 @@ export default function CropsPage() {
   }, [showForm])
 
   const loadCrops = async () => {
+    // Show cache immediately so page never looks empty after refresh
+    try {
+      const raw = localStorage.getItem(CROPS_CACHE)
+      if (raw) { setCrops(JSON.parse(raw) as CropDto[]); setLoading(false) }
+    } catch {}
     try {
       const data = await cropRepository.list()
-      // Handle both { crops: [...] } and plain array responses
       const list = Array.isArray(data) ? (data as CropDto[]) : (data.crops ?? [])
-      setCrops(list)
+      if (list.length > 0) { setCrops(list); saveCropsCache(list) }
       setError(null)
     } catch (err) { setError((err as Error).message) }
     setLoading(false)
@@ -127,9 +136,11 @@ Responde SOLO con JSON válido sin markdown:
     try {
       if (editingId) {
         const updated = await cropRepository.update(editingId, toApiPayload(form))
-        setCrops(prev => prev.map(c => c.id === editingId
-          ? (updated ?? { ...c, ...toApiPayload(form) } as CropDto)
-          : c))
+        setCrops(prev => {
+          const next = prev.map(c => c.id === editingId
+            ? (updated ?? { ...c, ...toApiPayload(form) } as CropDto) : c)
+          saveCropsCache(next); return next
+        })
       } else {
         const created = await cropRepository.create(toApiPayload(form)) as CropDto | null
         const newCrop: CropDto = {
@@ -143,7 +154,7 @@ Responde SOLO con JSON válido sin markdown:
           soil_moisture_min: form.soil_moisture_min,
           soil_moisture_max: form.soil_moisture_max,
         }
-        setCrops(prev => [...prev, newCrop])
+        setCrops(prev => { const next = [...prev, newCrop]; saveCropsCache(next); return next })
       }
       setShowForm(false); resetForm()
     } catch (err) { alert('Error: ' + (err as Error).message) }
@@ -167,8 +178,9 @@ Responde SOLO con JSON válido sin markdown:
 
   const handleDelete = async (id: number, name: string) => {
     if (confirm(`¿Eliminar el cultivo "${name}"?`)) {
-      try { await cropRepository.remove(id); loadCrops() }
-      catch (err) { alert('Error: ' + (err as Error).message) }
+      setCrops(prev => { const next = prev.filter(c => c.id !== id); saveCropsCache(next); return next })
+      try { await cropRepository.remove(id) }
+      catch (err) { loadCrops(); alert('Error: ' + (err as Error).message) }
     }
   }
 
