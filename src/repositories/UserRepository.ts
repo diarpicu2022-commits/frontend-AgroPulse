@@ -36,8 +36,8 @@ export class UserRepository extends BaseRepository {
     return this.post('/api/auth/login', { email, name, googleId })
   }
 
-  register(username: string, password: string, fullName: string): Promise<UserDto> {
-    return this.post('/api/auth/register', { username, password, fullName })
+  register(username: string, password: string, fullName: string, email?: string): Promise<UserDto> {
+    return this.post('/api/auth/register', { username, password, fullName, ...(email ? { email } : {}) })
   }
 
   me(): Promise<UserDto> {

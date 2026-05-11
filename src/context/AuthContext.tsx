@@ -87,6 +87,7 @@ interface AuthContextValue {
   login:                 (userData: AppUser) => void
   logout:                () => Promise<void>
   refreshAccess:         () => void
+  updateProfile:         (updates: Partial<AppUser>) => void
   supabase:              SupabaseClient | null
 }
 
@@ -97,6 +98,7 @@ export const AuthContext = createContext<AuthContextValue>({
   login:                () => {},
   logout:               async () => {},
   refreshAccess:        () => {},
+  updateProfile:        () => {},
   supabase:             null,
 })
 
@@ -222,8 +224,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (supabase) await supabase.auth.signOut()
   }
 
+  const updateProfile = (updates: Partial<AppUser>) => {
+    setUser(prev => {
+      if (!prev) return prev
+      const next = { ...prev, ...updates }
+      if (updates.avatar !== undefined && prev.email) {
+        cacheProfile(prev.email, { avatar: updates.avatar ?? undefined, full_name: updates.full_name ?? prev.full_name })
+      }
+      return next
+    })
+  }
+
   return (
-    <AuthContext.Provider value={{ user, authLoading, allowedGreenhouseIds, login, logout, refreshAccess, supabase }}>
+    <AuthContext.Provider value={{ user, authLoading, allowedGreenhouseIds, login, logout, refreshAccess, updateProfile, supabase }}>
       {children}
     </AuthContext.Provider>
   )

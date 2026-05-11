@@ -1,19 +1,30 @@
-import { useState } from 'react'
-import { Info, Key, Wifi, WifiOff, CheckCircle, XCircle, LogOut, ShieldCheck } from 'lucide-react'
-import { useAuth, supabase } from '../context/AuthContext'
+import { useState, useRef } from 'react'
+import { Info, Key, Wifi, WifiOff, CheckCircle, XCircle, LogOut, ShieldCheck, Camera, CheckCircle2, User } from 'lucide-react'
+import { useAuth, supabase, getCachedProfile, cacheProfile } from '../context/AuthContext'
 import { getGroqKey, getGitHubToken, getGemmaKey } from '../services/ai-service'
+import { userRepository } from '../repositories'
+import type { AppUser, UserDto } from '../types'
 
 const safeGet    = (key: string) => { try { return localStorage.getItem(key) ?? '' } catch { return '' } }
 const safeSet    = (key: string, val: string) => { try { localStorage.setItem(key, val) } catch { /* noop */ } }
 const safeRemove = (key: string) => { try { localStorage.removeItem(key) } catch { /* noop */ } }
 
 export default function SettingsPage() {
-  const { user: authUser, logout } = useAuth()
+  const { user: authUser, logout, updateProfile } = useAuth()
 
   const [groqKey,   setGroqKey]   = useState(safeGet('agropulse_groq_key'))
   const [githubKey, setGithubKey] = useState(safeGet('agropulse_github_token'))
   const [gemmaKey,  setGemmaKey]  = useState(safeGet('agropulse_gemma_key'))
   const [saved,     setSaved]     = useState(false)
+
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [avatarUrl,      setAvatarUrl]      = useState('')
+  const [avatarPreview,  setAvatarPreview]  = useState('')
+  const [nameInput,      setNameInput]      = useState('')
+  const [savingProfile,  setSavingProfile]  = useState(false)
+  const [profileSaved,   setProfileSaved]   = useState(false)
+  const [avatarError,    setAvatarError]    = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const saveKeys = () => {
     if (groqKey.trim())   safeSet('agropulse_groq_key', groqKey.trim())
@@ -24,6 +35,57 @@ export default function SettingsPage() {
     else                  safeRemove('agropulse_gemma_key')
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  const openEditProfile = () => {
+    const cached = authUser?.email ? getCachedProfile(authUser.email) : null
+    const currentAvatar = authUser?.avatar || cached?.avatar || ''
+    setAvatarUrl(currentAvatar.startsWith('data:') ? '' : currentAvatar)
+    setAvatarPreview(currentAvatar)
+    setNameInput(authUser?.full_name || (authUser as AppUser | null)?.fullName || '')
+    setAvatarError('')
+    setEditingProfile(true)
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 1024 * 1024) { setAvatarError('Imagen demasiado grande (máx. 1MB)'); return }
+    setAvatarError('')
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const result = ev.target?.result as string
+      setAvatarPreview(result)
+      setAvatarUrl(result)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleUrlChange = (url: string) => {
+    setAvatarUrl(url)
+    if (url.startsWith('http')) setAvatarPreview(url)
+    else if (!url) setAvatarPreview('')
+  }
+
+  const saveProfile = async () => {
+    if (!authUser) return
+    setSavingProfile(true)
+    const newAvatar = avatarUrl || avatarPreview
+    const newName   = nameInput.trim()
+    try {
+      await userRepository.update(authUser.id, {
+        avatar:    newAvatar || undefined,
+        full_name: newName || undefined,
+      } as Partial<UserDto>)
+    } catch { /* backend may reject — continue with local update */ }
+    if (authUser.email && newAvatar) {
+      cacheProfile(authUser.email, { avatar: newAvatar, full_name: newName || undefined })
+    }
+    updateProfile({ avatar: newAvatar || authUser.avatar, full_name: newName || authUser.full_name })
+    setSavingProfile(false)
+    setProfileSaved(true)
+    setEditingProfile(false)
+    setTimeout(() => setProfileSaved(false), 3000)
   }
 
   const groqActive   = getGroqKey()
@@ -37,6 +99,139 @@ export default function SettingsPage() {
       <div>
         <h2 className="section-title">Configuración</h2>
         <p className="section-subtitle">Ajustes del sistema y claves de IA</p>
+      </div>
+
+      {/* Profile card */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <User size={15} className="text-gray-400" />
+          <h3 className="text-sm font-semibold text-gray-800">Mi Perfil</h3>
+          {profileSaved && (
+            <span className="ml-auto flex items-center gap-1 text-xs text-green-600 font-medium">
+              <CheckCircle2 size={13} /> Guardado
+            </span>
+          )}
+        </div>
+
+        {/* Avatar + info row */}
+        <div className="flex items-center gap-4 mb-4">
+          {/* Avatar */}
+          <div className="relative shrink-0">
+            {(authUser?.avatar || (authUser?.email ? getCachedProfile(authUser.email)?.avatar : null)) ? (
+              <img
+                src={authUser?.avatar || getCachedProfile(authUser?.email ?? '')?.avatar || ''}
+                alt="avatar"
+                className="w-14 h-14 rounded-2xl object-cover ring-2 ring-green-200"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white text-lg font-bold shadow-glow-sm">
+                {((authUser?.full_name || authUser?.username || '?')[0]).toUpperCase()}
+              </div>
+            )}
+            <button
+              onClick={() => editingProfile ? setEditingProfile(false) : openEditProfile()}
+              className="absolute -bottom-1.5 -right-1.5 w-6 h-6 bg-green-500 hover:bg-green-600 rounded-lg flex items-center justify-center shadow-sm transition-colors"
+              title="Cambiar foto"
+            >
+              <Camera size={11} className="text-white" />
+            </button>
+          </div>
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-gray-800 truncate">
+              {authUser?.full_name || (authUser as AppUser | null)?.fullName || authUser?.username || '—'}
+            </p>
+            <p className="text-xs text-gray-500 truncate">{authUser?.email || 'Sin email'}</p>
+            <div className="mt-1">
+              <span className={isAdmin ? 'badge-red' : 'badge-blue'}>
+                <ShieldCheck size={10} />
+                {isAdmin ? 'Administrador' : 'Operario'}
+              </span>
+            </div>
+          </div>
+          {!editingProfile && (
+            <button onClick={openEditProfile}
+              className="btn-secondary px-3 py-1.5 text-xs shrink-0">
+              Editar
+            </button>
+          )}
+        </div>
+
+        {/* Edit form */}
+        {editingProfile && (
+          <div className="border-t border-gray-100 pt-4 space-y-3">
+            {/* Name */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Nombre a mostrar
+              </label>
+              <input type="text" value={nameInput}
+                onChange={e => setNameInput(e.target.value)}
+                placeholder={authUser?.username || 'Tu nombre'}
+                className="input-field text-sm" />
+            </div>
+
+            {/* Avatar URL */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                URL de foto de perfil
+              </label>
+              <input type="url" value={avatarUrl.startsWith('data:') ? '' : avatarUrl}
+                onChange={e => handleUrlChange(e.target.value)}
+                placeholder="https://ejemplo.com/mi-foto.jpg"
+                className="input-field text-sm" />
+            </div>
+
+            {/* File upload */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                O subir desde tu dispositivo
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 w-full btn-secondary py-2 text-xs justify-center">
+                <Camera size={13} /> Seleccionar imagen (máx. 1MB)
+              </button>
+              {avatarError && <p className="text-xs text-red-500 mt-1">{avatarError}</p>}
+            </div>
+
+            {/* Preview */}
+            {avatarPreview && (
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                <img src={avatarPreview} alt="preview"
+                  className="w-10 h-10 rounded-xl object-cover shrink-0"
+                  onError={() => setAvatarPreview('')}
+                />
+                <p className="text-xs text-gray-500">Vista previa de la foto</p>
+                <button onClick={() => { setAvatarPreview(''); setAvatarUrl('') }}
+                  className="ml-auto text-xs text-red-400 hover:text-red-600">
+                  Quitar
+                </button>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
+              <button onClick={saveProfile} disabled={savingProfile}
+                className="flex-1 btn-primary py-2.5 text-sm">
+                {savingProfile
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Guardando…</>
+                  : <><CheckCircle2 size={14} /> Guardar cambios</>
+                }
+              </button>
+              <button onClick={() => setEditingProfile(false)}
+                className="flex-1 btn-secondary py-2.5 text-sm">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* System info */}

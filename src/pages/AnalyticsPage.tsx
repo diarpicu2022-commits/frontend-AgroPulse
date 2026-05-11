@@ -1,39 +1,69 @@
 import { useState, useEffect, useRef } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { Thermometer, Droplets, Leaf, RefreshCw, Download, FileText, type LucideIcon } from 'lucide-react'
+import {
+  Thermometer, Droplets, Leaf, Sun, Wind, FlaskConical,
+  RefreshCw, Download, FileText, Building2, Sprout,
+  type LucideIcon,
+} from 'lucide-react'
 import anime from 'animejs'
-import { readingRepository } from '../repositories'
-import type { SensorReadingDto } from '../types'
+import { readingRepository, greenhouseRepository } from '../repositories'
+import type { SensorReadingDto, GreenhouseDto } from '../types'
 
 interface Stats { min: string | number; max: string | number; avg: string | number; current: string | number }
-
 type RangeKey = '24h' | '7d' | '30d'
 
 interface ChartConfig {
-  type: string; label: string; icon: LucideIcon; color: string; unit: string; bg: string
+  type: string; label: string; icon: LucideIcon; color: string; unit: string
 }
 
-const CHARTS: ChartConfig[] = [
-  { type: 'TEMPERATURE_INTERNAL', label: 'Temperatura Interior', icon: Thermometer, color: '#f97316', unit: '°C', bg: 'orange' },
-  { type: 'HUMIDITY',             label: 'Humedad Ambiente',     icon: Droplets,    color: '#0ea5e9', unit: '%',  bg: 'sky'    },
-  { type: 'SOIL_MOISTURE',        label: 'Humedad del Suelo',    icon: Leaf,        color: '#22c55e', unit: '%',  bg: 'green'  },
+// Fixed charts shown in global mode
+const DEFAULT_CHARTS: ChartConfig[] = [
+  { type: 'TEMPERATURE_INTERNAL', label: 'Temperatura Interior', icon: Thermometer, color: '#f97316', unit: '°C' },
+  { type: 'HUMIDITY',             label: 'Humedad Ambiente',     icon: Droplets,    color: '#0ea5e9', unit: '%'  },
+  { type: 'SOIL_MOISTURE',        label: 'Humedad del Suelo',    icon: Leaf,        color: '#22c55e', unit: '%'  },
 ]
 
+// Full sensor type registry for per-GH dynamic discovery
+const SENSOR_META: Record<string, ChartConfig> = {
+  TEMPERATURE:          { type: 'TEMPERATURE',          label: 'Temperatura',         icon: Thermometer, color: '#f97316', unit: '°C'  },
+  TEMPERATURE_INTERNAL: { type: 'TEMPERATURE_INTERNAL', label: 'Temperatura Interior', icon: Thermometer, color: '#f97316', unit: '°C'  },
+  TEMPERATURE_EXTERNAL: { type: 'TEMPERATURE_EXTERNAL', label: 'Temperatura Exterior', icon: Thermometer, color: '#fb923c', unit: '°C'  },
+  HUMIDITY:             { type: 'HUMIDITY',             label: 'Humedad Ambiente',     icon: Droplets,    color: '#0ea5e9', unit: '%'   },
+  SOIL_MOISTURE:        { type: 'SOIL_MOISTURE',        label: 'Humedad del Suelo',    icon: Leaf,        color: '#22c55e', unit: '%'   },
+  LIGHT:                { type: 'LIGHT',                label: 'Luminosidad',          icon: Sun,         color: '#eab308', unit: 'lx'  },
+  CO2:                  { type: 'CO2',                  label: 'CO₂',                  icon: FlaskConical,color: '#8b5cf6', unit: 'ppm' },
+  PRESSURE:             { type: 'PRESSURE',             label: 'Presión',              icon: Wind,        color: '#6366f1', unit: 'hPa' },
+}
+
 const RANGES: { key: RangeKey; label: string }[] = [
-  { key: '24h', label: 'Últimas 24h'  },
+  { key: '24h', label: 'Últimas 24h'    },
   { key: '7d',  label: 'Últimos 7 días' },
-  { key: '30d', label: 'Últimos 30 días' },
+  { key: '30d', label: 'Últimos 30 días'},
 ]
 
 export default function AnalyticsPage() {
   const [readings,         setReadings]         = useState<SensorReadingDto[]>([])
+  const [greenhouses,      setGreenhouses]      = useState<GreenhouseDto[]>([])
   const [loading,          setLoading]          = useState(true)
   const [range,            setRange]            = useState<RangeKey>('24h')
+  const [ghFilter,         setGhFilter]         = useState<number | ''>('')
   const [showPrintPreview, setShowPrintPreview] = useState(false)
   const [error,            setError]            = useState<string | null>(null)
   const chartsRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { loadReadings() }, [])
+  useEffect(() => {
+    greenhouseRepository.list().then(d => setGreenhouses(d.greenhouses || [])).catch(() => {})
+  }, [])
+
+  useEffect(() => { loadReadings() }, [ghFilter])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!headerRef.current) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({ targets: headerRef.current, opacity: [0, 1], translateY: [-10, 0], duration: 400, easing: 'easeOutCubic' })
+  }, [])
 
   useEffect(() => {
     if (!chartsRef.current || loading) return
@@ -47,128 +77,245 @@ export default function AnalyticsPage() {
       duration:   420,
       easing:     'easeOutCubic',
     })
-  }, [loading, range])
+  }, [loading, range, ghFilter])
 
   const loadReadings = async () => {
+    setLoading(true)
     try {
-      const data = await readingRepository.list(null, 500)
+      const data = await readingRepository.list(null, 500, ghFilter !== '' ? (ghFilter as number) : null)
       setReadings(data.readings || [])
       setError(null)
     } catch (err) { setError((err as Error).message) }
     setLoading(false)
   }
 
+  const getRangeCutoff = (): Date => {
+    const cutoff = new Date()
+    if (range === '24h') cutoff.setHours(cutoff.getHours() - 24)
+    else if (range === '7d') cutoff.setDate(cutoff.getDate() - 7)
+    else cutoff.setDate(cutoff.getDate() - 30)
+    return cutoff
+  }
+
   const getFilteredReadings = (): SensorReadingDto[] => {
-    const now = new Date(); const cutoff = new Date()
-    if (range === '24h') cutoff.setHours(now.getHours() - 24)
-    else if (range === '7d') cutoff.setDate(now.getDate() - 7)
-    else cutoff.setDate(now.getDate() - 30)
+    const cutoff = getRangeCutoff(); const now = new Date()
     return readings.filter(r => { const d = new Date(r.timestamp); return d >= cutoff && d <= now })
   }
 
-  const exportToCSV = () => {
-    const filtered = getFilteredReadings()
-    if (filtered.length === 0) { alert('No hay datos para exportar'); return }
-    const headers = ['Fecha/Hora', 'Tipo de Sensor', 'Valor', 'Unidad', 'Origen']
-    const rows = filtered.map(r => {
-      const unit = r.sensorType === 'SOIL_MOISTURE' || r.sensorType === 'HUMIDITY' ? '%' : '°C'
-      return [new Date(r.timestamp).toLocaleString('es-CO'), r.sensorType, r.value, unit, 'ESP32']
+  const getTimeKey = (timestamp: string): string => {
+    const d = new Date(timestamp)
+    if (range === '24h') return d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false })
+    if (range === '7d')  return d.toLocaleDateString('es-CO', { weekday: 'short', day: '2-digit' })
+    return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })
+  }
+
+  const getChartData = (sensorType: string, source: SensorReadingDto[]) => {
+    const byTime: Record<string, number[]> = {}
+    source.filter(r => r.sensorType === sensorType).forEach(r => {
+      const key = getTimeKey(r.timestamp)
+      if (!byTime[key]) byTime[key] = []
+      byTime[key].push(r.value)
     })
-    const csv = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    return Object.entries(byTime)
+      .map(([time, values]) => ({ time, value: (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) }))
+      .slice(-30)
+  }
+
+  const getStats = (sensorType: string, source: SensorReadingDto[]): Stats => {
+    const values = source.filter(r => r.sensorType === sensorType).map(r => r.value)
+    if (values.length === 0) return { min: '—', max: '—', avg: '—', current: '—' }
+    const current = values[0]
+    return {
+      min:     Math.min(...values).toFixed(1),
+      max:     Math.max(...values).toFixed(1),
+      avg:     (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1),
+      current: current.toFixed(1),
+    }
+  }
+
+  const currentGh = greenhouses.find(g => g.id === ghFilter)
+  const filteredReadings = getFilteredReadings()
+
+  // For per-GH mode discover all sensor types present in loaded readings
+  const detectedTypes = [...new Set(readings.map(r => r.sensorType).filter(Boolean))] as string[]
+  const chartsToShow: ChartConfig[] = ghFilter !== '' && detectedTypes.length > 0
+    ? detectedTypes.map(t => SENSOR_META[t] ?? { type: t, label: t, icon: Leaf, color: '#6b7280', unit: '' })
+    : DEFAULT_CHARTS
+
+  const ghDisplayName = (ghId?: number) =>
+    ghId ? (greenhouses.find(g => g.id === ghId)?.name ?? `GH-${ghId}`) : '—'
+
+  const exportToCSV = (specificGh?: GreenhouseDto) => {
+    const source = specificGh
+      ? filteredReadings.filter(r => r.greenhouseId === specificGh.id)
+      : filteredReadings
+    if (source.length === 0) { alert('No hay datos para exportar'); return }
+    const headers = ['Fecha/Hora', 'Tipo de Sensor', 'Valor', 'Unidad', 'Invernadero', 'Origen']
+    const rows = source.map(r => {
+      const unit  = SENSOR_META[r.sensorType ?? '']?.unit ?? ''
+      const ghName = specificGh?.name ?? ghDisplayName(r.greenhouseId)
+      return [new Date(r.timestamp).toLocaleString('es-CO'), r.sensorType, r.value, unit, ghName, 'ESP32']
+    })
+    const csv  = [headers.join(','), ...rows.map(row => row.map(c => `"${c}"`).join(','))].join('\n')
     const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `agropulse-export-${new Date().toISOString().split('T')[0]}.csv`
+    link.href     = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+    const label   = (specificGh ?? currentGh)?.name.toLowerCase().replace(/\s+/g, '-') ?? 'global'
+    link.download = `agropulse-${label}-${new Date().toISOString().split('T')[0]}.csv`
     link.style.visibility = 'hidden'
     document.body.appendChild(link); link.click(); document.body.removeChild(link)
   }
 
   const handlePrintPDF = () => { setShowPrintPreview(true); setTimeout(() => window.print(), 200) }
 
-  const filteredReadings = getFilteredReadings()
-
-  const getChartData = (sensorType: string) => {
-    const byTime: Record<string, number[]> = {}
-    filteredReadings.filter(r => r.sensorType === sensorType).forEach(r => {
-      const key = new Date(r.timestamp).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false })
-      if (!byTime[key]) byTime[key] = []
-      byTime[key].push(r.value)
-    })
-    return Object.entries(byTime)
-      .map(([time, values]) => ({ time, value: (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) }))
-      .slice(-24)
-  }
-
-  const getStats = (sensorType: string): Stats => {
-    const values = filteredReadings.filter(r => r.sensorType === sensorType).map(r => r.value)
-    if (values.length === 0) return { min: '—', max: '—', avg: '—', current: '—' }
-    const current = values[0]; const min = Math.min(...values); const max = Math.max(...values)
-    const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1)
-    return { min: min.toFixed(1), max: max.toFixed(1), avg, current: current.toFixed(1) }
-  }
-
+  // ── Print preview ──────────────────────────────────────────────────────────
   if (showPrintPreview) {
-    const tempStats  = getStats('TEMPERATURE_INTERNAL')
-    const humidStats = getStats('HUMIDITY')
-    const soilStats  = getStats('SOIL_MOISTURE')
+    const ghLabel = currentGh ? currentGh.name : 'Todos los invernaderos'
+    const ghLoc   = currentGh?.location ? ` — ${currentGh.location}` : ''
     return (
       <div className="print-preview">
-        <style>{`@media print { body * { visibility: hidden; } .print-preview, .print-preview * { visibility: visible; } .print-preview { position: absolute; left: 0; top: 0; width: 100%; } .print-table { width: 100%; border-collapse: collapse; margin-top: 20px; } .print-table th, .print-table td { border: 1px solid #999; padding: 8px; text-align: left; } .print-table th { background-color: #f0f0f0; } .no-print { display: none; } }`}</style>
-        <div className="p-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Reporte de Analíticas AgroPulse</h1>
-          <p className="text-gray-600 mb-1">Generado: {new Date().toLocaleString('es-CO')}</p>
-          <p className="text-gray-600 mb-8">Período: {RANGES.find(r => r.key === range)?.label}</p>
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Resumen Ejecutivo</h2>
-          <div className="grid grid-cols-4 gap-4 text-sm mb-8">
-            <div className="border p-3 rounded"><p className="text-gray-600">Temperatura</p><p className="font-bold">Min: {tempStats.min}°C | Máx: {tempStats.max}°C | Prom: {tempStats.avg}°C</p></div>
-            <div className="border p-3 rounded"><p className="text-gray-600">Humedad</p><p className="font-bold">Min: {humidStats.min}% | Máx: {humidStats.max}% | Prom: {humidStats.avg}%</p></div>
-            <div className="border p-3 rounded"><p className="text-gray-600">Suelo</p><p className="font-bold">Min: {soilStats.min}% | Máx: {soilStats.max}% | Prom: {soilStats.avg}%</p></div>
-            <div className="border p-3 rounded"><p className="text-gray-600">Total Lecturas</p><p className="font-bold">{filteredReadings.length}</p></div>
+        <style>{`
+          @media print {
+            body * { visibility: hidden; }
+            .print-preview, .print-preview * { visibility: visible; }
+            .print-preview { position: absolute; left: 0; top: 0; width: 100%; }
+            .print-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            .print-table th, .print-table td { border: 1px solid #999; padding: 8px; text-align: left; font-size: 12px; }
+            .print-table th { background-color: #f0f0f0; }
+            .no-print { display: none; }
+          }
+        `}</style>
+        <div className="p-8 max-w-4xl">
+          <h1 className="text-2xl font-bold text-gray-800 mb-1">Reporte de Analíticas — AgroPulse</h1>
+          <h2 className="text-base font-semibold text-green-700 mb-1">{ghLabel}{ghLoc}</h2>
+          <p className="text-sm text-gray-600 mb-1">Generado: {new Date().toLocaleString('es-CO')}</p>
+          <p className="text-sm text-gray-600 mb-6">Período: {RANGES.find(r => r.key === range)?.label}</p>
+
+          <h2 className="text-lg font-bold text-gray-800 mb-3">Resumen Ejecutivo</h2>
+          <div className="grid grid-cols-4 gap-3 text-sm mb-6">
+            {chartsToShow.slice(0, 4).map(cfg => {
+              const s = getStats(cfg.type, filteredReadings)
+              return (
+                <div key={cfg.type} className="border p-3 rounded">
+                  <p className="text-gray-500 text-xs mb-1">{cfg.label}</p>
+                  <p className="font-bold text-xs">Mín: {s.min}{cfg.unit} | Máx: {s.max}{cfg.unit} | Prom: {s.avg}{cfg.unit}</p>
+                </div>
+              )
+            })}
           </div>
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Datos Detallados</h2>
+
+          <h2 className="text-lg font-bold text-gray-800 mb-3">
+            Datos Detallados ({filteredReadings.length} lecturas)
+          </h2>
           <table className="print-table">
-            <thead><tr><th>Fecha/Hora</th><th>Tipo</th><th>Valor</th><th>Unidad</th><th>Origen</th></tr></thead>
-            <tbody>{filteredReadings.slice(0, 500).map((r, idx) => (
-              <tr key={idx}><td>{new Date(r.timestamp).toLocaleString('es-CO')}</td><td>{r.sensorType}</td><td>{r.value}</td><td>{r.sensorType === 'SOIL_MOISTURE' || r.sensorType === 'HUMIDITY' ? '%' : '°C'}</td><td>ESP32</td></tr>
-            ))}</tbody>
+            <thead>
+              <tr>
+                <th>Fecha/Hora</th><th>Tipo</th><th>Valor</th><th>Unidad</th>
+                {!currentGh && <th>Invernadero</th>}
+                <th>Origen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredReadings.slice(0, 500).map((r, idx) => (
+                <tr key={idx}>
+                  <td>{new Date(r.timestamp).toLocaleString('es-CO')}</td>
+                  <td>{SENSOR_META[r.sensorType ?? '']?.label ?? r.sensorType}</td>
+                  <td>{r.value}</td>
+                  <td>{SENSOR_META[r.sensorType ?? '']?.unit ?? ''}</td>
+                  {!currentGh && <td>{ghDisplayName(r.greenhouseId)}</td>}
+                  <td>ESP32</td>
+                </tr>
+              ))}
+            </tbody>
           </table>
+
           <div className="no-print mt-8 flex gap-3">
-            <button onClick={() => setShowPrintPreview(false)} className="bg-gray-500 text-white px-6 py-2 rounded-lg font-semibold">Cerrar</button>
-            <button onClick={() => window.print()} className="bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold">Imprimir / PDF</button>
+            <button onClick={() => setShowPrintPreview(false)}
+              className="bg-gray-500 text-white px-6 py-2 rounded-lg font-semibold">Cerrar</button>
+            <button onClick={() => window.print()}
+              className="bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold">Imprimir / Guardar PDF</button>
           </div>
         </div>
       </div>
     )
   }
 
+  // ── Main view ──────────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div ref={headerRef} className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="section-title">Analíticas en Tiempo Real</h2>
-          <p className="section-subtitle">Gráficas e históricos de sensores</p>
+          <h2 className="section-title">Analíticas</h2>
+          <p className="section-subtitle">
+            {currentGh
+              ? `${currentGh.name}${currentGh.location ? ` · ${currentGh.location}` : ''}`
+              : 'Comportamiento global de todos los invernaderos'}
+          </p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button onClick={loadReadings} className="btn-primary px-4 py-2 text-sm">
             <RefreshCw size={14} /> Refrescar
           </button>
-          <button onClick={exportToCSV} className="btn-secondary px-4 py-2 text-sm">
-            <Download size={14} /> CSV
+          <button onClick={() => exportToCSV()} className="btn-secondary px-4 py-2 text-sm">
+            <Download size={14} /> {currentGh ? 'CSV individual' : 'CSV global'}
           </button>
           <button onClick={handlePrintPDF} className="btn-secondary px-4 py-2 text-sm">
-            <FileText size={14} /> PDF
+            <FileText size={14} /> {currentGh ? 'PDF individual' : 'PDF global'}
           </button>
         </div>
       </div>
 
-      {error && (
-        <div className="alert-danger text-sm">{error}</div>
+      {/* Greenhouse filter chips */}
+      {greenhouses.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setGhFilter('')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
+              ${ghFilter === ''
+                ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+          >
+            <Sprout size={11} /> Todos
+          </button>
+          {greenhouses.map(gh => (
+            <button key={gh.id}
+              onClick={() => setGhFilter(gh.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
+                ${ghFilter === gh.id
+                  ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+            >
+              <Building2 size={11} /> {gh.name}
+            </button>
+          ))}
+        </div>
       )}
+
+      {/* Per-greenhouse info banner */}
+      {currentGh && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-100 rounded-2xl">
+          <div className="p-2 bg-green-100 rounded-xl shrink-0">
+            <Building2 size={16} className="text-green-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-green-800">{currentGh.name}</p>
+            <p className="text-xs text-green-600 truncate">
+              {[currentGh.location, currentGh.description].filter(Boolean).join(' · ') || 'Sin descripción'}
+            </p>
+          </div>
+          {currentGh.deviceId && (
+            <span className="font-mono text-xs text-gray-400 bg-white border border-gray-200 px-2 py-1 rounded-lg shrink-0">
+              {currentGh.deviceId}
+            </span>
+          )}
+        </div>
+      )}
+
+      {error && <div className="alert-danger text-sm">{error}</div>}
 
       {/* Range selector */}
       <div className="card p-3">
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {RANGES.map(r => (
             <button key={r.key} onClick={() => setRange(r.key)}
               className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
@@ -188,50 +335,72 @@ export default function AnalyticsPage() {
         </div>
       ) : (
         <>
+          {/* Charts grid */}
           <div ref={chartsRef} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {CHARTS.map(({ type, label, icon: Icon, color, unit }) => {
-              const stats = getStats(type)
-              const data  = getChartData(type)
+            {chartsToShow.map(({ type, label, icon: Icon, color, unit }) => {
+              const stats = getStats(type, filteredReadings)
+              const data  = getChartData(type, filteredReadings)
               return (
                 <div key={type} className="card p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <Icon size={16} style={{ color }} />
                     <h3 className="font-semibold text-gray-800 text-sm">{label}</h3>
+                    <span className="ml-auto text-[10px] font-mono text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100">
+                      {filteredReadings.filter(r => r.sensorType === type).length} lect.
+                    </span>
                   </div>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={data}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f4f0" />
-                      <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} domain={['dataMin - 5', 'dataMax + 5']} />
-                      <Tooltip
-                        contentStyle={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 4px 16px rgba(0,0,0,0.06)', fontSize: 12 }}
-                        formatter={(v: number | string) => [`${v}${unit}`, label]}
-                      />
-                      <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} activeDot={{ r: 3 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {data.length === 0 ? (
+                    <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">
+                      Sin datos en este período
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <LineChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f4f0" />
+                        <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false}
+                          domain={['dataMin - 2', 'dataMax + 2']} />
+                        <Tooltip
+                          contentStyle={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 4px 16px rgba(0,0,0,0.06)', fontSize: 12 }}
+                          formatter={(v: number | string) => [`${v}${unit}`, label]}
+                        />
+                        <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} activeDot={{ r: 3 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
                   <div className="grid grid-cols-4 gap-2 mt-3">
-                    {[['Mín', stats.min], ['Máx', stats.max], ['Prom', stats.avg], ['Actual', stats.current]].map(([lbl, val]) => (
-                      <div key={String(lbl)} className="bg-gray-50 rounded-xl p-2 text-center">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wide">{lbl}</p>
-                        <p className="text-sm font-bold text-gray-800 font-mono mt-0.5">{val}{typeof val === 'string' && val !== '—' ? unit : ''}</p>
-                      </div>
-                    ))}
+                    {(['Mín', 'Máx', 'Prom', 'Actual'] as const).map((lbl, i) => {
+                      const val = [stats.min, stats.max, stats.avg, stats.current][i]
+                      return (
+                        <div key={lbl} className="bg-gray-50 rounded-xl p-2 text-center">
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wide">{lbl}</p>
+                          <p className="text-sm font-bold text-gray-800 font-mono mt-0.5">
+                            {val}{typeof val === 'string' && val !== '—' ? unit : ''}
+                          </p>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )
             })}
           </div>
 
-          {/* Summary */}
+          {/* Summary card */}
           <div className="card p-5">
-            <h3 className="text-sm font-semibold text-gray-800 mb-4">Resumen del período</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-800">
+                Resumen — {RANGES.find(r => r.key === range)?.label}
+                {currentGh && <span className="ml-2 text-green-600 font-normal">· {currentGh.name}</span>}
+              </h3>
+              <span className="text-xs text-gray-400">{filteredReadings.length} lecturas totales</span>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'Lecturas temperatura', count: filteredReadings.filter(r => r.sensorType === 'TEMPERATURE_INTERNAL').length, color: 'border-orange-500' },
-                { label: 'Lecturas humedad',      count: filteredReadings.filter(r => r.sensorType === 'HUMIDITY').length,             color: 'border-sky-500'    },
-                { label: 'Lecturas suelo',         count: filteredReadings.filter(r => r.sensorType === 'SOIL_MOISTURE').length,        color: 'border-green-500'  },
-                { label: 'Total lecturas',          count: filteredReadings.length,                                                      color: 'border-purple-500' },
+                { label: 'Temperatura', count: filteredReadings.filter(r => r.sensorType?.startsWith('TEMP')).length, color: 'border-orange-500' },
+                { label: 'Humedad',     count: filteredReadings.filter(r => r.sensorType === 'HUMIDITY').length,      color: 'border-sky-500'    },
+                { label: 'Suelo',       count: filteredReadings.filter(r => r.sensorType === 'SOIL_MOISTURE').length, color: 'border-green-500'  },
+                { label: 'Total',       count: filteredReadings.length,                                               color: 'border-purple-500' },
               ].map(({ label, count, color }) => (
                 <div key={label} className={`border-l-4 ${color} pl-3`}>
                   <p className="text-xs text-gray-500">{label}</p>
@@ -240,6 +409,63 @@ export default function AnalyticsPage() {
               ))}
             </div>
           </div>
+
+          {/* Per-GH activity breakdown — only in global mode with 2+ greenhouses */}
+          {ghFilter === '' && greenhouses.length > 1 && (
+            <div className="card p-5">
+              <h3 className="text-sm font-semibold text-gray-800 mb-4">
+                Actividad por invernadero
+                <span className="ml-2 text-xs font-normal text-gray-400">
+                  — {RANGES.find(r => r.key === range)?.label}
+                </span>
+              </h3>
+              <div className="space-y-3">
+                {greenhouses.map(gh => {
+                  const ghReadings = filteredReadings.filter(r => r.greenhouseId === gh.id)
+                  const pct = filteredReadings.length > 0
+                    ? Math.round((ghReadings.length / filteredReadings.length) * 100)
+                    : 0
+                  const tempVals  = ghReadings.filter(r => r.sensorType?.startsWith('TEMP')).map(r => r.value)
+                  const avgTemp   = tempVals.length > 0
+                    ? (tempVals.reduce((a, b) => a + b, 0) / tempVals.length).toFixed(1)
+                    : null
+                  return (
+                    <div key={gh.id} className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 w-36 shrink-0">
+                        <Building2 size={12} className="text-green-500 shrink-0" />
+                        <span className="text-xs font-medium text-gray-700 truncate">{gh.name}</span>
+                      </div>
+                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-700"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {avgTemp && (
+                          <span className="text-xs font-mono text-orange-600 bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded-lg">
+                            {avgTemp}°C
+                          </span>
+                        )}
+                        <span className="text-xs font-mono text-gray-500 w-16 text-right">{ghReadings.length} lect.</span>
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => setGhFilter(gh.id)}
+                            className="text-[10px] font-semibold text-green-600 hover:text-green-800 underline underline-offset-2">
+                            Ver
+                          </button>
+                          <span className="text-gray-300">·</span>
+                          <button onClick={() => exportToCSV(gh)}
+                            className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 underline underline-offset-2 flex items-center gap-0.5">
+                            <Download size={9} /> CSV
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
