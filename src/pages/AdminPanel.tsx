@@ -78,11 +78,11 @@ export default function AdminPanel({ user }: AdminPanelProps) {
     // Normalize IDs — backend may return id as string despite TS typing
     const u = users.find(u => Number(u.id) === Number(userId))
     if (u?.email) {
-      const byEmail = readAccessByEmail(u.email)
+      const byEmail = readAccessByEmail(u.email, userId)
       const updatedByEmail = checked
         ? [...new Set([...byEmail, ghId])]
         : byEmail.filter(id => id !== ghId)
-      saveAccessByEmail(u.email, updatedByEmail)
+      saveAccessByEmail(u.email, userId, updatedByEmail)
     }
     setAccessMap(prev => ({ ...prev, [userId]: updated }))
   }

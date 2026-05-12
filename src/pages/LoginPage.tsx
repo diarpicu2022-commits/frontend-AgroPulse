@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Sprout, User, Lock, Eye, EyeOff, Chrome, ArrowRight, Mail } from 'lucide-react'
 import anime from 'animejs'
+import emailjs from '@emailjs/browser'
 import { useAuth } from '../context/AuthContext'
 import { userRepository } from '../repositories'
 import type { AppUser } from '../types'
@@ -27,6 +28,7 @@ export default function LoginPage() {
   const [verifyCode,  setVerifyCode]  = useState('')
   const [codeDigits,  setCodeDigits]  = useState(['', '', '', '', '', ''])
   const [savedCreds,  setSavedCreds]  = useState({ username: '', password: '', email: '' })
+  const [emailSent,   setEmailSent]   = useState(false)
 
   const cardRef    = useRef<HTMLDivElement>(null)
   const blobRef1   = useRef<HTMLDivElement>(null)
@@ -72,6 +74,10 @@ export default function LoginPage() {
     setLoading(true); setError('')
     try {
       const response = await userRepository.login(username, password) as AppUser
+      if (response.active === false) {
+        setError('Tu cuenta ha sido desactivada. Contacta al administrador.')
+        return
+      }
       login({ ...response, email: response.email ?? response.username, role: response.role === 'ADMIN' ? 'admin' : 'user', provider: response.provider || 'LOCAL' })
     } catch { setError('Credenciales incorrectas. Intenta de nuevo.') }
     finally { setLoading(false) }
@@ -91,8 +97,25 @@ export default function LoginPage() {
       setVerifyCode(code)
       setSavedCreds({ username: regUser.trim(), password: regPass, email: regEmail.trim() })
       setCodeDigits(['', '', '', '', '', ''])
+
+      // Try to send via EmailJS if configured
+      const serviceId  = (import.meta.env.VITE_EMAILJS_SERVICE_ID  as string) || ''
+      const templateId = (import.meta.env.VITE_EMAILJS_TEMPLATE_ID as string) || ''
+      const publicKey  = (import.meta.env.VITE_EMAILJS_PUBLIC_KEY  as string) || ''
+      let sent = false
+      if (serviceId && templateId && publicKey) {
+        try {
+          await emailjs.send(serviceId, templateId, {
+            to_email:          regEmail.trim(),
+            to_name:           regName.trim() || regUser.trim(),
+            verification_code: code,
+          }, publicKey)
+          sent = true
+        } catch { /* fallback: show on screen */ }
+      }
+      setEmailSent(sent)
+
       setVerifying(true)
-      // Animate verify screen in
       setTimeout(() => {
         if (!verifyRef.current) return
         const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -219,18 +242,26 @@ export default function LoginPage() {
                   <p className="text-xs text-white/50">Cuenta creada para <span className="text-green-300">{savedCreds.email}</span></p>
                 </div>
 
-                {/* Code display */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-                  <p className="text-[10px] text-white/40 uppercase tracking-widest mb-3">Tu código de verificación</p>
-                  <div className="flex justify-center gap-2">
-                    {verifyCode.split('').map((d, i) => (
-                      <div key={i} className="w-9 h-11 bg-white/10 border border-green-500/30 rounded-xl flex items-center justify-center text-xl font-bold font-mono text-green-300">
-                        {d}
-                      </div>
-                    ))}
+                {/* Code: email confirmation OR on-screen fallback */}
+                {emailSent ? (
+                  <div className="bg-green-500/10 border border-green-500/25 rounded-2xl p-4 text-center space-y-1">
+                    <Mail size={18} className="mx-auto text-green-400 mb-2" />
+                    <p className="text-sm font-semibold text-green-300">Código enviado a tu correo</p>
+                    <p className="text-[11px] text-white/40">Revisa tu bandeja de entrada (y spam) en <span className="text-green-300">{savedCreds.email}</span></p>
                   </div>
-                  <p className="text-[10px] text-white/30 mt-3">Introdúcelo en los campos de abajo</p>
-                </div>
+                ) : (
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+                    <p className="text-[10px] text-white/40 uppercase tracking-widest mb-3">Tu código de verificación</p>
+                    <div className="flex justify-center gap-2">
+                      {verifyCode.split('').map((d, i) => (
+                        <div key={i} className="w-9 h-11 bg-white/10 border border-green-500/30 rounded-xl flex items-center justify-center text-xl font-bold font-mono text-green-300">
+                          {d}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-white/30 mt-3">Introdúcelo en los campos de abajo</p>
+                  </div>
+                )}
 
                 {/* Error */}
                 {error && (

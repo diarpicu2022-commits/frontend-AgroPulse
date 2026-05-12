@@ -73,28 +73,33 @@ export function removeUserAccess(userId: number, email?: string | null): void {
   } catch {}
 }
 
-// Email-keyed access — more reliable than ID for Google OAuth users
-export function saveAccessByEmail(email: string, ids: number[]): void {
+// Email-keyed access — bound to userId so re-registration with same email gets no stale access
+type EmailAccessEntry = { userId: number; ids: number[] }
+
+export function saveAccessByEmail(email: string, userId: number, ids: number[]): void {
   try {
     const raw = localStorage.getItem('agropulse_access_email')
-    const all = raw ? (JSON.parse(raw) as Record<string, number[]>) : {}
-    all[email.toLowerCase()] = ids
+    const all = raw ? (JSON.parse(raw) as Record<string, EmailAccessEntry>) : {}
+    all[email.toLowerCase()] = { userId, ids }
     localStorage.setItem('agropulse_access_email', JSON.stringify(all))
   } catch {}
 }
 
-export function readAccessByEmail(email: string): number[] {
+export function readAccessByEmail(email: string, userId: number): number[] {
   try {
     const raw = localStorage.getItem('agropulse_access_email')
     if (!raw) return []
-    const all = JSON.parse(raw) as Record<string, number[]>
-    return all[email.toLowerCase()] ?? []
+    const all = JSON.parse(raw) as Record<string, EmailAccessEntry | number[]>
+    const entry = all[email.toLowerCase()]
+    if (!entry) return []
+    if (Array.isArray(entry)) return [] // legacy format — userId unknown, deny
+    return entry.userId === userId ? entry.ids : []
   } catch { return [] }
 }
 
 function resolveAccess(userId: number, email?: string | null): number[] {
   const byId    = readAccess(userId)
-  const byEmail = email ? readAccessByEmail(email) : []
+  const byEmail = email ? readAccessByEmail(email, userId) : []
   return [...new Set([...byId, ...byEmail])]
 }
 
@@ -185,6 +190,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTimeout(fetchTimer)
         if (response.ok) {
           const data = await response.json() as AppUser
+          // Block soft-deleted users — they must re-register and request access again
+          if (data.active === false) return
           const role = data.role === 'ADMIN' || isAdmin ? 'admin' : 'user'
           const finalUser: AppUser = {
             ...data,
@@ -193,7 +200,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             fullName,
             role, provider: 'GOOGLE',
             avatar:    avatarUrl,   // Google metadata always wins
-            active:    true,
           }
           if (authUser.email) cacheProfile(authUser.email, { avatar: avatarUrl, full_name: fullName })
           setUser(finalUser)
@@ -226,6 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = (userData: AppUser) => {
+    if (userData.active === false) return // Block deleted/deactivated users
     setUser(userData)
     if (userData.email && userData.avatar) cacheProfile(userData.email, { avatar: userData.avatar, full_name: userData.full_name })
     const admin = isAdminRole(userData.role)

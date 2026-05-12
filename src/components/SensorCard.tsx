@@ -63,7 +63,7 @@ export default function SensorCard({ icon: Icon, label, value, unit, color, min,
       <div>
         <p className="stat-label mb-1">{label}</p>
         <div className="flex items-baseline gap-1.5">
-          <span ref={valueRef} className="stat-value leading-none">
+          <span ref={valueRef} className="text-xl sm:text-2xl md:text-3xl font-bold font-mono text-gray-900 leading-none">
             {value != null ? value.toFixed(1) : '—'}
           </span>
           <span className="text-sm text-gray-400 font-medium">{unit}</span>

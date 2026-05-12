@@ -178,8 +178,8 @@ export default function GreenhousePage() {
       const currentAccess = readAccess(uid)
       if (!currentAccess.includes(ghId)) saveAccess(uid, [...currentAccess, ghId])
       if (targetUser.email) {
-        const currentByEmail = readAccessByEmail(targetUser.email)
-        if (!currentByEmail.includes(ghId)) saveAccessByEmail(targetUser.email, [...currentByEmail, ghId])
+        const currentByEmail = readAccessByEmail(targetUser.email, uid)
+        if (!currentByEmail.includes(ghId)) saveAccessByEmail(targetUser.email, uid, [...currentByEmail, ghId])
       }
       setAssignUserId('')
     } catch (err) { alert('Error asignando usuario: ' + (err as Error).message) }
@@ -194,7 +194,7 @@ export default function GreenhousePage() {
       return { ...prev, [ghId]: next }
     })
     saveAccess(userId, readAccess(userId).filter(id => id !== ghId))
-    if (removedUser?.email) saveAccessByEmail(removedUser.email, readAccessByEmail(removedUser.email).filter(id => id !== ghId))
+    if (removedUser?.email) saveAccessByEmail(removedUser.email, userId, readAccessByEmail(removedUser.email, userId).filter(id => id !== ghId))
     try {
       await greenhouseRepository.removeUser(ghId, userId)
     } catch (err) {
