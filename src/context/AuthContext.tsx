@@ -240,25 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshAccess = () => {
     if (!user || isAdminRole(user.role)) return
     const localIds = resolveAccess(user.id, user.email)
-    if (localIds.length > 0) { setAllowedGreenhouseIds(localIds); return }
-    // No local assignment — check backend as fallback
-    const currentUser = user
-    fetch(`${API_URL}/api/greenhouses`)
-      .then(res => res.ok ? res.json() : null)
-      .then((data: unknown) => {
-        if (!data) { setAllowedGreenhouseIds([]); return }
-        const ghs = (Array.isArray(data) ? data : ((data as Record<string, unknown>).greenhouses ?? [])) as { id: number }[]
-        if (ghs.length > 0) {
-          const ghIds = ghs.map(g => g.id)
-          // Cache so subsequent logins work without re-checking
-          saveAccess(currentUser.id, ghIds)
-          if (currentUser.email) saveAccessByEmail(currentUser.email, ghIds)
-          setAllowedGreenhouseIds(ghIds)
-        } else {
-          setAllowedGreenhouseIds([])
-        }
-      })
-      .catch(() => setAllowedGreenhouseIds([]))
+    setAllowedGreenhouseIds(localIds.length > 0 ? localIds : [])
   }
 
   const logout = async () => {
