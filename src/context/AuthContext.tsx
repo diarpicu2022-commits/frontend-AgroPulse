@@ -29,6 +29,50 @@ export function saveAccess(userId: number, ids: number[]): void {
   } catch {}
 }
 
+export function removeUserAccess(userId: number, email?: string | null): void {
+  try {
+    // Remove by user ID
+    const rawId = localStorage.getItem('agropulse_assignments')
+    if (rawId) {
+      const all = JSON.parse(rawId) as Record<string, number[]>
+      delete all[String(userId)]
+      localStorage.setItem('agropulse_assignments', JSON.stringify(all))
+    }
+    if (email) {
+      const key = email.toLowerCase()
+      // Remove by email
+      const rawEmail = localStorage.getItem('agropulse_access_email')
+      if (rawEmail) {
+        const all = JSON.parse(rawEmail) as Record<string, number[]>
+        delete all[key]
+        localStorage.setItem('agropulse_access_email', JSON.stringify(all))
+      }
+      // Remove from profile cache
+      const rawProfile = localStorage.getItem('agropulse_profile_cache')
+      if (rawProfile) {
+        const all = JSON.parse(rawProfile) as Record<string, unknown>
+        delete all[key]
+        localStorage.setItem('agropulse_profile_cache', JSON.stringify(all))
+      }
+    }
+    // Remove from every per-greenhouse user cache
+    const keysToUpdate: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k?.startsWith('agropulse_gh_users_')) keysToUpdate.push(k)
+    }
+    keysToUpdate.forEach(k => {
+      try {
+        const raw = localStorage.getItem(k)
+        if (!raw) return
+        const users = JSON.parse(raw) as { id: number }[]
+        const filtered = users.filter(u => Number(u.id) !== Number(userId))
+        if (filtered.length !== users.length) localStorage.setItem(k, JSON.stringify(filtered))
+      } catch {}
+    })
+  } catch {}
+}
+
 // Email-keyed access — more reliable than ID for Google OAuth users
 export function saveAccessByEmail(email: string, ids: number[]): void {
   try {

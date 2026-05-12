@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Users, Plus, X, Trash2, Chrome } from 'lucide-react'
 import anime from 'animejs'
 import { userRepository } from '../repositories'
-import { supabase, getCachedProfile } from '../context/AuthContext'
+import { supabase, getCachedProfile, removeUserAccess } from '../context/AuthContext'
 import type { UserDto, UserRole } from '../types'
 
 interface MergedUser extends UserDto {
@@ -87,9 +87,32 @@ export default function UsersPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (confirm('¿Eliminar este usuario?')) {
-      try { await userRepository.remove(id); loadUsers() }
-      catch (err) { alert('Error: ' + (err as Error).message) }
+    if (!confirm('¿Eliminar este usuario? Se quitará también de todos los invernaderos asignados.')) return
+    const target = users.find(u => u.id === id)
+    const card   = document.getElementById(`user-card-${id}`)
+    if (card) {
+      await new Promise<void>(resolve => {
+        anime({
+          targets:      card,
+          opacity:      [1, 0],
+          translateX:   [0, 20],
+          height:       [card.offsetHeight, 0],
+          marginBottom: [12, 0],
+          paddingTop:   [16, 0],
+          paddingBottom:[16, 0],
+          duration: 280,
+          easing: 'easeInCubic',
+          complete: () => resolve(),
+        })
+      })
+    }
+    try {
+      await userRepository.remove(id)
+      removeUserAccess(id, target?.email)
+      setUsers(prev => prev.filter(u => u.id !== id))
+    } catch (err) {
+      loadUsers()
+      alert('Error: ' + (err as Error).message)
     }
   }
 
@@ -155,7 +178,7 @@ export default function UsersPage() {
             const isAdmin     = u.role === 'ADMIN' || u.role === 'admin'
             const avatarUrl   = u.avatar || (u.email ? getCachedProfile(u.email)?.avatar : undefined)
             return (
-              <div key={u.id} className="card p-4">
+              <div key={u.id} id={`user-card-${u.id}`} className="card p-4">
                 <div className="flex items-center gap-4">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="avatar" className="w-11 h-11 rounded-2xl object-cover ring-2 ring-green-200 shrink-0" />
