@@ -268,6 +268,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshAccess = () => {
     if (!user || isAdminRole(user.role)) return
+
+    // Caso Google con id=0 (backend estaba durmiendo al login): re-autenticar para obtener ID real
+    if (user.id === 0 && user.email) {
+      ;(async () => {
+        try {
+          const r = await fetch(`${API_URL}/api/auth/login`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ email: user.email, googleId: 'refresh' }),
+          })
+          if (r.ok) {
+            const d = await r.json() as AppUser
+            if (d.active === false) return
+            if (d.id && d.id > 0) {
+              setUser(prev => prev ? { ...prev, id: d.id } : prev)
+              const realIds = resolveAccess(d.id, user.email)
+              setAllowedGreenhouseIds(realIds.length > 0 ? realIds : [])
+              return
+            }
+          }
+        } catch { /* sin conexión — intentar con datos locales */ }
+        const localIds = resolveAccess(0, user.email)
+        setAllowedGreenhouseIds(localIds.length > 0 ? localIds : [])
+      })()
+      return
+    }
+
     const localIds = resolveAccess(user.id, user.email)
     setAllowedGreenhouseIds(localIds.length > 0 ? localIds : [])
   }
