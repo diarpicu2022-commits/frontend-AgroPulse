@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Sprout, User, Lock, Eye, EyeOff, Chrome, ArrowRight, Mail } from 'lucide-react'
 import anime from 'animejs'
 import emailjs from '@emailjs/browser'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, removeUserAccess } from '../context/AuthContext'
 import { userRepository } from '../repositories'
 import type { AppUser } from '../types'
 
@@ -156,6 +156,8 @@ export default function LoginPage() {
     setVerifying(false)
     try {
       const response = await userRepository.login(savedCreds.username, savedCreds.password) as AppUser
+      // Cuenta nueva: borrar cualquier acceso heredado de localStorage antes de entrar
+      removeUserAccess(response.id ?? 0, response.email ?? savedCreds.email)
       login({ ...response, email: response.email ?? savedCreds.email, role: response.role === 'ADMIN' ? 'admin' : 'user', provider: 'LOCAL' })
     } catch {
       setSuccess('¡Email verificado! Ya puedes ingresar con tus credenciales.')

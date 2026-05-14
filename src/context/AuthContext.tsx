@@ -208,9 +208,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch { clearTimeout(fetchTimer) }
 
+      // Backend no respondió (cold start en Render) — usar fallback local y reintentar
+      // en 6 s para guardar al usuario en la BD cuando el servidor despierte.
       if (authUser.email) cacheProfile(authUser.email, { avatar: avatarUrl, full_name: fullName })
       setUser(fallback)
       setAllowedGreenhouseIds(isAdmin ? null : resolveAccess(0, authUser.email))
+
+      if (!isAdmin) {
+        setTimeout(async () => {
+          try {
+            const r = await fetch(`${API_URL}/api/auth/login`, {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ email: authUser.email, googleId: authUser.id, name: fullName }),
+            })
+            if (r.ok) {
+              const d = await r.json() as AppUser
+              if (d.active === false) return
+              if (d.id && d.id > 0) {
+                // Servidor despertó: actualizar ID real para que el admin pueda verlo
+                setUser(prev => prev ? { ...prev, id: d.id, email: authUser.email } : prev)
+              }
+            }
+          } catch { /* ignorar — sin conexión */ }
+        }, 6000)
+      }
     }
 
     let resolved = false

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ShieldCheck, Users, Loader2, Sprout, ChevronDown, ChevronUp } from 'lucide-react'
+import { ShieldCheck, Users, Loader2, Sprout, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
 import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
 import { userRepository, greenhouseRepository } from '../repositories'
@@ -90,14 +90,25 @@ export default function AdminPanel({ user }: AdminPanelProps) {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2.5 bg-blue-100 rounded-2xl">
-          <ShieldCheck size={20} className="text-blue-600" />
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-blue-100 rounded-2xl">
+            <ShieldCheck size={20} className="text-blue-600" />
+          </div>
+          <div>
+            <h2 className="section-title">Gestión de Roles</h2>
+            <p className="section-subtitle">Asigna roles y acceso a invernaderos</p>
+          </div>
         </div>
-        <div>
-          <h2 className="section-title">Gestión de Roles</h2>
-          <p className="section-subtitle">Asigna roles y acceso a invernaderos</p>
-        </div>
+        <button
+          onClick={loadUsers}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50"
+          title="Recargar lista de usuarios"
+        >
+          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          Recargar
+        </button>
       </div>
 
       {error && <div className="alert-danger text-sm">{error}</div>}
