@@ -19,6 +19,9 @@ const TYPE_LABEL: Record<string, string> = {
   WATER_PUMP:     'Bomba de Agua',
 }
 
+// Tipos que usan relé HW-383 (active-low): activeLow debe ser true
+const RELAY_TYPES = new Set(['PUMP', 'FAN', 'RELAY', 'MOTOR', 'EXTRACTOR', 'WATER_PUMP', 'HEAT_GENERATOR', 'DOOR'])
+
 interface ActuatorForm {
   name: string
   type: string
@@ -35,7 +38,7 @@ export default function ActuatorsPage() {
   const [loading,     setLoading]     = useState(true)
   const [showForm,    setShowForm]    = useState(false)
   const [editingId,   setEditingId]   = useState<number | null>(null)
-  const [form,        setForm]        = useState<ActuatorForm>({ name: '', type: 'PUMP', greenhouseId: '', gpioPin: '', activeLow: false })
+  const [form,        setForm]        = useState<ActuatorForm>({ name: '', type: 'PUMP', greenhouseId: '', gpioPin: '', activeLow: true })
   const [error,       setError]       = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -83,7 +86,7 @@ export default function ActuatorsPage() {
   }, [showForm])
 
   const resetForm = () => {
-    setForm({ name: '', type: 'PUMP', greenhouseId: '', gpioPin: '', activeLow: false })
+    setForm({ name: '', type: 'PUMP', greenhouseId: '', gpioPin: '', activeLow: true })
     setEditingId(null)
   }
 
@@ -104,7 +107,8 @@ export default function ActuatorsPage() {
 
   const handleEdit = (a: ActuatorDto) => {
     setEditingId(a.id)
-    setForm({ name: a.name || '', type: a.type || 'PUMP', greenhouseId: a.greenhouseId || '', gpioPin: a.gpioPin != null ? a.gpioPin : '', activeLow: a.activeLow || false })
+    const t = a.type || 'PUMP'
+    setForm({ name: a.name || '', type: t, greenhouseId: a.greenhouseId || '', gpioPin: a.gpioPin != null ? a.gpioPin : '', activeLow: a.activeLow || RELAY_TYPES.has(t) })
     setShowForm(true)
   }
 
@@ -170,7 +174,10 @@ export default function ActuatorsPage() {
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Tipo *</label>
-              <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className="input-field">
+              <select value={form.type} onChange={e => {
+                const t = e.target.value
+                setForm({ ...form, type: t, activeLow: RELAY_TYPES.has(t) ? true : form.activeLow })
+              }} className="input-field">
                 {Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
