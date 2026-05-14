@@ -203,7 +203,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           if (authUser.email) cacheProfile(authUser.email, { avatar: avatarUrl, full_name: fullName })
           setUser(finalUser)
-          setAllowedGreenhouseIds(isAdminRole(role) ? null : resolveAccess(data.id || 0, authUser.email))
+          if (isAdminRole(role)) {
+            setAllowedGreenhouseIds(null)
+          } else {
+            // Use greenhouse IDs from backend (source of truth), fall back to localStorage
+            const ghIds = (data.greenhouseIds && data.greenhouseIds.length > 0)
+              ? data.greenhouseIds
+              : resolveAccess(data.id || 0, authUser.email)
+            setAllowedGreenhouseIds(ghIds)
+          }
           return
         }
       } catch { clearTimeout(fetchTimer) }
@@ -258,7 +266,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData)
     if (userData.email && userData.avatar) cacheProfile(userData.email, { avatar: userData.avatar, full_name: userData.full_name })
     const admin = isAdminRole(userData.role)
-    setAllowedGreenhouseIds(admin ? null : resolveAccess(userData.id, userData.email))
+    if (admin) {
+      setAllowedGreenhouseIds(null)
+    } else {
+      // Use backend greenhouse IDs (source of truth), fallback to localStorage
+      const ghIds = (userData.greenhouseIds && userData.greenhouseIds.length > 0)
+        ? userData.greenhouseIds
+        : resolveAccess(userData.id, userData.email)
+      setAllowedGreenhouseIds(ghIds)
+    }
     setUserContext({
       id:         userData.id,
       role:       userData.role,
@@ -269,7 +285,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshAccess = () => {
     if (!user || isAdminRole(user.role)) return
 
-    // Caso Google con id=0 (backend estaba durmiendo al login): re-autenticar para obtener ID real
+    // Caso id=0: backend estaba dormido al login, re-autenticar para obtener ID real primero
     if (user.id === 0 && user.email) {
       ;(async () => {
         try {
@@ -283,20 +299,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (d.active === false) return
             if (d.id && d.id > 0) {
               setUser(prev => prev ? { ...prev, id: d.id } : prev)
-              const realIds = resolveAccess(d.id, user.email)
-              setAllowedGreenhouseIds(realIds.length > 0 ? realIds : [])
+              // Use backend greenhouse IDs directly from login response
+              const ghIds = (d.greenhouseIds && d.greenhouseIds.length > 0)
+                ? d.greenhouseIds
+                : resolveAccess(d.id, user.email)
+              setAllowedGreenhouseIds(ghIds)
               return
             }
           }
-        } catch { /* sin conexión — intentar con datos locales */ }
+        } catch { /* sin conexión */ }
         const localIds = resolveAccess(0, user.email)
         setAllowedGreenhouseIds(localIds.length > 0 ? localIds : [])
       })()
       return
     }
 
-    const localIds = resolveAccess(user.id, user.email)
-    setAllowedGreenhouseIds(localIds.length > 0 ? localIds : [])
+    // Fetch greenhouse access from backend — source of truth
+    ;(async () => {
+      try {
+        const r = await fetch(`${API_URL}/api/users/${user.id}/greenhouses`)
+        if (r.ok) {
+          const d = await r.json() as { ids: number[] }
+          setAllowedGreenhouseIds(d.ids)
+          return
+        }
+      } catch { /* sin conexión */ }
+      // Fallback to localStorage
+      const localIds = resolveAccess(user.id, user.email)
+      setAllowedGreenhouseIds(localIds.length > 0 ? localIds : [])
+    })()
   }
 
   const logout = async () => {

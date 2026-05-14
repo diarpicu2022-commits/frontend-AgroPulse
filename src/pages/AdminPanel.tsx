@@ -43,7 +43,10 @@ export default function AdminPanel({ user }: AdminPanelProps) {
   useEffect(() => {
     if (users.length === 0) return
     const map: Record<number, number[]> = {}
-    users.forEach(u => { map[u.id] = readAccess(u.id) })
+    users.forEach(u => {
+      // Backend is source of truth; localStorage is fallback for offline
+      map[u.id] = u.greenhouseIds ?? readAccess(u.id)
+    })
     setAccessMap(map)
   }, [users.length])
 
@@ -69,13 +72,27 @@ export default function AdminPanel({ user }: AdminPanelProps) {
     } finally { setChanging(null) }
   }
 
-  const toggleGreenhouseAccess = (userId: number, ghId: number, checked: boolean) => {
+  const toggleGreenhouseAccess = async (userId: number, ghId: number, checked: boolean) => {
     const current = accessMap[userId] ?? []
     const updated = checked
       ? [...new Set([...current, ghId])]
       : current.filter(id => id !== ghId)
+
+    // Optimistic UI update
+    setAccessMap(prev => ({ ...prev, [userId]: updated }))
+
+    // Persist to backend (source of truth)
+    try {
+      await userRepository.setGreenhouses(userId, updated, adminUser?.email || '')
+    } catch {
+      // Revert on failure
+      setAccessMap(prev => ({ ...prev, [userId]: current }))
+      setError('Error guardando acceso. Intenta de nuevo.')
+      return
+    }
+
+    // Also mirror to localStorage so the user's own browser has a fast local copy
     saveAccess(userId, updated)
-    // Normalize IDs — backend may return id as string despite TS typing
     const u = users.find(u => Number(u.id) === Number(userId))
     if (u?.email) {
       const byEmail = readAccessByEmail(u.email, userId)
@@ -84,7 +101,6 @@ export default function AdminPanel({ user }: AdminPanelProps) {
         : byEmail.filter(id => id !== ghId)
       saveAccessByEmail(u.email, userId, updatedByEmail)
     }
-    setAccessMap(prev => ({ ...prev, [userId]: updated }))
   }
 
   return (

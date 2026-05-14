@@ -104,6 +104,7 @@ export interface UserDto {
   avatar?: string | null
   provider?: string
   googleId?: string
+  greenhouseIds?: number[]
 }
 
 export interface RuleDto {

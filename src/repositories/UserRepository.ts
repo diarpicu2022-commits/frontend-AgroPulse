@@ -53,6 +53,16 @@ export class UserRepository extends BaseRepository {
       headers: { 'X-Admin-Email': adminEmail },
     })
   }
+
+  getGreenhouses(userId: number): Promise<{ ids: number[] }> {
+    return this.get(`/api/users/${userId}/greenhouses`)
+  }
+
+  setGreenhouses(userId: number, ids: number[], adminEmail: string): Promise<{ ids: number[] }> {
+    return this.put(`/api/auth/users/${userId}/greenhouses`, { ids }, {
+      headers: { 'X-Admin-Email': adminEmail },
+    })
+  }
 }
 
 export const userRepository = UserRepository.getInstance()
