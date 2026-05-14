@@ -1,11 +1,11 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { Sprout, Lock, Mail, BarChart3, Leaf, Cpu, RefreshCw, LogOut } from 'lucide-react'
 import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
 
 const STEPS = [
   { icon: Mail,      n: '01', title: 'Solicita Acceso',   desc: 'Pide al administrador que te asigne uno o más invernaderos en "Gestión de Roles".' },
-  { icon: Leaf,      n: '02', title: 'Admin Configura',   desc: 'El admin activa tus invernaderos. Usa el mismo navegador o dispositivo.' },
+  { icon: Leaf,      n: '02', title: 'Admin Configura',   desc: 'El admin abre "Gestión de Roles", expande tu usuario y activa los invernaderos.' },
   { icon: BarChart3, n: '03', title: 'Verifica y Accede', desc: 'Presiona el botón de abajo para revisar tu acceso y entrar al sistema.' },
 ]
 
@@ -17,6 +17,7 @@ const FEATURES = [
 
 export default function NoAccessPage() {
   const { user, logout, refreshAccess } = useAuth()
+  const [checking, setChecking] = useState(false)
   const logoRef  = useRef<HTMLDivElement>(null)
   const msgRef   = useRef<HTMLDivElement>(null)
   const stepsRef = useRef<HTMLDivElement>(null)
@@ -111,13 +112,19 @@ export default function NoAccessPage() {
         {/* Actions */}
         <div ref={actRef} className="flex flex-col items-center gap-3">
           <button
-            onClick={refreshAccess}
+            onClick={() => {
+              setChecking(true)
+              refreshAccess()
+              setTimeout(() => setChecking(false), 4000)
+            }}
+            disabled={checking}
             className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500
                        hover:from-green-600 hover:to-emerald-600 text-white font-semibold
                        px-6 py-3 rounded-2xl text-sm shadow-[0_0_20px_rgba(34,197,94,0.3)]
-                       transition-all duration-200 hover:-translate-y-0.5 transform-gpu cursor-pointer">
-            <RefreshCw size={15} />
-            Verificar acceso
+                       transition-all duration-200 hover:-translate-y-0.5 transform-gpu cursor-pointer
+                       disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0">
+            <RefreshCw size={15} className={checking ? 'animate-spin' : ''} />
+            {checking ? 'Verificando…' : 'Verificar acceso'}
           </button>
           <button
             onClick={logout}

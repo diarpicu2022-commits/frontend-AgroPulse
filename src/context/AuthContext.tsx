@@ -220,7 +220,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // en 6 s para guardar al usuario en la BD cuando el servidor despierte.
       if (authUser.email) cacheProfile(authUser.email, { avatar: avatarUrl, full_name: fullName })
       setUser(fallback)
-      setAllowedGreenhouseIds(isAdmin ? null : resolveAccess(0, authUser.email))
+      // Don't wipe existing access (e.g. from TOKEN_REFRESHED while backend is offline)
+      setAllowedGreenhouseIds(prev => {
+        if (!isAdmin && prev !== null && prev.length > 0) return prev
+        return isAdmin ? null : resolveAccess(0, authUser.email)
+      })
 
       if (!isAdmin) {
         setTimeout(async () => {
@@ -234,8 +238,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const d = await r.json() as AppUser
               if (d.active === false) return
               if (d.id && d.id > 0) {
-                // Servidor despertó: actualizar ID real para que el admin pueda verlo
                 setUser(prev => prev ? { ...prev, id: d.id, email: authUser.email } : prev)
+                // Also update greenhouse access now that we have real id and backend is up
+                if (d.greenhouseIds && d.greenhouseIds.length > 0) {
+                  setAllowedGreenhouseIds(d.greenhouseIds)
+                }
               }
             }
           } catch { /* ignorar — sin conexión */ }
