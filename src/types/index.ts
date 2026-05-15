@@ -4,6 +4,7 @@ export type SensorType =
   | 'TEMPERATURE_INTERNAL'
   | 'TEMPERATURE_EXTERNAL'
   | 'HUMIDITY'
+  | 'HUMIDITY_EXTERNAL'
   | 'SOIL_MOISTURE'
   | 'LIGHT'
   | 'CO2'

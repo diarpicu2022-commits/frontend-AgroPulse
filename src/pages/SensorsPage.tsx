@@ -37,17 +37,24 @@ export default function SensorsPage() {
     greenhouseRepository.list().then(d => setGreenhouses(d.greenhouses ?? [])).catch(() => {})
   }, [])
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadSensors() }, [filterGhId, allowedGreenhouseIds])
+  useEffect(() => { loadSensors() }, [filterGhId, allowedGreenhouseIds, greenhouses])
 
   const loadSensors = async () => {
     setLoading(true)
     try {
       const data = await sensorRepository.list(filterGhId ? parseInt(filterGhId) : null)
       const all  = data.sensors ?? []
-      // Operators only see sensors of allowed greenhouses
+      // Operators only see sensors from their greenhouses (by greenhouseId or by ESP32 deviceSource)
       const filtered = allowedGreenhouseIds === null
         ? all
-        : all.filter(s => s.greenhouseId == null || allowedGreenhouseIds.includes(s.greenhouseId))
+        : all.filter(s => {
+            if (s.greenhouseId != null && allowedGreenhouseIds.includes(s.greenhouseId)) return true
+            if (s.deviceSource) {
+              const gh = greenhouses.find(g => g.deviceId === s.deviceSource && allowedGreenhouseIds.includes(g.id))
+              if (gh) return true
+            }
+            return false
+          })
       setSensors(filtered)
       setError(null)
     } catch (err) { setError((err as Error).message) }
@@ -170,8 +177,16 @@ export default function SensorsPage() {
       ) : sensors.length === 0 ? (
         <div className="empty-state card p-10">
           <Activity size={40} className="empty-state-icon" />
-          <p className="empty-state-title">No hay sensores{filterGhId ? ' en este invernadero' : ''}</p>
-          <p className="empty-state-sub">Crea un sensor para comenzar a recibir lecturas.</p>
+          <p className="empty-state-title">
+            {allowedGreenhouseIds !== null
+              ? 'No hay sensores registrados en tu invernadero'
+              : filterGhId ? 'No hay sensores en este invernadero' : 'No hay sensores'}
+          </p>
+          <p className="empty-state-sub">
+            {allowedGreenhouseIds !== null
+              ? 'Los sensores aparecen aquí una vez que el ESP32 se conecta y reporta al backend.'
+              : 'Crea un sensor para comenzar a recibir lecturas.'}
+          </p>
           <button onClick={() => setShowForm(true)} className="btn-primary px-4 py-2 text-sm mt-4">
             <Plus size={14} /> Nuevo sensor
           </button>

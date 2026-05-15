@@ -45,7 +45,7 @@ export default function ActuatorsPage() {
 
   useEffect(() => { loadGreenhouses() }, [])
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadActuators() },  [filterGhId, allowedGreenhouseIds])
+  useEffect(() => { loadActuators() },  [filterGhId, allowedGreenhouseIds, greenhouses])
 
   const loadGreenhouses = async () => {
     try { const d = await greenhouseRepository.list(); setGreenhouses(d.greenhouses || []) } catch {}
@@ -58,7 +58,14 @@ export default function ActuatorsPage() {
       const all  = data.actuators || []
       const filtered = allowedGreenhouseIds === null
         ? all
-        : all.filter(a => a.greenhouseId == null || allowedGreenhouseIds.includes(a.greenhouseId))
+        : all.filter(a => {
+            if (a.greenhouseId != null && allowedGreenhouseIds.includes(a.greenhouseId)) return true
+            if (a.deviceSource) {
+              const gh = greenhouses.find(g => g.deviceId === a.deviceSource && allowedGreenhouseIds.includes(g.id))
+              if (gh) return true
+            }
+            return false
+          })
       setActuators(filtered)
       setError(null)
     } catch (err) { setError((err as Error).message) }

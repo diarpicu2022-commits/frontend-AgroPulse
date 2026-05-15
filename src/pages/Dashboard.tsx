@@ -15,13 +15,14 @@ import type { GreenhouseDto, CropDto, AlertDto, SensorReadingDto, SensorType, Au
 interface SensorMeta { label: string; unit: string; icon: LucideIcon; color: string }
 
 const SENSOR_META: Record<string, SensorMeta> = {
-  TEMPERATURE_INTERNAL: { label: 'Temp. Interior', unit: '°C',  icon: Thermometer, color: 'bg-orange-500' },
-  TEMPERATURE_EXTERNAL: { label: 'Temp. Exterior', unit: '°C',  icon: Thermometer, color: 'bg-blue-500'   },
-  TEMPERATURE:          { label: 'Temperatura',    unit: '°C',  icon: Thermometer, color: 'bg-orange-500' },
-  HUMIDITY:             { label: 'Humedad Aire',   unit: '%',   icon: Droplets,    color: 'bg-cyan-500'   },
-  SOIL_MOISTURE:        { label: 'Humedad Suelo',  unit: '%',   icon: Leaf,        color: 'bg-green-600'  },
-  LIGHT:                { label: 'Luminosidad',    unit: 'lx',  icon: Sun,         color: 'bg-yellow-500' },
-  CO2:                  { label: 'CO₂',            unit: 'ppm', icon: Activity,    color: 'bg-purple-500' },
+  TEMPERATURE_INTERNAL: { label: 'Temp. Interior',   unit: '°C',  icon: Thermometer, color: 'bg-orange-500' },
+  TEMPERATURE_EXTERNAL: { label: 'Temp. Exterior',   unit: '°C',  icon: Thermometer, color: 'bg-blue-500'   },
+  TEMPERATURE:          { label: 'Temperatura',      unit: '°C',  icon: Thermometer, color: 'bg-orange-500' },
+  HUMIDITY:             { label: 'Humedad Interior', unit: '%',   icon: Droplets,    color: 'bg-cyan-500'   },
+  HUMIDITY_EXTERNAL:    { label: 'Humedad Exterior', unit: '%',   icon: Droplets,    color: 'bg-sky-500'    },
+  SOIL_MOISTURE:        { label: 'Humedad Suelo',    unit: '%',   icon: Leaf,        color: 'bg-green-600'  },
+  LIGHT:                { label: 'Luminosidad',      unit: 'lx',  icon: Sun,         color: 'bg-yellow-500' },
+  CO2:                  { label: 'CO₂',              unit: 'ppm', icon: Activity,    color: 'bg-purple-500' },
 }
 
 interface ChartPoint { time: string; temp: number }
@@ -115,7 +116,7 @@ export default function Dashboard() {
           const tempData = readingsData.readings
             .filter(r => r.sensorType === tempType).slice(0, 20).reverse()
             .map(r => ({
-              time: new Date(r.timestamp).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+              time: new Date(r.timestamp).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' }),
               temp: parseFloat(r.value.toFixed(1)),
             }))
           setHistory(tempData)
@@ -139,7 +140,7 @@ export default function Dashboard() {
         const alertsData = await alertRepository.list()
         if (alertsData?.alerts) setAlerts(alertsData.alerts.slice(0, 5))
       } catch { /* alerts may not be ready */ }
-      setLastUpdate(new Date().toLocaleTimeString('es-CO'))
+      setLastUpdate(new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' }))
       setError(null)
     } catch (err) { setError((err as Error).message) }
     finally { setLoading(false) }
