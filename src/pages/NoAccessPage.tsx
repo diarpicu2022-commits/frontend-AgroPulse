@@ -24,12 +24,22 @@ export default function NoAccessPage() {
   const featRef  = useRef<HTMLDivElement>(null)
   const actRef   = useRef<HTMLDivElement>(null)
 
-  // Verificar acceso automáticamente al montar (el admin puede haber asignado mientras el usuario esperaba)
+  // Verificar acceso al montar y cada 10 s automáticamente
+  // (el admin puede asignar en cualquier momento; el usuario no debe tener que presionar nada)
   useEffect(() => {
     setChecking(true)
     refreshAccess()
-    const t = setTimeout(() => setChecking(false), 4000)
-    return () => clearTimeout(t)
+    const firstTimer = setTimeout(() => setChecking(false), 4000)
+
+    // Auto-poll: re-consulta al backend cada 10 s mientras la página esté visible
+    const poll = setInterval(() => {
+      refreshAccess()
+    }, 10000)
+
+    return () => {
+      clearTimeout(firstTimer)
+      clearInterval(poll)
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -132,7 +142,7 @@ export default function NoAccessPage() {
                        transition-all duration-200 hover:-translate-y-0.5 transform-gpu cursor-pointer
                        disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0">
             <RefreshCw size={15} className={checking ? 'animate-spin' : ''} />
-            {checking ? 'Verificando…' : 'Verificar acceso'}
+            {checking ? 'Verificando…' : 'Verificar ahora'}
           </button>
           <button
             onClick={logout}
