@@ -36,7 +36,8 @@ export default function SensorsPage() {
   useEffect(() => {
     greenhouseRepository.list().then(d => setGreenhouses(d.greenhouses ?? [])).catch(() => {})
   }, [])
-  useEffect(() => { loadSensors() }, [filterGhId])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadSensors() }, [filterGhId, allowedGreenhouseIds])
 
   const loadSensors = async () => {
     setLoading(true)

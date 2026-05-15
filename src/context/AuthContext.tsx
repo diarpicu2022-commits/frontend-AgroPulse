@@ -281,6 +281,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ? userData.greenhouseIds
         : resolveAccess(userData.id, userData.email)
       setAllowedGreenhouseIds(ghIds)
+
+      // Si no tiene acceso asignado, re-consultar al backend en 2 s
+      // (cubre el caso donde el admin acaba de asignar y la sesión local no se actualizó)
+      if (ghIds.length === 0 && userData.id > 0) {
+        setTimeout(async () => {
+          try {
+            const r = await fetch(`${API_URL}/api/users/${userData.id}/greenhouses`)
+            if (r.ok) {
+              const d = await r.json() as { ids: number[] }
+              if (d.ids && d.ids.length > 0) setAllowedGreenhouseIds(d.ids)
+            }
+          } catch { /* sin conexión — ignorar */ }
+        }, 2000)
+      }
     }
     setUserContext({
       id:         userData.id,

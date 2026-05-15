@@ -24,6 +24,14 @@ export default function NoAccessPage() {
   const featRef  = useRef<HTMLDivElement>(null)
   const actRef   = useRef<HTMLDivElement>(null)
 
+  // Verificar acceso automáticamente al montar (el admin puede haber asignado mientras el usuario esperaba)
+  useEffect(() => {
+    setChecking(true)
+    refreshAccess()
+    const t = setTimeout(() => setChecking(false), 4000)
+    return () => clearTimeout(t)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduced) return

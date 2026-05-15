@@ -44,7 +44,8 @@ export default function ActuatorsPage() {
   const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => { loadGreenhouses() }, [])
-  useEffect(() => { loadActuators() },  [filterGhId])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadActuators() },  [filterGhId, allowedGreenhouseIds])
 
   const loadGreenhouses = async () => {
     try { const d = await greenhouseRepository.list(); setGreenhouses(d.greenhouses || []) } catch {}
