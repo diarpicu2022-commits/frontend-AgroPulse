@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Zap, Plus, X, Edit2, Trash2, Power, PowerOff } from 'lucide-react'
+import { Zap, Plus, X, Edit2, Trash2, Power, PowerOff, RefreshCw } from 'lucide-react'
 import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
 import { actuatorRepository, greenhouseRepository } from '../repositories'
@@ -40,6 +40,7 @@ export default function ActuatorsPage() {
   const [editingId,   setEditingId]   = useState<number | null>(null)
   const [form,        setForm]        = useState<ActuatorForm>({ name: '', type: 'PUMP', greenhouseId: '', gpioPin: '', activeLow: true })
   const [error,       setError]       = useState<string | null>(null)
+  const [deduplicating, setDeduplicating] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -92,6 +93,33 @@ export default function ActuatorsPage() {
     if (reduced) return
     anime({ targets: formRef.current, opacity: [0, 1], scaleY: [0.94, 1], duration: 260, easing: 'easeOutBack' })
   }, [showForm])
+
+  const handleDeduplicate = async () => {
+    if (!confirm('¿Eliminar actuadores duplicados? Se conservará el de mayor ID por cada tipo+GPIO+invernadero.')) return
+    setDeduplicating(true)
+    try {
+      const data = await actuatorRepository.list(null)
+      const all  = data.actuators || []
+      const groups = new Map<string, ActuatorDto[]>()
+      for (const a of all) {
+        const key = `${a.type ?? ''}|${a.gpioPin ?? ''}|${a.greenhouseId ?? ''}`
+        if (!groups.has(key)) groups.set(key, [])
+        groups.get(key)!.push(a)
+      }
+      let deleted = 0
+      for (const [, group] of groups) {
+        if (group.length <= 1) continue
+        group.sort((a, b) => b.id - a.id)  // keep highest id
+        for (let i = 1; i < group.length; i++) {
+          await actuatorRepository.remove(group[i].id)
+          deleted++
+        }
+      }
+      alert(`Listo: se eliminaron ${deleted} duplicados.`)
+      loadActuators()
+    } catch (err) { alert('Error: ' + (err as Error).message) }
+    setDeduplicating(false)
+  }
 
   const resetForm = () => {
     setForm({ name: '', type: 'PUMP', greenhouseId: '', gpioPin: '', activeLow: true })
@@ -148,6 +176,15 @@ export default function ActuatorsPage() {
             <option value="">Todos los invernaderos</option>
             {greenhouses.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
+          {allowedGreenhouseIds === null && (
+            <button
+              onClick={handleDeduplicate}
+              disabled={deduplicating}
+              className="btn-secondary px-4 py-2 text-sm disabled:opacity-60">
+              <RefreshCw size={14} className={deduplicating ? 'animate-spin' : ''} />
+              {deduplicating ? 'Limpiando…' : 'Deduplicar'}
+            </button>
+          )}
           {!showForm && (
             <button onClick={() => { setShowForm(true); resetForm() }} className="btn-primary px-4 py-2 text-sm">
               <Plus size={14} /> Nuevo actuador

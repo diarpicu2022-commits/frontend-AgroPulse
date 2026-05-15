@@ -306,9 +306,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshAccess = () => {
     if (!user || isAdminRole(user.role)) return
 
-    // Caso id=0: backend estaba dormido al login, re-autenticar para obtener ID real primero
-    if (user.id === 0 && user.email) {
-      ;(async () => {
+    ;(async () => {
+      // Paso 1: consulta directa por ID (rápida, sin re-auth)
+      if (user.id > 0) {
+        try {
+          const r = await fetch(`${API_URL}/api/users/${user.id}/greenhouses`)
+          if (r.ok) {
+            const d = await r.json() as { ids: number[] }
+            setAllowedGreenhouseIds(d.ids)
+            return
+          }
+        } catch { /* sin conexión — continuar al paso 2 */ }
+      }
+
+      // Paso 2: re-auth para obtener ID real + greenhouses en un solo llamado
+      // (cubre el caso id=0 por cold-start y también confirma el estado actual)
+      if (user.email) {
         try {
           const r = await fetch(`${API_URL}/api/auth/login`, {
             method:  'POST',
@@ -319,35 +332,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const d = await r.json() as AppUser
             if (d.active === false) return
             if (d.id && d.id > 0) {
-              setUser(prev => prev ? { ...prev, id: d.id } : prev)
-              // Use backend greenhouse IDs directly from login response
-              const ghIds = (d.greenhouseIds && d.greenhouseIds.length > 0)
-                ? d.greenhouseIds
-                : resolveAccess(d.id, user.email)
-              setAllowedGreenhouseIds(ghIds)
+              if (!user.id || user.id === 0)
+                setUser(prev => prev ? { ...prev, id: d.id } : prev)
+              setAllowedGreenhouseIds(d.greenhouseIds ?? [])
               return
             }
           }
         } catch { /* sin conexión */ }
-        const localIds = resolveAccess(0, user.email)
-        setAllowedGreenhouseIds(localIds.length > 0 ? localIds : [])
-      })()
-      return
-    }
+      }
 
-    // Fetch greenhouse access from backend — source of truth
-    ;(async () => {
-      try {
-        const r = await fetch(`${API_URL}/api/users/${user.id}/greenhouses`)
-        if (r.ok) {
-          const d = await r.json() as { ids: number[] }
-          setAllowedGreenhouseIds(d.ids)
-          return
-        }
-      } catch { /* sin conexión */ }
-      // Fallback to localStorage
+      // Paso 3: localStorage como último recurso
+      // NO sobreescribir con [] en fallo de red — mantener estado actual
       const localIds = resolveAccess(user.id, user.email)
-      setAllowedGreenhouseIds(localIds.length > 0 ? localIds : [])
+      if (localIds.length > 0) setAllowedGreenhouseIds(localIds)
     })()
   }
 

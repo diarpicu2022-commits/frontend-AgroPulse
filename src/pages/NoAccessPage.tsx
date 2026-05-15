@@ -24,23 +24,18 @@ export default function NoAccessPage() {
   const featRef  = useRef<HTMLDivElement>(null)
   const actRef   = useRef<HTMLDivElement>(null)
 
+  // Ref para evitar stale closure en el interval — siempre apunta a la última versión
+  const refreshRef = useRef(refreshAccess)
+  useEffect(() => { refreshRef.current = refreshAccess }, [refreshAccess])
+
   // Verificar acceso al montar y cada 10 s automáticamente
-  // (el admin puede asignar en cualquier momento; el usuario no debe tener que presionar nada)
   useEffect(() => {
     setChecking(true)
-    refreshAccess()
+    refreshRef.current()
     const firstTimer = setTimeout(() => setChecking(false), 4000)
-
-    // Auto-poll: re-consulta al backend cada 10 s mientras la página esté visible
-    const poll = setInterval(() => {
-      refreshAccess()
-    }, 10000)
-
-    return () => {
-      clearTimeout(firstTimer)
-      clearInterval(poll)
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    const poll = setInterval(() => refreshRef.current(), 10000)
+    return () => { clearTimeout(firstTimer); clearInterval(poll) }
+  }, [])
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches

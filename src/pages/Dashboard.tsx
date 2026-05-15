@@ -116,7 +116,7 @@ export default function Dashboard() {
           const tempData = readingsData.readings
             .filter(r => r.sensorType === tempType).slice(0, 20).reverse()
             .map(r => ({
-              time: new Date(r.timestamp).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' }),
+              time: parseTs(r.timestamp).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' }),
               temp: parseFloat(r.value.toFixed(1)),
             }))
           setHistory(tempData)
@@ -146,7 +146,12 @@ export default function Dashboard() {
     finally { setLoading(false) }
   }
 
-  const uniqueTypes = [...new Set(readings.map(r => r.sensorType).filter(Boolean))] as SensorType[]
+  // Force UTC parsing: backend timestamps may lack 'Z' suffix
+  const parseTs = (ts: string) => new Date(/Z|[+-]\d{2}:\d{2}$/.test(ts) ? ts : ts + 'Z')
+
+  const allTypes = [...new Set(readings.map(r => r.sensorType).filter(Boolean))] as SensorType[]
+  const hasSpecificTemp = allTypes.some(t => t === 'TEMPERATURE_INTERNAL' || t === 'TEMPERATURE_EXTERNAL')
+  const uniqueTypes = allTypes.filter(t => !(t === 'TEMPERATURE' && hasSpecificTemp))
   const latestByType: Record<string, number> = {}
   for (const type of uniqueTypes) {
     const r = readings.find(r => r.sensorType === type)

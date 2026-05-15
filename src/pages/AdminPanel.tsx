@@ -253,7 +253,7 @@ export default function AdminPanel({ user }: AdminPanelProps) {
 
       <div className="alert-info text-sm">
         <ShieldCheck size={14} className="shrink-0 mt-0.5" />
-        <span>Los cambios de rol son inmediatos. El acceso a invernaderos se guarda localmente — el operario debe usar el mismo navegador.</span>
+        <span>Los cambios de rol y acceso se guardan en el servidor. El operario obtendrá acceso dentro de los próximos 10 segundos sin necesidad de cerrar sesión.</span>
       </div>
     </div>
   )
