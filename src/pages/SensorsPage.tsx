@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Activity, Plus, X, Cpu, Wifi } from 'lucide-react'
+import { Activity, Plus, X, Cpu, Wifi, RefreshCw } from 'lucide-react'
 import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
 import { sensorRepository, greenhouseRepository } from '../repositories'
@@ -29,7 +29,8 @@ export default function SensorsPage() {
   const [loading,     setLoading]     = useState(true)
   const [showForm,    setShowForm]    = useState(false)
   const [form,        setForm]        = useState<SensorForm>({ name: '', type: 'TEMPERATURE', location: '', protocol: 'DHT22', gpioPin: '', greenhouseId: '' })
-  const [error,       setError]       = useState<string | null>(null)
+  const [error,         setError]         = useState<string | null>(null)
+  const [deduplicating, setDeduplicating] = useState(false)
   const gridRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -105,6 +106,33 @@ export default function SensorsPage() {
     catch (err) { alert('Error: ' + (err as Error).message) }
   }
 
+  const handleDeduplicate = async () => {
+    if (!confirm('¿Eliminar sensores duplicados? Se conservará el de mayor ID por cada tipo+GPIO+invernadero.')) return
+    setDeduplicating(true)
+    try {
+      const data = await sensorRepository.list(null)
+      const all  = data.sensors ?? []
+      const groups = new Map<string, SensorDto[]>()
+      for (const s of all) {
+        const key = `${s.type ?? ''}|${s.gpioPin ?? ''}|${s.greenhouseId ?? ''}`
+        if (!groups.has(key)) groups.set(key, [])
+        groups.get(key)!.push(s)
+      }
+      let deleted = 0
+      for (const [, group] of groups) {
+        if (group.length <= 1) continue
+        group.sort((a, b) => b.id - a.id)
+        for (let i = 1; i < group.length; i++) {
+          await sensorRepository.remove(group[i].id)
+          deleted++
+        }
+      }
+      alert(`Listo: se eliminaron ${deleted} sensores duplicados.`)
+      loadSensors()
+    } catch (err) { alert('Error: ' + (err as Error).message) }
+    setDeduplicating(false)
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -119,6 +147,15 @@ export default function SensorsPage() {
             <option value="">Todos los invernaderos</option>
             {greenhouses.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
+          {allowedGreenhouseIds === null && (
+            <button
+              onClick={handleDeduplicate}
+              disabled={deduplicating}
+              className="btn-secondary px-4 py-2 text-sm disabled:opacity-60">
+              <RefreshCw size={14} className={deduplicating ? 'animate-spin' : ''} />
+              {deduplicating ? 'Limpiando…' : 'Deduplicar'}
+            </button>
+          )}
           <button onClick={() => setShowForm(!showForm)} className={showForm ? 'btn-secondary px-4 py-2 text-sm' : 'btn-primary px-4 py-2 text-sm'}>
             {showForm ? <><X size={14} /> Cancelar</> : <><Plus size={14} /> Nuevo</>}
           </button>

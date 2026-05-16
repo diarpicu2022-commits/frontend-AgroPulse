@@ -23,13 +23,14 @@ export function getUserContext(): UserContext {
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const url = `${API_URL}${endpoint}`
+  const { headers: optHeaders, ...restOptions } = options
   const config: RequestOptions = {
     headers: {
       'Content-Type': 'application/json',
       ...(_userCtx.adminEmail ? { 'X-Admin-Email': _userCtx.adminEmail } : {}),
-      ...(options.headers ?? {}),
+      ...(optHeaders ?? {}),
     },
-    ...options,
+    ...restOptions,
   }
 
   let res: Response
