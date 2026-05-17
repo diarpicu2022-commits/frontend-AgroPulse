@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { Building2, UserPlus, Cpu, Zap, ChevronDown, ChevronUp, Wifi, Loader2 } from 'lucide-react'
+import { Building2, UserPlus, Cpu, Zap, ChevronDown, ChevronUp, Wifi, Loader2, Camera } from 'lucide-react'
 import anime from 'animejs'
-import { useAuth, saveAccess, readAccess, saveAccessByEmail, readAccessByEmail } from '../context/AuthContext'
+import { useAuth, saveAccess, readAccess, saveAccessByEmail, readAccessByEmail, supabase } from '../context/AuthContext'
 import { greenhouseRepository, sensorRepository, actuatorRepository, deviceRepository } from '../repositories'
 import { userRepository } from '../repositories'
 import type {
@@ -48,6 +48,7 @@ export default function GreenhousePage() {
   const [showActuatorForm,  setShowActuatorForm]  = useState<Record<number, boolean>>({})
   const [showGpioMap,       setShowGpioMap]       = useState<Record<number, boolean>>({})
   const [error,             setError]             = useState<string | null>(null)
+  const [photoUploading,    setPhotoUploading]    = useState<Record<number, boolean>>({})
 
   const cardsRef = useRef<HTMLDivElement>(null)
   const formRef  = useRef<HTMLFormElement>(null)
@@ -235,6 +236,46 @@ export default function GreenhousePage() {
     } catch (err) { alert('Error: ' + (err as Error).message) }
   }
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, ghId: number) => {
+    const file = e.target.files?.[0]
+    if (!file || !supabase) return
+
+    const ALLOWED_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
+    const rawExt = (file.name.split('.').pop() ?? 'jpg').toLowerCase()
+    const ext = ALLOWED_EXTS.includes(rawExt) ? rawExt : 'jpg'
+    const path = `${ghId}.${ext}`
+
+    setPhotoUploading(prev => ({ ...prev, [ghId]: true }))
+
+    const spinnerEl = document.getElementById(`photo-spinner-${ghId}`)
+    if (spinnerEl) {
+      anime({ targets: spinnerEl, rotate: [0, 360], loop: true, duration: 800, easing: 'linear' })
+    }
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('greenhouse-photos')
+        .upload(path, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage
+        .from('greenhouse-photos')
+        .getPublicUrl(path)
+
+      await greenhouseRepository.update(ghId, { photoUrl: urlData.publicUrl })
+      setGreenhouses(prev =>
+        prev.map(g => g.id === ghId ? { ...g, photoUrl: urlData.publicUrl } : g)
+      )
+    } catch (err) {
+      console.error('Error subiendo foto:', err)
+      setError('No se pudo subir la foto. Verifica que el bucket "greenhouse-photos" existe en Supabase.')
+    } finally {
+      setPhotoUploading(prev => ({ ...prev, [ghId]: false }))
+      e.target.value = ''
+    }
+  }
+
   // ── GPIO Map pin color helper ──────────────────────────────────────────────
   const getPinStyle = (pin: number, usedGpios: number[]) => {
     if (GPIO_RESERVED.includes(pin)) return 'bg-red-200 text-red-800 border-red-300'
@@ -327,6 +368,39 @@ export default function GreenhousePage() {
                       <p className="text-xs mt-1 flex items-center gap-1 text-purple-600">
                         <Wifi size={11} /> ESP32: <span className="font-mono">{g.deviceId}</span>
                       </p>
+                    )}
+                    {isAdmin && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          id={`photo-input-${g.id}`}
+                          className="hidden"
+                          onChange={(e) => handlePhotoUpload(e, g.id)}
+                        />
+                        <label htmlFor={`photo-input-${g.id}`} className="cursor-pointer">
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-900/20 hover:bg-green-900/30
+                                          border border-green-500/20 rounded-lg transition-colors duration-200">
+                            {photoUploading[g.id] ? (
+                              <div id={`photo-spinner-${g.id}`} className="w-3.5 h-3.5 border border-green-400/50
+                                                                            border-t-green-400 rounded-full" />
+                            ) : (
+                              <Camera size={13} className="text-green-400" />
+                            )}
+                            <span className="text-xs text-green-400 font-medium">
+                              {g.photoUrl ? 'Cambiar foto' : 'Subir foto'}
+                            </span>
+                          </div>
+                        </label>
+                        {g.photoUrl && (
+                          <img
+                            src={g.photoUrl}
+                            alt="Foto"
+                            loading="lazy"
+                            className="w-8 h-8 rounded-lg object-cover border border-green-500/20"
+                          />
+                        )}
+                      </div>
                     )}
                   </div>
 

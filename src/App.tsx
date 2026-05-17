@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   Home, Activity, Leaf, Bell, Bot, Settings, LogOut,
   Cpu, Zap, BarChart3, ChevronRight, Mail,
-  Sprout, X, Menu, Key, Wifi
+  Sprout, X, Menu, Key, Wifi, MapPin
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import anime from 'animejs'
@@ -28,13 +28,14 @@ import AdminPanel     from './pages/AdminPanel'
 import ReportsPage    from './pages/ReportsPage'
 import RulesPage      from './pages/RulesPage'
 import GreenhousePage from './pages/GreenhousePage'
+import MapPage        from './pages/MapPage'
 import SettingsPage   from './pages/SettingsPage'
 import NoAccessPage   from './pages/NoAccessPage'
 
 type PageId =
   | 'dashboard' | 'analytics' | 'sensors' | 'actuators' | 'rules' | 'reports'
   | 'greenhouses' | 'crops' | 'ai' | 'ml' | 'alerts' | 'logs' | 'users'
-  | 'admin' | 'support' | 'settings'
+  | 'admin' | 'support' | 'settings' | 'map'
 
 interface NavGroup {
   label: string
@@ -60,6 +61,7 @@ const ADMIN_GROUPS: NavGroup[] = [
     label: 'Invernadero',
     items: [
       { id: 'greenhouses', label: 'Invernaderos',   icon: Sprout    },
+      { id: 'map',         label: 'Mapa',           icon: MapPin    },
       { id: 'sensors',     label: 'Sensores',       icon: Activity  },
       { id: 'actuators',   label: 'Actuadores',     icon: Zap       },
       { id: 'crops',       label: 'Cultivos',       icon: Leaf      },
@@ -99,6 +101,7 @@ const USER_GROUPS: NavGroup[] = [
     label: 'Invernadero',
     items: [
       { id: 'sensors',     label: 'Sensores',       icon: Activity  },
+      { id: 'map',         label: 'Mapa',           icon: MapPin    },
       { id: 'actuators',   label: 'Actuadores',     icon: Zap       },
       { id: 'crops',       label: 'Cultivos',       icon: Leaf      },
       { id: 'rules',       label: 'Automatización', icon: Cpu       },
@@ -370,6 +373,7 @@ function AppInner() {
           {page === 'rules'       && <RulesPage />}
           {page === 'reports'     && <ReportsPage />}
           {page === 'greenhouses' && <GreenhousePage />}
+          {page === 'map'         && <MapPage onNavigate={navigate} />}
           {page === 'crops'       && <CropsPage />}
           {page === 'ai'          && <AIPage />}
           {page === 'ml'          && <MLPage />}

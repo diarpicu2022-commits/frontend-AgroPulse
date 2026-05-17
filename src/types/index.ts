@@ -30,6 +30,9 @@ export interface GreenhouseDto {
   description?: string
   active: boolean
   deviceId?: string
+  latitude?: number | null
+  longitude?: number | null
+  photoUrl?: string | null
 }
 
 export interface SensorDto {

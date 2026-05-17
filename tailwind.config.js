@@ -28,6 +28,16 @@ export default {
         warning: '#d97706',
         danger:  '#dc2626',
         info:    '#0284c7',
+        // shadcn/ui CSS variable color mappings
+        foreground: 'var(--foreground)',
+        border:     'var(--border)',
+        ring:       'var(--ring)',
+        input:      'var(--input)',
+        card: { DEFAULT: 'var(--card)', foreground: 'var(--card-foreground)' },
+        popover: { DEFAULT: 'var(--popover)', foreground: 'var(--popover-foreground)' },
+        muted: { DEFAULT: 'var(--muted)', foreground: 'var(--muted-foreground)' },
+        accent: { DEFAULT: 'var(--accent)', foreground: 'var(--accent-foreground)' },
+        destructive: { DEFAULT: 'var(--destructive)', foreground: 'var(--destructive-foreground)' },
       },
       fontFamily: {
         heading: ['Fira Code', 'monospace'],
