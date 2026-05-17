@@ -1,15 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import {
   Thermometer, Droplets, Leaf, Bell, RefreshCw,
   Sun, Activity, ChevronDown, TrendingUp, type LucideIcon,
 } from 'lucide-react'
-import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
 import { Sprout } from 'lucide-react'
 import { greenhouseRepository, readingRepository, alertRepository, cropRepository } from '../repositories'
 import SensorCard from '../components/SensorCard'
 import AlertsBanner from '../components/AlertsBanner'
+import SplineGreenhouse from '../components/SplineGreenhouse'
+import { useGsapReveal } from '../hooks/useGsapReveal'
 import type { GreenhouseDto, CropDto, AlertDto, SensorReadingDto, SensorType, AutoAlert } from '../types'
 
 interface SensorMeta { label: string; unit: string; icon: LucideIcon; color: string }
@@ -39,7 +40,7 @@ export default function Dashboard() {
   const [loading,     setLoading]     = useState(true)
   const [lastUpdate,  setLastUpdate]  = useState<string | null>(null)
   const [error,       setError]       = useState<string | null>(null)
-  const gridRef = useRef<HTMLDivElement>(null)
+  const gridRef = useGsapReveal<HTMLDivElement>({ stagger: 0.07, duration: 0.45 })
 
   useEffect(() => {
     greenhouseRepository.list()
@@ -61,21 +62,6 @@ export default function Dashboard() {
     const interval = setInterval(loadData, 5000)
     return () => clearInterval(interval)
   }, [selectedGh?.id])
-
-  // Stagger sensor cards entrance on first load
-  useEffect(() => {
-    if (!gridRef.current || loading) return
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced) return
-    anime({
-      targets:    Array.from(gridRef.current.children) as Element[],
-      opacity:    [0, 1],
-      translateY: [16, 0],
-      delay:      anime.stagger(55),
-      duration:   380,
-      easing:     'easeOutCubic',
-    })
-  }, [loading])
 
   const generateAutoAlerts = (readingsData: SensorReadingDto[], cropData: CropDto): AutoAlert[] => {
     const newAlerts: AutoAlert[] = []
@@ -174,6 +160,37 @@ export default function Dashboard() {
           <span>Error cargando datos: {error}</span>
         </div>
       )}
+
+      {/* ── 3D Hero ───────────────────────────────────────────────── */}
+      <div style={{
+        display:        'flex',
+        justifyContent: 'flex-end',
+        alignItems:     'center',
+        height:         200,
+        position:       'relative',
+        borderRadius:   '1.5rem',
+        overflow:       'hidden',
+        background:     'linear-gradient(135deg, #0f2d17 0%, #0a1a10 100%)',
+        border:         '1px solid #1e4d2b55',
+        padding:        '1rem',
+      }}>
+        <div style={{ position: 'absolute', left: '1.5rem', top: '50%', transform: 'translateY(-50%)' }}>
+          <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#4ade8066', marginBottom: '0.3rem' }}>
+            Invernadero 3D
+          </p>
+          <p style={{ fontSize: '1.4rem', fontWeight: 800, color: '#bbf7d0', lineHeight: 1.1 }}>
+            {selectedGh?.name ?? 'Sin invernadero'}
+          </p>
+          {selectedGh && (
+            <p style={{ fontSize: '0.75rem', color: '#4ade8077', marginTop: '0.4rem' }}>
+              {uniqueTypes.length} sensores activos
+            </p>
+          )}
+        </div>
+        <div style={{ width: 200, height: 180, flexShrink: 0 }}>
+          <SplineGreenhouse />
+        </div>
+      </div>
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">

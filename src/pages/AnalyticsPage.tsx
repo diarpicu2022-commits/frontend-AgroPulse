@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import anime from 'animejs'
 import { readingRepository, greenhouseRepository } from '../repositories'
+import { useGsapReveal } from '../hooks/useGsapReveal'
 import type { SensorReadingDto, GreenhouseDto } from '../types'
 
 interface Stats { min: string | number; max: string | number; avg: string | number; current: string | number }
@@ -42,6 +43,7 @@ const RANGES: { key: RangeKey; label: string }[] = [
 ]
 
 export default function AnalyticsPage() {
+  const revealRef = useGsapReveal<HTMLDivElement>({ stagger: 0.06, duration: 0.45 })
   const [readings,         setReadings]         = useState<SensorReadingDto[]>([])
   const [greenhouses,      setGreenhouses]      = useState<GreenhouseDto[]>([])
   const [loading,          setLoading]          = useState(true)
@@ -241,7 +243,7 @@ export default function AnalyticsPage() {
 
   // ── Main view ──────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-5">
+    <div ref={revealRef} className="space-y-5">
       {/* Header */}
       <div ref={headerRef} className="flex items-start justify-between gap-3 flex-wrap">
         <div>

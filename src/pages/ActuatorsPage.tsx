@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Zap, Plus, X, Edit2, Trash2, Power, PowerOff, RefreshCw } from 'lucide-react'
 import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
+import { useGsapReveal } from '../hooks/useGsapReveal'
 import { actuatorRepository, greenhouseRepository } from '../repositories'
 import { Wifi } from 'lucide-react'
 import type { ActuatorDto, GreenhouseDto } from '../types'
@@ -32,6 +33,7 @@ interface ActuatorForm {
 
 export default function ActuatorsPage() {
   const { allowedGreenhouseIds } = useAuth()
+  const revealRef = useGsapReveal<HTMLDivElement>({ stagger: 0.06, duration: 0.45 })
   const [actuators,   setActuators]   = useState<ActuatorDto[]>([])
   const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
   const [filterGhId,  setFilterGhId]  = useState('')
@@ -164,7 +166,7 @@ export default function ActuatorsPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div ref={revealRef} className="space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>

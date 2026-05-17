@@ -8,6 +8,8 @@ import type { LucideIcon } from 'lucide-react'
 import anime from 'animejs'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import type { AppUser } from './types'
+import ThreeBackground from './components/ThreeBackground'
+import { initLenis, destroyLenis } from './lib/lenis'
 
 // ── Pages ──────────────────────────────────────────────────────────────────────
 import LoginPage      from './pages/LoginPage'
@@ -208,7 +210,7 @@ function AppInner() {
   const initials    = (user as AppUser).full_name || user.username || '?'
 
   return (
-    <div className="min-h-screen bg-gray-50 relative">
+    <div className="min-h-screen relative">
 
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -313,8 +315,8 @@ function AppInner() {
       </aside>
 
       {/* ── Header ──────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-20 lg:ml-64 bg-white/80 backdrop-blur-md
-                         border-b border-gray-200/80 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
+      <header className="sticky top-0 z-20 lg:ml-64 bg-[#0A150D]/90 backdrop-blur-md
+                         border-b border-white/10">
         <div className="flex items-center justify-between h-14 px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <button
@@ -325,24 +327,24 @@ function AppInner() {
               <Menu size={18} />
             </button>
             <div>
-              <h1 className="text-sm font-bold text-gray-900 font-heading">
+              <h1 className="text-sm font-bold text-white font-heading">
                 {currentItem?.label ?? 'AgroPulse'}
               </h1>
-              <p className="text-[11px] text-gray-400 hidden sm:block capitalize">
+              <p className="text-[11px] text-white/40 hidden sm:block capitalize">
                 {new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 bg-green-50 border border-green-100 rounded-xl px-3 py-1.5">
+            <div className="hidden sm:flex items-center gap-1.5 bg-green-900/30 border border-green-500/20 rounded-xl px-3 py-1.5">
               <div className="live-dot" />
-              <span className="text-xs font-medium text-green-700">En línea</span>
+              <span className="text-xs font-medium text-green-400">En línea</span>
             </div>
 
             <div className="text-right hidden sm:block">
-              <p className="text-xs text-gray-400">{isAdmin ? 'Administrador' : 'Operario'}</p>
-              <p className="text-xs font-semibold text-gray-800">{(user as AppUser).full_name || user.username}</p>
+              <p className="text-xs text-white/40">{isAdmin ? 'Administrador' : 'Operario'}</p>
+              <p className="text-xs font-semibold text-white/80">{(user as AppUser).full_name || user.username}</p>
             </div>
 
             {user.avatar
@@ -384,8 +386,14 @@ function AppInner() {
 }
 
 export default function App() {
+  useEffect(() => {
+    initLenis()
+    return () => destroyLenis()
+  }, [])
+
   return (
     <AuthProvider>
+      <ThreeBackground />
       <AppInner />
     </AuthProvider>
   )

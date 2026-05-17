@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Bell, Plus, X, AlertTriangle, Info, AlertOctagon, Check, CheckCheck, Building2 } from 'lucide-react'
 import anime from 'animejs'
 import { alertRepository, greenhouseRepository } from '../repositories'
+import { useGsapReveal } from '../hooks/useGsapReveal'
 import type { AlertDto, AlertLevel, GreenhouseDto } from '../types'
 
 interface AlertForm {
@@ -52,6 +53,7 @@ const saveCache = (list: AlertDto[]) => {
 }
 
 export default function AlertsPage() {
+  const revealRef = useGsapReveal<HTMLDivElement>({ stagger: 0.06, duration: 0.45 })
   const [alerts,      setAlerts]      = useState<AlertDto[]>([])
   const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
   const [loading,     setLoading]     = useState(true)
@@ -227,7 +229,7 @@ export default function AlertsPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div ref={revealRef} className="space-y-5">
 
       {/* Header */}
       <div ref={headerRef} className="flex items-start justify-between gap-3 flex-wrap" style={{ opacity: 0 }}>

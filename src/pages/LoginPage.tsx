@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Sprout, User, Lock, Eye, EyeOff, Chrome, ArrowRight, Mail } from 'lucide-react'
 import anime from 'animejs'
+import gsap from 'gsap'
 import emailjs from '@emailjs/browser'
 import { useAuth, removeUserAccess } from '../context/AuthContext'
 import { userRepository } from '../repositories'
@@ -42,8 +43,15 @@ export default function LoginPage() {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduced) return
 
-    // Card entrance
-    anime({ targets: cardRef.current, opacity: [0, 1], scale: [0.94, 1], translateY: [20, 0], duration: 600, easing: 'easeOutCubic' })
+    // Card entrance — GSAP
+    const tl = gsap.timeline()
+    tl.from(cardRef.current, {
+      opacity:  0,
+      scale:    0.9,
+      y:        32,
+      duration: 0.75,
+      ease:     'power3.out',
+    })
 
     // Floating blobs
     ;[blobRef1, blobRef2, blobRef3].forEach((ref, i) => {
@@ -58,6 +66,10 @@ export default function LoginPage() {
         delay:     i * 600,
       })
     })
+
+    return () => {
+      gsap.killTweensOf(cardRef.current)
+    }
   }, [])
 
   // Tab switch animation

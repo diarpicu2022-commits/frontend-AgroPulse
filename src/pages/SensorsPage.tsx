@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Activity, Plus, X, Cpu, Wifi, RefreshCw } from 'lucide-react'
 import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
+import { useGsapReveal } from '../hooks/useGsapReveal'
 import { sensorRepository, greenhouseRepository } from '../repositories'
 import type { SensorDto, GreenhouseDto, SensorType, Protocol } from '../types'
 
@@ -23,6 +24,7 @@ interface SensorForm {
 
 export default function SensorsPage() {
   const { allowedGreenhouseIds } = useAuth()
+  const revealRef = useGsapReveal<HTMLDivElement>({ stagger: 0.06, duration: 0.45 })
   const [sensors,     setSensors]     = useState<SensorDto[]>([])
   const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
   const [filterGhId,  setFilterGhId]  = useState('')
@@ -134,7 +136,7 @@ export default function SensorsPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div ref={revealRef} className="space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
