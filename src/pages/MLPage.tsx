@@ -44,9 +44,9 @@ Sé conciso y práctico.`
       </div>
 
       {/* Info chip */}
-      <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-2xl px-4 py-2.5 w-fit">
-        <Cpu size={14} className="text-green-600" />
-        <span className="text-sm font-medium text-green-700">Predicción basada en histórico de sensores</span>
+      <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5 w-fit" style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)' }}>
+        <Cpu size={14} className="text-green-400" />
+        <span className="text-sm font-medium" style={{ color: '#4ade80' }}>Predicción basada en histórico de sensores</span>
       </div>
 
       {error && <div className="alert-danger text-sm">{error}</div>}
@@ -54,12 +54,12 @@ Sé conciso y práctico.`
       {/* Action card */}
       <div className="card p-5">
         <div className="flex items-start gap-4 mb-5">
-          <div className="p-3 bg-green-100 rounded-2xl shrink-0">
-            <TrendingUp size={20} className="text-green-600" />
+          <div className="p-3 rounded-2xl shrink-0" style={{ background: 'rgba(74,222,128,0.1)' }}>
+            <TrendingUp size={20} className="text-green-400" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-800">Predicción a 6 horas</h3>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>Predicción a 6 horas</h3>
+            <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
               Analiza las tendencias actuales de los sensores y predice los valores futuros con recomendaciones de acción.
             </p>
           </div>
@@ -77,15 +77,15 @@ Sé conciso y práctico.`
         <div ref={resultRef} className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-blue-100 rounded-xl">
-                <Cpu size={15} className="text-blue-600" />
+              <div className="p-2 rounded-xl" style={{ background: 'rgba(34,211,238,0.1)' }}>
+                <Cpu size={15} style={{ color: '#22d3ee' }} />
               </div>
-              <span className="text-sm font-semibold text-gray-800">Predicción generada</span>
+              <span className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>Predicción generada</span>
             </div>
             {prediction.provider && <span className="badge-blue"><Sparkles size={10} />{prediction.provider}</span>}
           </div>
-          <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{prediction.text}</p>
+          <div className="rounded-2xl p-4" style={{ background: '#051a0a', border: '1px solid rgba(74,222,128,0.12)' }}>
+            <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: 'rgba(255,255,255,0.7)' }}>{prediction.text}</p>
           </div>
         </div>
       )}

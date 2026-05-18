@@ -124,21 +124,21 @@ export default function LogsPage() {
             const Icon   = ACTION_ICON[key] || FileText
             const badge  = ACTION_BADGE[key] || 'badge-gray'
             return (
-              <div key={l.id} className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50/60 transition-colors">
-                <div className="p-2 bg-gray-100 rounded-xl shrink-0 mt-0.5">
-                  <Icon size={14} className="text-gray-500" />
+              <div key={l.id} className="flex items-start gap-3 px-4 py-3 hover:bg-[rgba(74,222,128,0.03)] transition-colors">
+                <div className="p-2 rounded-xl shrink-0 mt-0.5" style={{ background: 'rgba(74,222,128,0.06)' }}>
+                  <Icon size={14} style={{ color: 'rgba(255,255,255,0.35)' }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`${badge} text-[10px]`}>{l.action}</span>
-                    <span className="text-[11px] text-gray-400">
+                    <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
                       {l.timestamp ? new Date(l.timestamp).toLocaleString('es-CO', {
                         day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
                       }) : ''}
                     </span>
                   </div>
-                  {l.details && <p className="text-xs text-gray-600 mt-0.5 truncate">{l.details}</p>}
-                  <p className="text-[11px] text-gray-400 mt-0.5">Por: <span className="font-medium">{l.performedBy}</span></p>
+                  {l.details && <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{l.details}</p>}
+                  <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Por: <span className="font-medium">{l.performedBy}</span></p>
                 </div>
               </div>
             )

@@ -412,7 +412,7 @@ export default function GreenhousePage() {
                       <button onClick={() => toggleTab(g.id, 'users')}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
                           expandedId === g.id && ghTab[g.id] === 'users'
-                            ? 'bg-blue-600 text-white' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'
+                            ? 'bg-blue-600 text-white' : 'hover:bg-[rgba(34,211,238,0.08)] text-blue-400'
                         }`}>
                         <UserPlus size={12} /> Usuarios
                       </button>
@@ -421,14 +421,14 @@ export default function GreenhousePage() {
                       <button onClick={() => toggleTab(g.id, 'device')}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
                           expandedId === g.id && ghTab[g.id] === 'device'
-                            ? 'bg-purple-600 text-white' : 'bg-purple-50 hover:bg-purple-100 text-purple-600'
+                            ? 'bg-purple-600 text-white' : 'hover:bg-[rgba(167,139,250,0.08)] text-purple-400'
                         }`}>
                         <Cpu size={12} /> Dispositivo
                       </button>
                     )}
                     {isAdmin && (
                       <button onClick={() => handleDelete(g.id)}
-                        className="text-red-400 hover:text-red-600 text-xs px-2 py-1.5 rounded-lg hover:bg-red-50 transition-colors">
+                        className="text-red-400 hover:text-red-600 text-xs px-2 py-1.5 rounded-lg hover:bg-[rgba(248,113,113,0.1)] transition-colors">
                         Eliminar
                       </button>
                     )}
@@ -437,15 +437,16 @@ export default function GreenhousePage() {
 
                 {/* Expanded panel */}
                 {isAdmin && expandedId === g.id && (
-                  <div id={`gh-panel-${g.id}`} className="border-t border-gray-100 bg-gray-50/80 p-4">
+                  <div id={`gh-panel-${g.id}`} className="border-t border-[rgba(74,222,128,0.12)] p-4" style={{ background: '#051a0a' }}>
 
                     {/* ── Users tab ── */}
                     {ghTab[g.id] === 'users' && (
                       <div className="space-y-3">
-                        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">👥 Usuarios asignados</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>👥 Usuarios asignados</p>
                         <div className="flex gap-2">
                           <select value={assignUserId} onChange={e => setAssignUserId(e.target.value)}
-                            className="flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+                            className="flex-1 rounded-lg px-3 py-2 text-sm focus:border-green-400 focus:outline-none"
+                            style={{ background: '#0a1e0f', border: '2px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }}>
                             <option value="">Seleccionar usuario...</option>
                             {allUsers.filter(u => !(ghUsers[g.id] ?? []).find(gu => gu.id === u.id)).map(u => (
                               <option key={u.id} value={u.id}>{u.fullName || u.username} ({u.role})</option>
@@ -461,24 +462,24 @@ export default function GreenhousePage() {
                           </button>
                         </div>
                         {(ghUsers[g.id] === undefined)
-                          ? <p className="text-xs text-gray-400 py-2">Cargando usuarios…</p>
+                          ? <p className="text-xs py-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Cargando usuarios…</p>
                           : (ghUsers[g.id] ?? []).length === 0
-                          ? <p className="text-xs text-gray-400 py-2">Sin usuarios asignados aún</p>
+                          ? <p className="text-xs py-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Sin usuarios asignados aún</p>
                           : (
                             <div className="space-y-2">
                               {(ghUsers[g.id] ?? []).map(u => (
-                                <div key={u.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 shadow-sm">
+                                <div key={u.id} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: '#0a1e0f' }}>
                                   <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700">
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80' }}>
                                       {(u.fullName || u.username || '?')[0].toUpperCase()}
                                     </div>
                                     <div>
                                       <p className="text-xs font-medium" style={{ color: '#e2ffe9' }}>{u.fullName || u.username}</p>
-                                      <p className="text-[10px] text-gray-400">{u.role}</p>
+                                      <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{u.role}</p>
                                     </div>
                                   </div>
                                   <button onClick={() => handleRemoveUser(g.id, u.id)}
-                                    className="text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors">
+                                    className="text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-[rgba(248,113,113,0.1)] transition-colors">
                                     Quitar
                                   </button>
                                 </div>
@@ -493,19 +494,20 @@ export default function GreenhousePage() {
                     {ghTab[g.id] === 'device' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between flex-wrap gap-2">
-                          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">⚙️ Configuración ESP32</p>
+                          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>⚙️ Configuración ESP32</p>
                           {deviceConfig[g.id]?.deviceId && (
-                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-mono">
+                            <span className="text-xs px-2 py-0.5 rounded-full font-mono" style={{ background: 'rgba(167,139,250,0.1)', color: '#a78bfa' }}>
                               {deviceConfig[g.id].deviceId}
                             </span>
                           )}
                         </div>
 
                         {/* GPIO visual map */}
-                        <div className="bg-white rounded-xl border border-gray-200 p-3">
+                        <div className="rounded-xl p-3" style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.12)' }}>
                           <button
                             onClick={() => setShowGpioMap(prev => ({ ...prev, [g.id]: !prev[g.id] }))}
-                            className="w-full flex items-center justify-between text-xs font-semibold text-gray-700 mb-1"
+                            className="w-full flex items-center justify-between text-xs font-semibold mb-1"
+                            style={{ color: 'rgba(255,255,255,0.7)' }}
                           >
                             <span>🗺️ Mapa de pines GPIO ESP32</span>
                             {showGpioMap[g.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -533,7 +535,7 @@ export default function GreenhousePage() {
                                   </div>
                                 ))}
                               </div>
-                              <div className="mt-2 text-[10px] text-gray-500 space-y-0.5">
+                              <div className="mt-2 text-[10px] space-y-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
                                 <p>📥 Sensores: GPIOs {GPIO_INPUT.join(', ')}</p>
                                 <p>📤 Actuadores: GPIOs {GPIO_OUTPUT.join(', ')}</p>
                                 <p>🔒 Reservados (sistema): {GPIO_RESERVED.join(', ')}</p>
@@ -543,20 +545,21 @@ export default function GreenhousePage() {
                         </div>
 
                         {/* Sensors section */}
-                        <div className="bg-white rounded-xl border border-gray-200 p-3 space-y-2">
+                        <div className="rounded-xl p-3 space-y-2" style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.12)' }}>
                           <div className="flex items-center justify-between">
-                            <p className="text-xs font-semibold text-gray-700">
+                            <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.7)' }}>
                               🌡 Sensores ({(deviceConfig[g.id]?.sensors ?? []).length})
                             </p>
                             <button
                               onClick={() => setShowSensorForm(prev => ({ ...prev, [g.id]: !prev[g.id] }))}
-                              className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-2 py-1 rounded-lg font-medium transition-colors">
+                              className="text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-[rgba(74,222,128,0.15)]"
+                              style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80' }}>
                               {showSensorForm[g.id] ? 'Cancelar' : '+ Sensor'}
                             </button>
                           </div>
 
                           {(deviceConfig[g.id]?.sensors ?? []).map(s => (
-                            <div key={s.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-xs">
+                            <div key={s.id} className="flex items-center justify-between rounded-lg px-3 py-2 text-xs" style={{ background: 'rgba(74,222,128,0.06)' }}>
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-medium" style={{ color: '#e2ffe9' }}>{s.name}</span>
                                 <span className="badge-blue">{s.type}</span>
@@ -571,25 +574,29 @@ export default function GreenhousePage() {
                           ))}
 
                           {(deviceConfig[g.id]?.sensors ?? []).length === 0 && !showSensorForm[g.id] && (
-                            <p className="text-xs text-gray-400 py-1">Sin sensores configurados</p>
+                            <p className="text-xs py-1" style={{ color: 'rgba(255,255,255,0.35)' }}>Sin sensores configurados</p>
                           )}
 
                           {showSensorForm[g.id] && (
-                            <div className="space-y-2 pt-2 border-t border-gray-100">
+                            <div className="space-y-2 pt-2 border-t border-[rgba(74,222,128,0.12)]">
                               <input placeholder="Nombre del sensor *" value={sensorForm.name}
                                 onChange={e => setSensorForm(f => ({ ...f, name: e.target.value }))}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:border-green-500 focus:outline-none" />
+                                className="w-full rounded-lg px-3 py-2 text-xs focus:border-green-400 focus:outline-none"
+                                style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
                               <div className="grid grid-cols-3 gap-2">
                                 <select value={sensorForm.type} onChange={e => setSensorForm(f => ({ ...f, type: e.target.value }))}
-                                  className="border border-gray-200 rounded-lg px-2 py-2 text-xs focus:border-green-500 focus:outline-none">
+                                  className="rounded-lg px-2 py-2 text-xs focus:border-green-400 focus:outline-none"
+                                  style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }}>
                                   {SENSOR_TYPES.map(t => <option key={t}>{t}</option>)}
                                 </select>
                                 <select value={sensorForm.protocol} onChange={e => setSensorForm(f => ({ ...f, protocol: e.target.value }))}
-                                  className="border border-gray-200 rounded-lg px-2 py-2 text-xs focus:border-green-500 focus:outline-none">
+                                  className="rounded-lg px-2 py-2 text-xs focus:border-green-400 focus:outline-none"
+                                  style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }}>
                                   {PROTOCOLS.map(p => <option key={p}>{p}</option>)}
                                 </select>
                                 <select value={sensorForm.gpioPin} onChange={e => setSensorForm(f => ({ ...f, gpioPin: e.target.value }))}
-                                  className="border border-gray-200 rounded-lg px-2 py-2 text-xs focus:border-green-500 focus:outline-none">
+                                  className="rounded-lg px-2 py-2 text-xs focus:border-green-400 focus:outline-none"
+                                  style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }}>
                                   <option value="">GPIO</option>
                                   {(gpioOpts[g.id]?.availableForSensors ?? []).map(p => (
                                     <option key={p} value={p}>GPIO {p}</option>
@@ -605,20 +612,21 @@ export default function GreenhousePage() {
                         </div>
 
                         {/* Actuators section */}
-                        <div className="bg-white rounded-xl border border-gray-200 p-3 space-y-2">
+                        <div className="rounded-xl p-3 space-y-2" style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.12)' }}>
                           <div className="flex items-center justify-between">
-                            <p className="text-xs font-semibold text-gray-700">
+                            <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.7)' }}>
                               <Zap size={12} className="inline mr-1" />Actuadores ({(deviceConfig[g.id]?.actuators ?? []).length})
                             </p>
                             <button
                               onClick={() => setShowActuatorForm(prev => ({ ...prev, [g.id]: !prev[g.id] }))}
-                              className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded-lg font-medium transition-colors">
+                              className="text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-[rgba(167,139,250,0.15)]"
+                              style={{ background: 'rgba(167,139,250,0.1)', color: '#a78bfa' }}>
                               {showActuatorForm[g.id] ? 'Cancelar' : '+ Actuador'}
                             </button>
                           </div>
 
                           {(deviceConfig[g.id]?.actuators ?? []).map(a => (
-                            <div key={a.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-xs">
+                            <div key={a.id} className="flex items-center justify-between rounded-lg px-3 py-2 text-xs" style={{ background: 'rgba(74,222,128,0.05)', border: '1px solid rgba(74,222,128,0.10)' }}>
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-medium" style={{ color: '#e2ffe9' }}>{a.name}</span>
                                 {a.type && <span className="badge-purple">{a.type}</span>}
@@ -633,28 +641,31 @@ export default function GreenhousePage() {
                           ))}
 
                           {(deviceConfig[g.id]?.actuators ?? []).length === 0 && !showActuatorForm[g.id] && (
-                            <p className="text-xs text-gray-400 py-1">Sin actuadores configurados</p>
+                            <p className="text-xs py-1" style={{ color: 'rgba(255,255,255,0.35)' }}>Sin actuadores configurados</p>
                           )}
 
                           {showActuatorForm[g.id] && (
-                            <div className="space-y-2 pt-2 border-t border-gray-100">
+                            <div className="space-y-2 pt-2 border-t border-[rgba(74,222,128,0.12)]">
                               <input placeholder="Nombre del actuador *" value={actuatorForm.name}
                                 onChange={e => setActuatorForm(f => ({ ...f, name: e.target.value }))}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:border-purple-500 focus:outline-none" />
+                                className="w-full rounded-lg px-3 py-2 text-xs focus:border-green-400 focus:outline-none"
+                                style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
                               <div className="grid grid-cols-2 gap-2">
                                 <select value={actuatorForm.type} onChange={e => setActuatorForm(f => ({ ...f, type: e.target.value }))}
-                                  className="border border-gray-200 rounded-lg px-2 py-2 text-xs focus:border-purple-500 focus:outline-none">
+                                  className="rounded-lg px-2 py-2 text-xs focus:border-green-400 focus:outline-none"
+                                  style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }}>
                                   {ACTUATOR_TYPES.map(t => <option key={t}>{t}</option>)}
                                 </select>
                                 <select value={actuatorForm.gpioPin} onChange={e => setActuatorForm(f => ({ ...f, gpioPin: e.target.value }))}
-                                  className="border border-gray-200 rounded-lg px-2 py-2 text-xs focus:border-purple-500 focus:outline-none">
+                                  className="rounded-lg px-2 py-2 text-xs focus:border-green-400 focus:outline-none"
+                                  style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }}>
                                   <option value="">GPIO</option>
                                   {(gpioOpts[g.id]?.availableForActuators ?? []).map(p => (
                                     <option key={p} value={p}>GPIO {p}</option>
                                   ))}
                                 </select>
                               </div>
-                              <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                              <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'rgba(255,255,255,0.5)' }}>
                                 <input type="checkbox" checked={actuatorForm.activeLow}
                                   onChange={e => setActuatorForm(f => ({ ...f, activeLow: e.target.checked }))} className="rounded" />
                                 Active-Low (relés HW-383)

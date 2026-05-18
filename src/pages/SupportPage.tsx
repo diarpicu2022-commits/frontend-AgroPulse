@@ -158,18 +158,18 @@ export default function SupportPage() {
       {isAdmin && selected && (
         <div className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800">Responder Ticket #{selected.id}</h3>
+            <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>Responder Ticket #{selected.id}</h3>
             <button onClick={() => setSelected(null)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+              className="p-1.5 rounded-lg hover:bg-[rgba(74,222,128,0.08)] transition-colors" style={{ color: 'rgba(255,255,255,0.35)' }}>
               <X size={16} />
             </button>
           </div>
-          <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-2">
-            <p className="text-sm font-semibold text-gray-800">{selected.subject}</p>
-            <p className="text-xs text-gray-600">{selected.description}</p>
+          <div className="rounded-2xl p-4 space-y-2" style={{ background: '#051a0a', border: '1px solid rgba(74,222,128,0.12)' }}>
+            <p className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>{selected.subject}</p>
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>{selected.description}</p>
             <div className="flex gap-2 flex-wrap">
               <span className={PRIORITY_BADGE[selected.priority]}>{selected.priorityDisplay || selected.priority}</span>
-              <span className="text-xs text-gray-400">Por: <strong>{selected.userName || 'Usuario #' + selected.userId}</strong></span>
+              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Por: <strong>{selected.userName || 'Usuario #' + selected.userId}</strong></span>
             </div>
           </div>
           {selected.adminResponse && (
@@ -212,14 +212,14 @@ export default function SupportPage() {
           {tickets.map(t => (
             <div key={t.id} className="card p-4">
               <div className="flex items-start gap-3">
-                <div className="p-2.5 bg-gray-100 rounded-2xl shrink-0 mt-0.5">
-                  <Ticket size={16} className="text-gray-500" />
+                <div className="p-2.5 rounded-2xl shrink-0 mt-0.5" style={{ background: 'rgba(74,222,128,0.06)' }}>
+                  <Ticket size={16} style={{ color: 'rgba(255,255,255,0.35)' }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-800 text-sm">#{t.id} {t.subject}</p>
-                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{t.description}</p>
+                      <p className="font-semibold text-sm" style={{ color: '#e2ffe9' }}>#{t.id} {t.subject}</p>
+                      <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'rgba(255,255,255,0.35)' }}>{t.description}</p>
                     </div>
                     {isAdmin && t.status !== 'CLOSED' && (
                       <div className="flex gap-1.5 shrink-0">
@@ -229,7 +229,7 @@ export default function SupportPage() {
                           <MessageSquare size={11} /> Responder
                         </button>
                         <button onClick={() => handleClose(t.id)}
-                          className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                          className="p-1.5 rounded-xl hover:bg-[rgba(74,222,128,0.08)] transition-colors" style={{ color: 'rgba(255,255,255,0.35)' }}>
                           <X size={13} />
                         </button>
                       </div>
@@ -238,8 +238,8 @@ export default function SupportPage() {
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     <span className={STATUS_BADGE[t.status] || 'badge-gray'}>{t.statusDisplay || t.status}</span>
                     <span className={PRIORITY_BADGE[t.priority] || 'badge-gray'}>{t.priorityDisplay || t.priority}</span>
-                    {isAdmin && <span className="text-[11px] text-gray-400">{t.userName || 'Usuario #' + t.userId}</span>}
-                    {t.createdAt && <span className="text-[11px] text-gray-400">{new Date(t.createdAt).toLocaleDateString('es-CO')}</span>}
+                    {isAdmin && <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{t.userName || 'Usuario #' + t.userId}</span>}
+                    {t.createdAt && <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{new Date(t.createdAt).toLocaleDateString('es-CO')}</span>}
                   </div>
                   {t.adminResponse && (
                     <div className="mt-2 bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-800">

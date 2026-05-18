@@ -26,9 +26,9 @@ export function useToast(): UseToastReturn {
 }
 
 const TOAST_CONFIG: Record<Toast['type'], { icon: typeof CheckCircle; bg: string; border: string; text: string; iconCls: string }> = {
-  success: { icon: CheckCircle, bg: 'bg-white',       border: 'border-green-200', text: 'text-gray-800', iconCls: 'text-green-500' },
-  error:   { icon: XCircle,     bg: 'bg-white',       border: 'border-red-200',   text: 'text-gray-800', iconCls: 'text-red-500'   },
-  info:    { icon: Info,        bg: 'bg-white',       border: 'border-blue-200',  text: 'text-gray-800', iconCls: 'text-blue-500'  },
+  success: { icon: CheckCircle, bg: 'bg-[#0a1e0f]', border: 'border-green-400/20', text: 'text-[#e2ffe9]', iconCls: 'text-green-400' },
+  error:   { icon: XCircle,     bg: 'bg-[#0a1e0f]', border: 'border-red-400/20',   text: 'text-[#e2ffe9]', iconCls: 'text-red-400'   },
+  info:    { icon: Info,        bg: 'bg-[#0a1e0f]', border: 'border-cyan-400/20',   text: 'text-[#e2ffe9]', iconCls: 'text-cyan-400'  },
 }
 
 function ToastItem({ toast }: { toast: Toast }) {

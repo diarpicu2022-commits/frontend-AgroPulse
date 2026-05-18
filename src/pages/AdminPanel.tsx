@@ -108,8 +108,8 @@ export default function AdminPanel({ user }: AdminPanelProps) {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-blue-100 rounded-2xl">
-            <ShieldCheck size={20} className="text-blue-600" />
+          <div className="p-2.5 rounded-2xl" style={{ background: 'rgba(34,211,238,0.1)' }}>
+            <ShieldCheck size={20} style={{ color: '#22d3ee' }} />
           </div>
           <div>
             <h2 className="section-title">Gestión de Roles</h2>
@@ -119,7 +119,8 @@ export default function AdminPanel({ user }: AdminPanelProps) {
         <button
           onClick={loadUsers}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-[rgba(74,222,128,0.08)] transition-colors disabled:opacity-50"
+          style={{ background: 'rgba(74,222,128,0.06)', color: 'rgba(255,255,255,0.5)' }}
           title="Recargar lista de usuarios"
         >
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
@@ -164,10 +165,10 @@ export default function AdminPanel({ user }: AdminPanelProps) {
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-800 truncate">{displayName}</h3>
+                        <h3 className="font-semibold truncate" style={{ color: '#e2ffe9' }}>{displayName}</h3>
                         {isCurrentUser && <span className="badge-gray text-[10px]">Tú</span>}
                       </div>
-                      <p className="text-xs text-gray-500 truncate">{u.email}</p>
+                      <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.35)' }}>{u.email}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={isAdmin ? 'badge-red' : 'badge-blue'}>
@@ -176,7 +177,7 @@ export default function AdminPanel({ user }: AdminPanelProps) {
                       {!isCurrentUser && (
                         <div className="relative">
                           {changing === u.id && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-xl">
+                            <div className="absolute inset-0 flex items-center justify-center rounded-xl" style={{ background: 'rgba(10,30,15,0.85)' }}>
                               <Loader2 size={14} className="animate-spin text-green-600" />
                             </div>
                           )}
@@ -195,7 +196,7 @@ export default function AdminPanel({ user }: AdminPanelProps) {
                       {!isAdmin && !isCurrentUser && greenhouses.length > 0 && (
                         <button
                           onClick={() => setExpanded(isExpanded ? null : u.id)}
-                          className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                          className="p-1.5 rounded-xl hover:bg-[rgba(74,222,128,0.08)] transition-colors" style={{ color: 'rgba(255,255,255,0.35)' }}
                           title="Gestionar acceso a invernaderos"
                         >
                           {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -207,12 +208,12 @@ export default function AdminPanel({ user }: AdminPanelProps) {
 
                 {/* Greenhouse access panel (expandable) */}
                 {isExpanded && !isAdmin && (
-                  <div className="border-t border-gray-100 bg-gray-50/60 px-4 pb-4 pt-3">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
+                  <div className="border-t border-[rgba(74,222,128,0.12)] px-4 pb-4 pt-3" style={{ background: '#051a0a' }}>
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-2.5 flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
                       <Sprout size={11} /> Acceso a invernaderos
                     </p>
                     {greenhouses.length === 0 ? (
-                      <p className="text-xs text-gray-400">No hay invernaderos registrados.</p>
+                      <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>No hay invernaderos registrados.</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {greenhouses.map(gh => {
@@ -222,8 +223,11 @@ export default function AdminPanel({ user }: AdminPanelProps) {
                               className={`flex items-center gap-2.5 p-2.5 rounded-xl cursor-pointer
                                          border transition-all duration-150 text-sm
                                          ${hasAccess
-                                           ? 'bg-green-50 border-green-200 text-green-800'
-                                           : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                                           ? 'border-green-400/20'
+                                           : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+                                      style={hasAccess
+                                        ? { background: 'rgba(74,222,128,0.1)', color: '#4ade80' }
+                                        : { background: '#0a1e0f', color: 'rgba(255,255,255,0.5)' }}>
                               <input
                                 type="checkbox"
                                 checked={hasAccess}
@@ -233,14 +237,14 @@ export default function AdminPanel({ user }: AdminPanelProps) {
                               <Sprout size={12} className={hasAccess ? 'text-green-500' : 'text-gray-400'} />
                               <span className="font-medium truncate">{gh.name}</span>
                               {gh.deviceId && (
-                                <span className="ml-auto text-[10px] font-mono text-gray-400 shrink-0">{gh.deviceId}</span>
+                                <span className="ml-auto text-[10px] font-mono shrink-0" style={{ color: 'rgba(255,255,255,0.35)' }}>{gh.deviceId}</span>
                               )}
                             </label>
                           )
                         })}
                       </div>
                     )}
-                    <p className="text-[11px] text-gray-400 mt-2">
+                    <p className="text-[11px] mt-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
                       El operario verá los datos al presionar "Verificar acceso" en su sesión.
                     </p>
                   </div>

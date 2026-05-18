@@ -64,8 +64,9 @@ export default function AIPage() {
       <div className="grid grid-cols-3 gap-3">
         {QUICK_ACTIONS.map(({ type, label, icon: Icon }) => (
           <button key={type} onClick={() => sendToAI(type)} disabled={loading}
-            className="card-hover p-4 flex flex-col items-center gap-2 text-sm font-medium text-gray-700 disabled:opacity-50 disabled:pointer-events-none">
-            <div className="p-2.5 bg-green-100 rounded-2xl">
+            className="card-hover p-4 flex flex-col items-center gap-2 text-sm font-medium disabled:opacity-50 disabled:pointer-events-none"
+            style={{ color: 'rgba(255,255,255,0.7)' }}>
+            <div className="p-2.5 rounded-2xl" style={{ background: 'rgba(74,222,128,0.1)' }}>
               <Icon size={16} className="text-green-600" />
             </div>
             <span>{label}</span>
@@ -75,7 +76,7 @@ export default function AIPage() {
 
       {/* Custom prompt */}
       <div className="card p-5">
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Pregunta personalizada</label>
+        <label className="block text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'rgba(255,255,255,0.35)' }}>Pregunta personalizada</label>
         <textarea
           value={prompt}
           onChange={e => setPrompt(e.target.value)}
@@ -99,15 +100,15 @@ export default function AIPage() {
         <div ref={responseRef} className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-green-100 rounded-xl">
-                <Bot size={15} className="text-green-600" />
+              <div className="p-2 rounded-xl" style={{ background: 'rgba(74,222,128,0.1)' }}>
+                <Bot size={15} className="text-green-400" />
               </div>
-              <span className="text-sm font-semibold text-gray-800">Respuesta</span>
+              <span className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>Respuesta</span>
             </div>
             {response.provider && <span className="badge-green"><Sparkles size={10} />{response.provider}</span>}
           </div>
-          <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{response.text}</p>
+          <div className="rounded-2xl p-4" style={{ background: '#051a0a', border: '1px solid rgba(74,222,128,0.12)' }}>
+            <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: 'rgba(255,255,255,0.7)' }}>{response.text}</p>
           </div>
         </div>
       )}

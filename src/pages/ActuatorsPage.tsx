@@ -206,21 +206,21 @@ export default function ActuatorsPage() {
       {showForm && (
         <form ref={formRef} onSubmit={handleSubmit} className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800">{editingId ? 'Editar Actuador' : 'Nuevo Actuador'}</h3>
+            <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>{editingId ? 'Editar Actuador' : 'Nuevo Actuador'}</h3>
             <button type="button" onClick={() => { setShowForm(false); resetForm() }}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+              className="p-1.5 rounded-lg hover:bg-[rgba(74,222,128,0.08)] transition-colors" style={{ color: 'rgba(255,255,255,0.35)' }}>
               <X size={16} />
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nombre *</label>
+              <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Nombre *</label>
               <input type="text" placeholder="Bomba de riego, Extractor 1..." value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 className="input-field" required />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Tipo *</label>
+              <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Tipo *</label>
               <select value={form.type} onChange={e => {
                 const t = e.target.value
                 setForm({ ...form, type: t, activeLow: RELAY_TYPES.has(t) ? true : form.activeLow })
@@ -231,19 +231,19 @@ export default function ActuatorsPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Invernadero</label>
+              <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Invernadero</label>
               <select value={form.greenhouseId} onChange={e => setForm({ ...form, greenhouseId: e.target.value })} className="input-field">
                 <option value="">Seleccionar...</option>
                 {greenhouses.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">GPIO pin</label>
+              <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>GPIO pin</label>
               <input type="number" placeholder="ej: 26" value={form.gpioPin}
                 onChange={e => setForm({ ...form, gpioPin: e.target.value })} className="input-field" />
             </div>
             <div className="flex items-end pb-2">
-              <label className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer select-none">
+              <label className="flex items-center gap-2.5 text-sm cursor-pointer select-none" style={{ color: 'rgba(255,255,255,0.7)' }}>
                 <input type="checkbox" checked={form.activeLow}
                   onChange={e => setForm({ ...form, activeLow: e.target.checked })}
                   className="w-4 h-4 rounded text-green-600 cursor-pointer" />
@@ -288,17 +288,17 @@ export default function ActuatorsPage() {
                 className={`card p-4 transition-all duration-200 ${isOn ? 'ring-1 ring-green-200 bg-green-50/30' : ''}`}>
                 <div className="flex items-center gap-4">
                   {/* Icon */}
-                  <div className={`p-3 rounded-2xl shrink-0 ${isOn ? 'bg-green-100' : 'bg-gray-100'}`}>
+                  <div className="p-3 rounded-2xl shrink-0" style={{ background: isOn ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.06)' }}>
                     <Zap size={18} className={isOn ? 'text-green-600' : 'text-gray-400'} />
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-gray-800 text-sm">{a.name || label}</h3>
+                      <h3 className="font-semibold text-sm" style={{ color: '#e2ffe9' }}>{a.name || label}</h3>
                       <span className={isOn ? 'badge-green' : 'badge-gray'}>{isOn ? 'Encendido' : 'Apagado'}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</p>
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {gh && (
                         <span className="badge-teal text-[10px]">
@@ -322,15 +322,18 @@ export default function ActuatorsPage() {
                       onClick={() => toggleStatus(a.id, a.status)}
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                         isOn
-                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          ? 'hover:bg-[rgba(74,222,128,0.15)]'
+                          : 'hover:bg-[rgba(74,222,128,0.08)]'
                       }`}
+                      style={isOn
+                        ? { background: 'rgba(74,222,128,0.1)', color: '#4ade80' }
+                        : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}
                     >
                       {isOn ? <PowerOff size={13} /> : <Power size={13} />}
                       {isOn ? 'Apagar' : 'Encender'}
                     </button>
                     <button onClick={() => handleEdit(a)}
-                      className="p-2 rounded-xl hover:bg-blue-50 text-blue-400 hover:text-blue-600 transition-colors">
+                      className="p-2 rounded-xl hover:bg-[rgba(34,211,238,0.1)] text-blue-400 hover:text-blue-300 transition-colors">
                       <Edit2 size={14} />
                     </button>
                     <button onClick={() => handleDelete(a.id, a.name)}

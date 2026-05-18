@@ -232,7 +232,7 @@ export default function AnalyticsPage() {
 
           <div className="no-print mt-8 flex gap-3">
             <button onClick={() => setShowPrintPreview(false)}
-              className="bg-gray-500 text-white px-6 py-2 rounded-lg font-semibold">Cerrar</button>
+              className="px-6 py-2 rounded-lg font-semibold" style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.2)' }}>Cerrar</button>
             <button onClick={() => window.print()}
               className="bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold">Imprimir / Guardar PDF</button>
           </div>
@@ -275,7 +275,8 @@ export default function AnalyticsPage() {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
               ${ghFilter === ''
                 ? 'bg-green-600 text-white border-green-600 shadow-sm'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+                : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+            style={ghFilter !== '' ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
           >
             <Sprout size={11} /> Todos
           </button>
@@ -285,7 +286,8 @@ export default function AnalyticsPage() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
                 ${ghFilter === gh.id
                   ? 'bg-green-600 text-white border-green-600 shadow-sm'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+                  : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+              style={ghFilter !== gh.id ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
             >
               <Building2 size={11} /> {gh.name}
             </button>
@@ -296,17 +298,17 @@ export default function AnalyticsPage() {
       {/* Per-greenhouse info banner */}
       {currentGh && (
         <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-100 rounded-2xl">
-          <div className="p-2 bg-green-100 rounded-xl shrink-0">
-            <Building2 size={16} className="text-green-600" />
+          <div className="p-2 rounded-xl shrink-0" style={{ background: 'rgba(74,222,128,0.1)' }}>
+            <Building2 size={16} className="text-green-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-green-800">{currentGh.name}</p>
-            <p className="text-xs text-green-600 truncate">
+            <p className="text-sm font-semibold" style={{ color: '#4ade80' }}>{currentGh.name}</p>
+            <p className="text-xs truncate" style={{ color: 'rgba(74,222,128,0.7)' }}>
               {[currentGh.location, currentGh.description].filter(Boolean).join(' · ') || 'Sin descripción'}
             </p>
           </div>
           {currentGh.deviceId && (
-            <span className="font-mono text-xs text-gray-400 bg-white border border-gray-200 px-2 py-1 rounded-lg shrink-0">
+            <span className="font-mono text-xs px-2 py-1 rounded-lg shrink-0" style={{ color: 'rgba(255,255,255,0.35)', background: '#051a0a', border: '1px solid rgba(74,222,128,0.12)' }}>
               {currentGh.deviceId}
             </span>
           )}
@@ -323,8 +325,9 @@ export default function AnalyticsPage() {
               className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
                 range === r.key
                   ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-glow-sm'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}>
+                  : 'hover:bg-[rgba(74,222,128,0.08)]'
+              }`}
+              style={range !== r.key ? { background: 'rgba(74,222,128,0.06)', color: 'rgba(255,255,255,0.5)' } : {}}>
               {r.label}
             </button>
           ))}
@@ -346,8 +349,8 @@ export default function AnalyticsPage() {
                 <div key={type} className="card p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <Icon size={16} style={{ color }} />
-                    <h3 className="font-semibold text-gray-800 text-sm">{label}</h3>
-                    <span className="ml-auto text-[10px] font-mono text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100">
+                    <h3 className="font-semibold text-sm" style={{ color: '#e2ffe9' }}>{label}</h3>
+                    <span className="ml-auto text-[10px] font-mono px-2 py-0.5 rounded-lg" style={{ color: 'rgba(255,255,255,0.35)', background: '#051a0a', border: '1px solid rgba(74,222,128,0.12)' }}>
                       {filteredReadings.filter(r => r.sensorType === type).length} lect.
                     </span>
                   </div>
@@ -374,9 +377,9 @@ export default function AnalyticsPage() {
                     {(['Mín', 'Máx', 'Prom', 'Actual'] as const).map((lbl, i) => {
                       const val = [stats.min, stats.max, stats.avg, stats.current][i]
                       return (
-                        <div key={lbl} className="bg-gray-50 rounded-xl p-2 text-center">
-                          <p className="text-[10px] text-gray-500 uppercase tracking-wide">{lbl}</p>
-                          <p className="text-sm font-bold text-gray-800 font-mono mt-0.5">
+                        <div key={lbl} className="rounded-xl p-2 text-center" style={{ background: 'rgba(74,222,128,0.06)' }}>
+                          <p className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.35)' }}>{lbl}</p>
+                          <p className="text-sm font-bold font-mono mt-0.5" style={{ color: '#e2ffe9' }}>
                             {val}{typeof val === 'string' && val !== '—' ? unit : ''}
                           </p>
                         </div>
@@ -391,11 +394,11 @@ export default function AnalyticsPage() {
           {/* Summary card */}
           <div className="card p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-800">
+              <h3 className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>
                 Resumen — {RANGES.find(r => r.key === range)?.label}
                 {currentGh && <span className="ml-2 text-green-600 font-normal">· {currentGh.name}</span>}
               </h3>
-              <span className="text-xs text-gray-400">{filteredReadings.length} lecturas totales</span>
+              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{filteredReadings.length} lecturas totales</span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
@@ -405,8 +408,8 @@ export default function AnalyticsPage() {
                 { label: 'Total',       count: filteredReadings.length,                                               color: 'border-purple-500' },
               ].map(({ label, count, color }) => (
                 <div key={label} className={`border-l-4 ${color} pl-3`}>
-                  <p className="text-xs text-gray-500">{label}</p>
-                  <p className="text-2xl font-bold text-gray-800 font-mono">{count}</p>
+                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</p>
+                  <p className="text-2xl font-bold font-mono" style={{ color: '#e2ffe9' }}>{count}</p>
                 </div>
               ))}
             </div>
@@ -415,9 +418,9 @@ export default function AnalyticsPage() {
           {/* Per-GH activity breakdown — only in global mode with 2+ greenhouses */}
           {ghFilter === '' && greenhouses.length > 1 && (
             <div className="card p-5">
-              <h3 className="text-sm font-semibold text-gray-800 mb-4">
+              <h3 className="text-sm font-semibold mb-4" style={{ color: '#e2ffe9' }}>
                 Actividad por invernadero
-                <span className="ml-2 text-xs font-normal text-gray-400">
+                <span className="ml-2 text-xs font-normal" style={{ color: 'rgba(255,255,255,0.35)' }}>
                   — {RANGES.find(r => r.key === range)?.label}
                 </span>
               </h3>
@@ -435,9 +438,9 @@ export default function AnalyticsPage() {
                     <div key={gh.id} className="flex items-center gap-3">
                       <div className="flex items-center gap-2 w-36 shrink-0">
                         <Building2 size={12} className="text-green-500 shrink-0" />
-                        <span className="text-xs font-medium text-gray-700 truncate">{gh.name}</span>
+                        <span className="text-xs font-medium truncate" style={{ color: 'rgba(255,255,255,0.7)' }}>{gh.name}</span>
                       </div>
-                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(74,222,128,0.1)' }}>
                         <div
                           className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-700"
                           style={{ width: `${pct}%` }}
@@ -445,11 +448,11 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         {avgTemp && (
-                          <span className="text-xs font-mono text-orange-600 bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded-lg">
+                          <span className="text-xs font-mono px-1.5 py-0.5 rounded-lg" style={{ color: '#fb923c', background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.15)' }}>
                             {avgTemp}°C
                           </span>
                         )}
-                        <span className="text-xs font-mono text-gray-500 w-16 text-right">{ghReadings.length} lect.</span>
+                        <span className="text-xs font-mono w-16 text-right" style={{ color: 'rgba(255,255,255,0.35)' }}>{ghReadings.length} lect.</span>
                         <div className="flex gap-1 shrink-0">
                           <button onClick={() => setGhFilter(gh.id)}
                             className="text-[10px] font-semibold text-green-600 hover:text-green-800 underline underline-offset-2">

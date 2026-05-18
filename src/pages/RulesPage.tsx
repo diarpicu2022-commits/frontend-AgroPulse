@@ -237,7 +237,8 @@ export default function RulesPage() {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
               ${ghFilter === ''
                 ? 'bg-green-600 text-white border-green-600 shadow-sm'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+                : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+            style={ghFilter !== '' ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
           >
             <Sprout size={11} /> Todos
           </button>
@@ -247,7 +248,8 @@ export default function RulesPage() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
                 ${ghFilter === gh.id
                   ? 'bg-green-600 text-white border-green-600 shadow-sm'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+                  : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+              style={ghFilter !== gh.id ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
             >
               <Building2 size={11} /> {gh.name}
             </button>
@@ -269,9 +271,9 @@ export default function RulesPage() {
       {showForm && (
         <form ref={formRef} onSubmit={handleSubmit} className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800">{editingId ? 'Editar Regla' : 'Nueva Regla IF / THEN'}</h3>
+            <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>{editingId ? 'Editar Regla' : 'Nueva Regla IF / THEN'}</h3>
             <button type="button" onClick={() => { setShowForm(false); resetForm() }}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+              className="p-1.5 rounded-lg hover:bg-[rgba(74,222,128,0.08)] transition-colors" style={{ color: 'rgba(255,255,255,0.35)' }}>
               <X size={16} />
             </button>
           </div>
@@ -292,7 +294,7 @@ export default function RulesPage() {
               {Object.entries(CONDITION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Valor umbral</label>
+              <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Valor umbral</label>
               <input type="number" step="0.1" value={form.condition_value}
                 onChange={e => setForm({ ...form, condition_value: parseFloat(e.target.value) })}
                 className="input-field" />
@@ -307,11 +309,11 @@ export default function RulesPage() {
             </select>
           </div>
 
-          <label className="flex items-center gap-3 cursor-pointer select-none p-3 bg-gray-50 rounded-2xl border border-gray-100">
+          <label className="flex items-center gap-3 cursor-pointer select-none p-3 rounded-2xl border border-[rgba(74,222,128,0.12)]" style={{ background: 'rgba(74,222,128,0.06)' }}>
             <input type="checkbox" checked={form.enabled}
               onChange={e => setForm({ ...form, enabled: e.target.checked })}
               className="w-4 h-4 text-green-600 rounded cursor-pointer" />
-            <span className="text-sm font-medium text-gray-700">Regla activa</span>
+            <span className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>Regla activa</span>
           </label>
 
           <div className="flex gap-3">
@@ -357,10 +359,10 @@ export default function RulesPage() {
                   {/* IF block */}
                   <div className="flex-1 min-w-0 bg-amber-50 rounded-xl px-3 py-2 border border-amber-100">
                     <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide mb-0.5">IF</p>
-                    <p className="text-sm font-semibold text-gray-800">
+                    <p className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>
                       {CONDITION_LABELS[rule.condition_type] || rule.condition_type}
                     </p>
-                    <p className="text-xs text-gray-500">umbral: {rule.condition_value}</p>
+                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>umbral: {rule.condition_value}</p>
                     {gName && (
                       <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold text-green-700 bg-green-50 border border-green-100 px-1.5 py-0.5 rounded-lg">
                         <Building2 size={9} /> {gName}
@@ -373,7 +375,7 @@ export default function RulesPage() {
                   {/* THEN block */}
                   <div className="flex-1 min-w-0 bg-green-50 rounded-xl px-3 py-2 border border-green-100">
                     <p className="text-[10px] font-semibold text-green-600 uppercase tracking-wide mb-0.5">THEN</p>
-                    <p className="text-sm font-semibold text-gray-800">
+                    <p className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>
                       {ACTION_LABELS[rule.action_type] || rule.action_type}
                     </p>
                   </div>
@@ -385,7 +387,7 @@ export default function RulesPage() {
                     </span>
                     <div className="flex gap-1">
                       <button onClick={() => toggleEnabled(rule.id)}
-                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors text-xs font-medium">
+                        className="p-1.5 rounded-lg hover:bg-[rgba(74,222,128,0.08)] transition-colors text-xs font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>
                         {rule.enabled ? 'Pausar' : 'Activar'}
                       </button>
                       <button onClick={() => handleEdit(rule)}

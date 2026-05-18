@@ -27,16 +27,16 @@ const RangeBar = ({ label, min, max, unit, color, scaleMax }: RangeBarProps) => 
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
-        <span className="text-gray-500">{label}</span>
-        <span className="font-medium text-gray-700">{min}–{max} {unit}</span>
+        <span style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</span>
+        <span className="font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>{min}–{max} {unit}</span>
       </div>
-      <div className="relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="relative h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(74,222,128,0.1)' }}>
         <div className={`absolute top-0 h-full rounded-full ${color}`}
           style={{ left: `${leftPct}%`, width: `${widthPct}%` }} />
       </div>
       <div className="flex justify-between text-[10px] text-gray-400">
-        <span>0</span>
-        <span>{scaleMax} {unit}</span>
+        <span style={{ color: 'rgba(255,255,255,0.35)' }}>0</span>
+        <span style={{ color: 'rgba(255,255,255,0.35)' }}>{scaleMax} {unit}</span>
       </div>
     </div>
   )
@@ -251,7 +251,8 @@ Responde SOLO con JSON válido sin markdown:
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
               ${filterGhId === ''
                 ? 'bg-green-600 text-white border-green-600 shadow-sm'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+                : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+            style={filterGhId !== '' ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
           >
             <Sprout size={11} /> Todos
           </button>
@@ -261,7 +262,8 @@ Responde SOLO con JSON válido sin markdown:
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
                 ${filterGhId === g.id
                   ? 'bg-green-600 text-white border-green-600 shadow-sm'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+                  : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+              style={filterGhId !== g.id ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
             >
               <Building2 size={11} /> {g.name}
             </button>
@@ -283,16 +285,16 @@ Responde SOLO con JSON válido sin markdown:
       {showForm && (
         <form ref={formRef} onSubmit={handleSubmit} className="card p-5 space-y-5">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800">{editingId ? 'Editar Cultivo' : 'Nuevo Cultivo'}</h3>
+            <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>{editingId ? 'Editar Cultivo' : 'Nuevo Cultivo'}</h3>
             <button type="button" onClick={() => { setShowForm(false); resetForm() }}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+              className="p-1.5 rounded-lg hover:bg-[rgba(74,222,128,0.08)] transition-colors" style={{ color: 'rgba(255,255,255,0.35)' }}>
               <X size={16} />
             </button>
           </div>
 
           {/* Greenhouse selector */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
               Invernadero *
             </label>
             <select
@@ -308,12 +310,12 @@ Responde SOLO con JSON válido sin markdown:
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nombre del cultivo *</label>
+              <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Nombre del cultivo *</label>
               <input type="text" placeholder="Tomate, Lechuga..." value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })} className="input-field" required />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Variedad</label>
+              <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Variedad</label>
               <input type="text" placeholder="Variedad (opcional)" value={form.variety}
                 onChange={e => setForm({ ...form, variety: e.target.value })} className="input-field" />
             </div>
@@ -361,7 +363,7 @@ Responde SOLO con JSON válido sin markdown:
             <input type="checkbox" checked={form.active === 1 || form.active === true}
               onChange={e => setForm({ ...form, active: e.target.checked ? 1 : 0 })}
               className="w-4 h-4 text-green-600 rounded cursor-pointer" />
-            <span className="text-sm font-medium text-gray-700">Cultivo activo</span>
+            <span className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>Cultivo activo</span>
           </label>
 
           <div className="flex gap-3">
@@ -405,14 +407,14 @@ Responde SOLO con JSON válido sin markdown:
               <div key={c.id} className={`card p-5 transition-all duration-200 ${isActive ? 'ring-1 ring-green-200' : ''}`}>
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={`p-2.5 rounded-2xl ${isActive ? 'bg-green-100' : 'bg-gray-100'}`}>
+                    <div className="p-2.5 rounded-2xl" style={{ background: isActive ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.06)' }}>
                       <Sprout size={18} className={isActive ? 'text-green-600' : 'text-gray-400'} />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-800">{c.name}</h3>
-                      {variety && <p className="text-xs text-gray-500">{variety}</p>}
+                      <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>{c.name}</h3>
+                      {variety && <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{variety}</p>}
                       {ghLabel && (
-                        <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                        <p className="text-xs flex items-center gap-1 mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
                           <Building2 size={10} /> {ghLabel}
                         </p>
                       )}
@@ -432,7 +434,7 @@ Responde SOLO con JSON válido sin markdown:
                     <RangeBar label="Humedad suelo" min={c.soil_moisture_min} max={c.soil_moisture_max} unit="%" color="bg-green-400" scaleMax={100} />}
                 </div>
 
-                <div className="flex gap-2 pt-3 border-t border-gray-100">
+                <div className="flex gap-2 pt-3 border-t border-[rgba(74,222,128,0.12)]">
                   <button onClick={() => handleEdit(c)} className="flex-1 btn-secondary py-2 text-xs">
                     <Edit2 size={12} /> Editar
                   </button>

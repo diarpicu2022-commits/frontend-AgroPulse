@@ -240,7 +240,8 @@ export default function AlertsPage() {
         <div className="flex items-center gap-2 flex-wrap">
           {counts.unread > 0 && !loading && (
             <button onClick={handleMarkAllRead}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold transition-colors">
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl hover:bg-[rgba(74,222,128,0.08)] text-xs font-semibold transition-colors"
+            style={{ background: 'rgba(74,222,128,0.06)', color: 'rgba(255,255,255,0.5)' }}>
               <CheckCheck size={13} /> Marcar todas leídas
             </button>
           )}
@@ -278,8 +279,8 @@ export default function AlertsPage() {
                   <Icon size={14} className={meta.iconColor} />
                 </div>
                 <div>
-                  <p className="text-lg font-bold text-gray-800 leading-none">{count}</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">{meta.label}</p>
+                  <p className="text-lg font-bold leading-none" style={{ color: '#e2ffe9' }}>{count}</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>{meta.label}</p>
                 </div>
               </button>
             )
@@ -291,16 +292,16 @@ export default function AlertsPage() {
       {showForm && (
         <form ref={formRef} onSubmit={handleSubmit} className="card p-5 space-y-4" style={{ opacity: 0 }}>
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800">Nueva Alerta</h3>
+            <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>Nueva Alerta</h3>
             <button type="button" onClick={() => setShowForm(false)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+              className="p-1.5 rounded-lg hover:bg-[rgba(74,222,128,0.08)] transition-colors" style={{ color: 'rgba(255,255,255,0.35)' }}>
               <X size={16} />
             </button>
           </div>
 
           {/* Greenhouse selector */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
               Invernadero
             </label>
             <select
@@ -314,14 +315,14 @@ export default function AlertsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Mensaje *</label>
+            <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Mensaje *</label>
             <input type="text" placeholder="Describe la alerta..." value={form.message}
               onChange={e => setForm({ ...form, message: e.target.value })}
               className="input-field" required />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nivel</label>
+            <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Nivel</label>
             <div className="flex gap-2">
               {LEVELS.map(lvl => {
                 const meta = LEVEL[lvl]
@@ -331,7 +332,8 @@ export default function AlertsPage() {
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border text-xs font-semibold transition-all duration-150
                       ${form.level === lvl
                         ? `${meta.cardBg} ${meta.cardBorder} ${meta.iconColor}`
-                        : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                        : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+                    style={form.level !== lvl ? { color: 'rgba(255,255,255,0.35)' } : {}}>
                     <meta.Icon size={12} />
                     {meta.label}
                   </button>
@@ -352,14 +354,16 @@ export default function AlertsPage() {
           <button
             onClick={() => setGhFilter('')}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-150
-              ${ghFilter === '' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>
+              ${ghFilter === '' ? 'bg-gray-800 text-white border-gray-800' : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+            style={ghFilter !== '' ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}>
             Todos
           </button>
           {greenhouses.map(g => (
             <button key={g.id}
               onClick={() => setGhFilter(prev => prev === g.id ? '' : g.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-150
-                ${ghFilter === g.id ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}>
+                ${ghFilter === g.id ? 'bg-green-600 text-white border-green-600' : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+              style={ghFilter !== g.id ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}>
               <Building2 size={10} className="inline mr-1" />{g.name}
             </button>
           ))}
@@ -410,9 +414,9 @@ export default function AlertsPage() {
                       <span className={`w-2 h-2 rounded-full ${meta.dot} animate-pulse`} />
                     )}
                   </div>
-                  <p className="text-sm font-medium text-gray-800 leading-snug">{a.message}</p>
+                  <p className="text-sm font-medium leading-snug" style={{ color: '#e2ffe9' }}>{a.message}</p>
                   {a.timestamp && (
-                    <p className="text-[11px] text-gray-400 mt-1">
+                    <p className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
                       {new Date(a.timestamp).toLocaleString('es-CO', {
                         day: '2-digit', month: 'short', year: 'numeric',
                         hour: '2-digit', minute: '2-digit',
@@ -427,14 +431,14 @@ export default function AlertsPage() {
                     <button
                       onClick={() => handleMarkRead(a.id)}
                       title="Marcar como leída"
-                      className="p-1.5 rounded-lg hover:bg-green-50 text-gray-400 hover:text-green-600 transition-colors">
+                      className="p-1.5 rounded-lg hover:bg-[rgba(74,222,128,0.08)] hover:text-green-400 transition-colors" style={{ color: 'rgba(255,255,255,0.35)' }}>
                       <Check size={13} />
                     </button>
                   )}
                   <button
                     onClick={() => handleDelete(a.id)}
                     title="Eliminar"
-                    className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
+                    className="p-1.5 rounded-lg hover:bg-[rgba(248,113,113,0.1)] hover:text-red-400 transition-colors" style={{ color: 'rgba(255,255,255,0.35)' }}>
                     <X size={13} />
                   </button>
                 </div>

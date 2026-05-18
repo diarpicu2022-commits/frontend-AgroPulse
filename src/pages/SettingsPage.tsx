@@ -104,8 +104,8 @@ export default function SettingsPage() {
       {/* Profile card */}
       <div className="card p-5">
         <div className="flex items-center gap-2 mb-4">
-          <User size={15} className="text-gray-400" />
-          <h3 className="text-sm font-semibold text-gray-800">Mi Perfil</h3>
+          <User size={15} style={{ color: 'rgba(255,255,255,0.35)' }} />
+          <h3 className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>Mi Perfil</h3>
           {profileSaved && (
             <span className="ml-auto flex items-center gap-1 text-xs text-green-600 font-medium">
               <CheckCircle2 size={13} /> Guardado
@@ -138,10 +138,10 @@ export default function SettingsPage() {
           </div>
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-800 truncate">
+            <p className="font-semibold truncate" style={{ color: '#e2ffe9' }}>
               {authUser?.full_name || (authUser as AppUser | null)?.fullName || authUser?.username || '—'}
             </p>
-            <p className="text-xs text-gray-500 truncate">{authUser?.email || 'Sin email'}</p>
+            <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.35)' }}>{authUser?.email || 'Sin email'}</p>
             <div className="mt-1">
               <span className={isAdmin ? 'badge-red' : 'badge-blue'}>
                 <ShieldCheck size={10} />
@@ -159,10 +159,10 @@ export default function SettingsPage() {
 
         {/* Edit form */}
         {editingProfile && (
-          <div className="border-t border-gray-100 pt-4 space-y-3">
+          <div className="border-t border-[rgba(74,222,128,0.12)] pt-4 space-y-3">
             {/* Name */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
                 Nombre a mostrar
               </label>
               <input type="text" value={nameInput}
@@ -173,7 +173,7 @@ export default function SettingsPage() {
 
             {/* Avatar URL */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
                 URL de foto de perfil
               </label>
               <input type="url" value={avatarUrl.startsWith('data:') ? '' : avatarUrl}
@@ -184,7 +184,7 @@ export default function SettingsPage() {
 
             {/* File upload */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
                 O subir desde tu dispositivo
               </label>
               <input
@@ -203,12 +203,12 @@ export default function SettingsPage() {
 
             {/* Preview */}
             {avatarPreview && (
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+              <div className="flex items-center gap-3 p-3 rounded-2xl border border-[rgba(74,222,128,0.12)]" style={{ background: '#051a0a' }}>
                 <img src={avatarPreview} alt="preview"
                   className="w-10 h-10 rounded-xl object-cover shrink-0"
                   onError={() => setAvatarPreview('')}
                 />
-                <p className="text-xs text-gray-500">Vista previa de la foto</p>
+                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Vista previa de la foto</p>
                 <button onClick={() => { setAvatarPreview(''); setAvatarUrl('') }}
                   className="ml-auto text-xs text-red-400 hover:text-red-600">
                   Quitar
@@ -237,8 +237,8 @@ export default function SettingsPage() {
       {/* System info */}
       <div className="card p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Info size={15} className="text-gray-400" />
-          <h3 className="text-sm font-semibold text-gray-800">Información del Sistema</h3>
+          <Info size={15} style={{ color: 'rgba(255,255,255,0.35)' }} />
+          <h3 className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>Información del Sistema</h3>
         </div>
         <dl className="space-y-3 text-sm">
           {[
@@ -246,13 +246,13 @@ export default function SettingsPage() {
             { label: 'Build',    value: '2026.05' },
             { label: 'Usuario',  value: authUser?.email ?? 'No especificado' },
           ].map(({ label, value }) => (
-            <div key={label} className="flex justify-between items-center py-1 border-b border-gray-50 last:border-0">
-              <dt className="text-gray-500">{label}</dt>
-              <dd className="font-medium text-gray-800">{value}</dd>
+            <div key={label} className="flex justify-between items-center py-1 border-b border-[rgba(74,222,128,0.08)] last:border-0">
+              <dt style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</dt>
+              <dd className="font-medium" style={{ color: '#e2ffe9' }}>{value}</dd>
             </div>
           ))}
-          <div className="flex justify-between items-center py-1 border-b border-gray-50">
-            <dt className="text-gray-500">Rol</dt>
+          <div className="flex justify-between items-center py-1 border-b border-[rgba(74,222,128,0.08)]">
+            <dt style={{ color: 'rgba(255,255,255,0.35)' }}>Rol</dt>
             <dd>
               <span className={isAdmin ? 'badge-red' : 'badge-blue'}>
                 <ShieldCheck size={10} />
@@ -260,18 +260,18 @@ export default function SettingsPage() {
               </span>
             </dd>
           </div>
-          <div className="flex justify-between items-center py-1 border-b border-gray-50">
-            <dt className="text-gray-500">Supabase</dt>
+          <div className="flex justify-between items-center py-1 border-b border-[rgba(74,222,128,0.08)]">
+            <dt style={{ color: 'rgba(255,255,255,0.35)' }}>Supabase</dt>
             <dd>
-              <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${supabase ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full`} style={supabase ? { background: 'rgba(74,222,128,0.1)', color: '#4ade80' } : { background: 'rgba(248,113,113,0.1)', color: '#f87171' }}>
                 {supabase ? <><Wifi size={11} /> Conectado</> : <><WifiOff size={11} /> Sin configurar</>}
               </span>
             </dd>
           </div>
           <div className="flex justify-between items-center py-1">
-            <dt className="text-gray-500">IAs Activas</dt>
+            <dt style={{ color: 'rgba(255,255,255,0.35)' }}>IAs Activas</dt>
             <dd>
-              <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${activeCount > 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+              <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full" style={activeCount > 0 ? { background: 'rgba(74,222,128,0.1)', color: '#4ade80' } : { background: 'rgba(251,191,36,0.1)', color: '#fbbf24' }}>
                 {activeCount > 0
                   ? <><CheckCircle size={11} /> {activeCount} de 3 activas</>
                   : <><XCircle size={11} /> Sin configurar</>
@@ -291,10 +291,10 @@ export default function SettingsPage() {
       ) : (
         <div className="card p-5">
           <div className="flex items-center gap-2 mb-1">
-            <Key size={15} className="text-gray-400" />
-            <h3 className="text-sm font-semibold text-gray-800">Inteligencias Artificiales</h3>
+            <Key size={15} style={{ color: 'rgba(255,255,255,0.35)' }} />
+            <h3 className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>Inteligencias Artificiales</h3>
           </div>
-          <p className="text-xs text-gray-500 mb-4">Configura las IAs disponibles en la aplicación. Las claves se guardan en el navegador (localStorage).</p>
+          <p className="text-xs mb-4" style={{ color: 'rgba(255,255,255,0.35)' }}>Configura las IAs disponibles en la aplicación. Las claves se guardan en el navegador (localStorage).</p>
 
           <div className="space-y-4">
             {([
@@ -302,9 +302,9 @@ export default function SettingsPage() {
               { key: 'github', label: 'GitHub AI (phi-4-mini)', ph: 'ghp_...',              val: githubKey, set: setGithubKey, active: githubActive },
               { key: 'gemma',  label: 'Gemma 4 (Google AI)',    ph: 'AIza...',              val: gemmaKey,  set: setGemmaKey,  active: gemmaActive  },
             ] as const).map(row => (
-              <div key={row.key} className="p-4 border border-gray-100 rounded-2xl">
+              <div key={row.key} className="p-4 rounded-2xl" style={{ border: '1px solid rgba(74,222,128,0.12)' }}>
                 <div className="flex justify-between items-center mb-2.5">
-                  <span className="font-medium text-sm text-gray-800">{row.label}</span>
+                  <span className="font-medium text-sm" style={{ color: '#e2ffe9' }}>{row.label}</span>
                   <span className={row.active ? 'badge-green' : 'badge-gray'}>
                     {row.active ? 'Activa' : 'No configurada'}
                   </span>
@@ -329,16 +329,16 @@ export default function SettingsPage() {
 
       {/* Dev team */}
       <div className="card p-5">
-        <h3 className="text-sm font-semibold text-gray-800 mb-4">Equipo de Desarrollo</h3>
+        <h3 className="text-sm font-semibold mb-4" style={{ color: '#e2ffe9' }}>Equipo de Desarrollo</h3>
         <dl className="space-y-3 text-sm">
           {[
             { label: 'Desarrollador', value: 'Diego Armando Pinta Cuasquen' },
             { label: 'Universidad',   value: 'Cooperativa de Colombia – Nariño' },
             { label: 'Proyecto',      value: 'Semestre 2025' },
           ].map(({ label, value }) => (
-            <div key={label} className="flex justify-between items-center py-1 border-b border-gray-50 last:border-0">
-              <dt className="text-gray-500">{label}</dt>
-              <dd className="font-medium text-gray-800 text-right">{value}</dd>
+            <div key={label} className="flex justify-between items-center py-1 border-b border-[rgba(74,222,128,0.08)] last:border-0">
+              <dt style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</dt>
+              <dd className="font-medium text-right" style={{ color: '#e2ffe9' }}>{value}</dd>
             </div>
           ))}
         </dl>

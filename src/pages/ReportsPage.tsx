@@ -212,7 +212,8 @@ export default function ReportsPage() {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
               ${ghFilter === ''
                 ? 'bg-green-600 text-white border-green-600 shadow-sm'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+                : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+            style={ghFilter !== '' ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
           >
             <Sprout size={11} /> Todos
           </button>
@@ -222,7 +223,8 @@ export default function ReportsPage() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border
                 ${ghFilter === gh.id
                   ? 'bg-green-600 text-white border-green-600 shadow-sm'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}
+                  : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+              style={ghFilter !== gh.id ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
             >
               <Building2 size={11} /> {gh.name}
             </button>
@@ -244,9 +246,9 @@ export default function ReportsPage() {
       {showForm && ghFilter !== '' && (
         <form ref={formRef} onSubmit={handleSubmit} className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800">Agendar Reporte</h3>
+            <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>Agendar Reporte</h3>
             <button type="button" onClick={() => setShowForm(false)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+              className="p-1.5 rounded-lg hover:bg-[rgba(74,222,128,0.08)] transition-colors" style={{ color: 'rgba(255,255,255,0.35)' }}>
               <X size={16} />
             </button>
           </div>
@@ -257,14 +259,14 @@ export default function ReportsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Correo electrónico</label>
+            <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Correo electrónico</label>
             <input type="email" value={form.email}
               onChange={e => setForm({ ...form, email: e.target.value })}
               className="input-field" required />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Frecuencia</label>
+            <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Frecuencia</label>
             <div className="grid grid-cols-3 gap-2">
               {(['daily', 'weekly', 'monthly'] as Frequency[]).map(f => {
                 const cfg    = FREQ_CONFIG[f]
@@ -275,14 +277,15 @@ export default function ReportsPage() {
                     className={`py-2.5 rounded-xl text-xs font-semibold border transition-all
                       ${active
                         ? `${cfg.bg} ${cfg.border} ${cfg.color} ring-1 ring-offset-1`
-                        : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                        : 'border-[rgba(74,222,128,0.12)] hover:border-green-400/20'}`}
+                    style={!active ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
                   >
                     {cfg.label}
                   </button>
                 )
               })}
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">{FREQUENCY_LABELS[form.frequency]}</p>
+            <p className="text-xs mt-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>{FREQUENCY_LABELS[form.frequency]}</p>
           </div>
 
           <div className="flex gap-3">
@@ -326,9 +329,9 @@ export default function ReportsPage() {
                     <CalendarDays size={18} className={cfg.color} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-800 truncate">{s.email}</p>
+                    <p className="font-semibold truncate" style={{ color: '#e2ffe9' }}>{s.email}</p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <p className="text-xs text-gray-500">{FREQUENCY_LABELS[s.frequency] || s.frequency}</p>
+                      <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{FREQUENCY_LABELS[s.frequency] || s.frequency}</p>
                       {gName && (
                         <span className="flex items-center gap-1 text-[10px] font-semibold text-green-700 bg-green-50 border border-green-100 px-1.5 py-0.5 rounded-lg">
                           <Building2 size={9} /> {gName}
