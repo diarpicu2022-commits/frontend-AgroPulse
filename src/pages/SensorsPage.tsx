@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { Activity, Plus, X, Cpu, Wifi, RefreshCw } from 'lucide-react'
 import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
-import { useGsapReveal } from '../hooks/useGsapReveal'
 import { sensorRepository, greenhouseRepository } from '../repositories'
 import type { SensorDto, GreenhouseDto, SensorType, Protocol } from '../types'
+import PageHeader from '../components/ui/PageHeader'
 
 const SENSOR_TYPES: SensorType[] = ['TEMPERATURE', 'HUMIDITY', 'SOIL_MOISTURE', 'LIGHT', 'CO2', 'PRESSURE']
 const PROTOCOLS: Protocol[]      = ['DHT22', 'DHT11', 'ADC', 'ANALOG', 'I2C', 'DIGITAL', 'ONE_WIRE']
@@ -24,7 +24,7 @@ interface SensorForm {
 
 export default function SensorsPage() {
   const { allowedGreenhouseIds } = useAuth()
-  const revealRef = useGsapReveal<HTMLDivElement>({ stagger: 0.06, duration: 0.45 })
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const [sensors,     setSensors]     = useState<SensorDto[]>([])
   const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
   const [filterGhId,  setFilterGhId]  = useState('')
@@ -33,14 +33,43 @@ export default function SensorsPage() {
   const [form,        setForm]        = useState<SensorForm>({ name: '', type: 'TEMPERATURE', location: '', protocol: 'DHT22', gpioPin: '', greenhouseId: '' })
   const [error,         setError]         = useState<string | null>(null)
   const [deduplicating, setDeduplicating] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const [lastSyncSecs, setLastSyncSecs] = useState(0)
   const gridRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     greenhouseRepository.list().then(d => setGreenhouses(d.greenhouses ?? [])).catch(() => {})
   }, [])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadSensors() }, [filterGhId, allowedGreenhouseIds, greenhouses])
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  const runSilentDedup = async (allSensors: SensorDto[]) => {
+    if (allowedGreenhouseIds !== null) return
+    const groups = new Map<string, SensorDto[]>()
+    for (const s of allSensors) {
+      const key = `${s.type ?? ''}|${s.gpioPin ?? ''}|${s.greenhouseId ?? ''}`
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(s)
+    }
+    let deleted = 0
+    for (const [, group] of groups) {
+      if (group.length <= 1) continue
+      group.sort((a, b) => b.id - a.id)
+      for (let i = 1; i < group.length; i++) {
+        await sensorRepository.remove(group[i].id).catch(() => {})
+        deleted++
+      }
+    }
+    if (deleted > 0) {
+      showToast(`${deleted} duplicado${deleted > 1 ? 's' : ''} eliminado${deleted > 1 ? 's' : ''}`)
+      loadSensors()
+    }
+  }
 
   const loadSensors = async () => {
     setLoading(true)
@@ -48,21 +77,49 @@ export default function SensorsPage() {
       const data = await sensorRepository.list(filterGhId ? parseInt(filterGhId) : null)
       const all  = data.sensors ?? []
       // Operators only see sensors from their greenhouses (by greenhouseId or by ESP32 deviceSource)
+      const norm = (v?: string | null) => v?.trim().toLowerCase() ?? ''
       const filtered = allowedGreenhouseIds === null
         ? all
         : all.filter(s => {
             if (s.greenhouseId != null && allowedGreenhouseIds.includes(s.greenhouseId)) return true
             if (s.deviceSource) {
-              const gh = greenhouses.find(g => g.deviceId === s.deviceSource && allowedGreenhouseIds.includes(g.id))
+              const gh = greenhouses.find(g =>
+                norm(g.deviceId) === norm(s.deviceSource) && allowedGreenhouseIds.includes(g.id)
+              )
               if (gh) return true
             }
             return false
           })
       setSensors(filtered)
+      setLastSyncSecs(0)
       setError(null)
+      if (allowedGreenhouseIds === null) {
+        runSilentDedup(all).catch(() => {})
+      }
     } catch (err) { setError((err as Error).message) }
     finally { setLoading(false) }
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    loadSensors()
+    const startPoll = () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+      pollRef.current = setInterval(loadSensors, 15_000)
+    }
+    startPoll()
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      } else { startPoll() }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterGhId, allowedGreenhouseIds, greenhouses.length])
 
   // Stagger entrance when grid renders
   useEffect(() => {
@@ -87,6 +144,20 @@ export default function SensorsPage() {
     anime({ targets: formRef.current, opacity: [0, 1], scaleY: [0.94, 1], duration: 280, easing: 'easeOutBack' })
   }, [showForm])
 
+  // Wrapper entrance animation
+  useEffect(() => {
+    if (!wrapperRef.current) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({ targets: wrapperRef.current, opacity: [0, 1], translateY: [16, 0], duration: 400, easing: 'easeOutCubic' })
+  }, [])
+
+  // Last sync counter
+  useEffect(() => {
+    const t = setInterval(() => setLastSyncSecs(s => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -109,7 +180,6 @@ export default function SensorsPage() {
   }
 
   const handleDeduplicate = async () => {
-    if (!confirm('¿Eliminar sensores duplicados? Se conservará el de mayor ID por cada tipo+GPIO+invernadero.')) return
     setDeduplicating(true)
     try {
       const data = await sensorRepository.list(null)
@@ -129,40 +199,36 @@ export default function SensorsPage() {
           deleted++
         }
       }
-      alert(`Listo: se eliminaron ${deleted} sensores duplicados.`)
-      loadSensors()
-    } catch (err) { alert('Error: ' + (err as Error).message) }
+      showToast(deleted > 0 ? `${deleted} duplicado${deleted > 1 ? 's' : ''} eliminado${deleted > 1 ? 's' : ''}` : 'Sin duplicados')
+      if (deleted > 0) loadSensors()
+    } catch (err) { showToast('Error: ' + (err as Error).message) }
     setDeduplicating(false)
   }
 
   return (
-    <div ref={revealRef} className="space-y-5">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="section-title">Sensores</h2>
-          <p className="section-subtitle">Monitoreo y gestión de sensores del invernadero</p>
-        </div>
-        <div className="flex gap-2 items-center flex-wrap">
-          <select value={filterGhId} onChange={e => setFilterGhId(e.target.value)}
-            className="input-field py-2 text-sm">
-            <option value="">Todos los invernaderos</option>
-            {greenhouses.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-          </select>
-          {allowedGreenhouseIds === null && (
-            <button
-              onClick={handleDeduplicate}
-              disabled={deduplicating}
-              className="btn-secondary px-4 py-2 text-sm disabled:opacity-60">
-              <RefreshCw size={14} className={deduplicating ? 'animate-spin' : ''} />
-              {deduplicating ? 'Limpiando…' : 'Deduplicar'}
+    <div ref={wrapperRef} className="space-y-5">
+      <PageHeader
+        title="Sensores"
+        subtitle={`Monitoreo y gestión${lastSyncSecs > 0 ? ` · hace ${lastSyncSecs}s` : ''}`}
+        action={
+          <div className="flex gap-2 items-center">
+            <select value={filterGhId} onChange={e => setFilterGhId(e.target.value)}
+                    className="input-field py-1.5 text-sm" style={{ width: 'auto' }}>
+              <option value="">Todos</option>
+              {greenhouses.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+            {allowedGreenhouseIds === null && (
+              <button onClick={handleDeduplicate} disabled={deduplicating} className="btn-secondary px-3 py-1.5 text-sm">
+                <RefreshCw size={13} className={deduplicating ? 'animate-spin' : ''} />
+                {deduplicating ? 'Limpiando…' : 'Dedup'}
+              </button>
+            )}
+            <button onClick={() => setShowForm(!showForm)} className={showForm ? 'btn-secondary px-3 py-1.5 text-sm' : 'btn-primary px-3 py-1.5 text-sm'}>
+              {showForm ? <><X size={13} />Cancelar</> : <><Plus size={13} />Nuevo</>}
             </button>
-          )}
-          <button onClick={() => setShowForm(!showForm)} className={showForm ? 'btn-secondary px-4 py-2 text-sm' : 'btn-primary px-4 py-2 text-sm'}>
-            {showForm ? <><X size={14} /> Cancelar</> : <><Plus size={14} /> Nuevo</>}
-          </button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {error && (
         <div className="alert-danger">
@@ -171,13 +237,20 @@ export default function SensorsPage() {
         </div>
       )}
 
+      {toast && (
+        <div className="alert-info text-sm">
+          <Activity size={14} className="shrink-0" />
+          <span>{toast}</span>
+        </div>
+      )}
+
       {/* Create form */}
       {showForm && (
-        <form ref={formRef} onSubmit={handleSubmit} className="card p-5 space-y-4">
+        <form ref={formRef} onSubmit={handleSubmit} className="biopunk-card p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800">Nuevo Sensor</h3>
+            <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>Nuevo Sensor</h3>
             <button type="button" onClick={() => setShowForm(false)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+              className="p-1.5 rounded-lg transition-colors" style={{ color: 'rgba(255,255,255,0.35)' }}>
               <X size={16} />
             </button>
           </div>
@@ -240,12 +313,12 @@ export default function SensorsPage() {
               <div key={s.id} className="card-hover p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="p-2 bg-green-100 rounded-xl shrink-0">
-                      <Activity size={16} className="text-green-600" />
+                    <div className="p-2 rounded-xl shrink-0" style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)' }}>
+                      <Activity size={16} style={{ color: '#4ade80' }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-800 truncate text-sm">{s.name}</h3>
-                      <p className="text-xs text-gray-500 mt-0.5">{info.label} · {info.unit}</p>
+                      <h3 className="font-semibold truncate text-sm" style={{ color: '#e2ffe9' }}>{s.name}</h3>
+                      <p className="text-xs mt-0.5 font-mono" style={{ color: 'rgba(255,255,255,0.35)' }}>{info.label} · {info.unit}</p>
                       <div className="flex flex-wrap gap-1 mt-2">
                         {gh && (
                           <span className="badge-teal text-[10px]">
@@ -272,7 +345,7 @@ export default function SensorsPage() {
                   </button>
                 </div>
                 {s.location && (
-                  <p className="text-[11px] text-gray-400 mt-2 pl-11">
+                  <p className="text-[11px] mt-2 pl-11 font-mono" style={{ color: 'rgba(255,255,255,0.35)' }}>
                     <Cpu size={9} className="inline mr-1" />{s.location}
                   </p>
                 )}

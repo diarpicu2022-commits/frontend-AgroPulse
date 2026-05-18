@@ -4,6 +4,7 @@ import anime from 'animejs'
 import { Map, MapMarker, MarkerContent, MarkerPopup, MarkerTooltip, MapControls } from '@/components/ui/map'
 import { greenhouseRepository, readingRepository } from '../repositories'
 import type { GreenhouseDto, SensorReadingDto } from '../types'
+import PageHeader from '../components/ui/PageHeader'
 
 interface MapPageProps {
   onNavigate: (page: 'dashboard') => void
@@ -87,21 +88,15 @@ export default function MapPage({ onNavigate }: MapPageProps) {
   }
 
   return (
-    <div ref={wrapperRef} className="space-y-4">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-9 h-9 bg-green-500/15 rounded-xl flex items-center justify-center">
-          <MapPin size={18} className="text-green-400" />
-        </div>
-        <div>
-          <h2 className="text-base font-bold text-white font-heading">Mapa de Invernaderos</h2>
-          <p className="text-xs text-white/40">
-            {mapped.length} con ubicación GPS · {unmapped.length} sin ubicación
-          </p>
-        </div>
-      </div>
+    <div ref={wrapperRef} className="space-y-5" style={{ opacity: 0 }}>
+      <PageHeader title="Mapa de Invernaderos" subtitle="Ubicación geográfica y sensores en tiempo real" accent="cyan" />
 
-      <div className="rounded-2xl overflow-hidden border border-white/10 shadow-glass-dark"
-           style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}>
+      <p className="text-xs text-white/40 -mt-3">
+        {mapped.length} con ubicación GPS · {unmapped.length} sin ubicación
+      </p>
+
+      <div className="shadow-glass-dark"
+           style={{ height: 'calc(100vh - 220px)', minHeight: '400px', border: '1px solid rgba(74,222,128,0.15)', borderRadius: '14px', overflow: 'hidden' }}>
         <Map center={center} zoom={zoom}>
           <MapControls />
           {mapped.map(gh => {

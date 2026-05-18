@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { Building2, UserPlus, Cpu, Zap, ChevronDown, ChevronUp, Wifi, Loader2, Camera } from 'lucide-react'
+import { Building2, UserPlus, Cpu, Zap, ChevronDown, ChevronUp, Wifi, Loader2, Camera, Plus, X } from 'lucide-react'
 import anime from 'animejs'
+import PageHeader from '../components/ui/PageHeader'
 import { useAuth, saveAccess, readAccess, saveAccessByEmail, readAccessByEmail, supabase } from '../context/AuthContext'
 import { greenhouseRepository, sensorRepository, actuatorRepository, deviceRepository } from '../repositories'
 import { userRepository } from '../repositories'
@@ -182,6 +183,11 @@ export default function GreenhousePage() {
         const currentByEmail = readAccessByEmail(targetUser.email, uid)
         if (!currentByEmail.includes(ghId)) saveAccessByEmail(targetUser.email, uid, [...currentByEmail, ghId])
       }
+      // Belt-and-suspenders: push updated IDs to backend directly in case of cold-start race
+      const finalIds = readAccess(uid)
+      if (user?.email) {
+        userRepository.setGreenhouses(uid, finalIds, user.email).catch(() => {})
+      }
       setAssignUserId('')
     } catch (err) { alert('Error asignando usuario: ' + (err as Error).message) }
     finally { setAssigning(false) }
@@ -287,21 +293,18 @@ export default function GreenhousePage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 font-heading">🏡 Invernaderos</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {isAdmin ? 'Gestiona invernaderos, dispositivos y asigna usuarios' : 'Tus invernaderos asignados'}
-          </p>
-        </div>
-        {isAdmin && (
-          <button onClick={() => setShowForm(!showForm)}
-            className="btn-primary px-4 py-2.5 text-sm">
-            {showForm ? 'Cancelar' : '+ Nuevo Invernadero'}
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Invernaderos"
+        subtitle="Gestión de invernaderos y dispositivos ESP32"
+        action={
+          isAdmin ? (
+            <button onClick={() => setShowForm(!showForm)}
+                    className={showForm ? 'btn-secondary px-3 py-1.5 text-sm' : 'btn-primary px-3 py-1.5 text-sm'}>
+              {showForm ? <><X size={13} />Cancelar</> : <><Plus size={13} />Nuevo</>}
+            </button>
+          ) : undefined
+        }
+      />
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">⚠️ {error}</div>
@@ -310,7 +313,7 @@ export default function GreenhousePage() {
       {/* Create form */}
       {showForm && isAdmin && (
         <form ref={formRef} onSubmit={handleSubmit}
-          className="card border-2 border-green-200 p-5 space-y-3">
+          className="biopunk-card border-2 border-green-200 p-5 space-y-3">
           <input type="text" placeholder="Nombre del invernadero *" value={form.name}
             onChange={e => setForm({ ...form, name: e.target.value })}
             className="input-field" required />
@@ -333,7 +336,7 @@ export default function GreenhousePage() {
           <p className="text-gray-500 mt-2">Cargando...</p>
         </div>
       ) : greenhouses.length === 0 ? (
-        <div className="card p-12 text-center">
+        <div className="biopunk-card p-12 text-center">
           <Building2 size={48} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-500 font-medium">No hay invernaderos</p>
           {isAdmin && (
@@ -347,23 +350,23 @@ export default function GreenhousePage() {
           {greenhouses.map(g => {
             const usedGpios = gpioOpts[g.id]?.usedGpios ?? []
             return (
-              <div key={g.id} className="card overflow-hidden">
+              <div key={g.id} className="biopunk-card overflow-hidden">
 
                 {/* Card header */}
                 <div className="p-4 flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-lg">🌿</span>
-                      <h3 className="font-bold text-gray-800">{g.name}</h3>
+                      <h3 className="font-bold" style={{ color: '#e2ffe9' }}>{g.name}</h3>
                       <span className={g.active ? 'badge-green' : 'badge-gray'}>
                         {g.active ? 'Activo' : 'Inactivo'}
                       </span>
                     </div>
-                    {g.location && <p className="text-sm text-gray-500 mt-0.5">📍 {g.location}</p>}
-                    <p className="text-xs text-gray-400 font-mono">
-                      ID: <span className="font-bold text-gray-600">{g.id}</span>
+                    {g.location && <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>📍 {g.location}</p>}
+                    <p className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                      ID: <span className="font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>{g.id}</span>
                     </p>
-                    {g.description && <p className="text-xs text-gray-400 mt-1">{g.description}</p>}
+                    {g.description && <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>{g.description}</p>}
                     {g.deviceId && (
                       <p className="text-xs mt-1 flex items-center gap-1 text-purple-600">
                         <Wifi size={11} /> ESP32: <span className="font-mono">{g.deviceId}</span>
@@ -470,7 +473,7 @@ export default function GreenhousePage() {
                                       {(u.fullName || u.username || '?')[0].toUpperCase()}
                                     </div>
                                     <div>
-                                      <p className="text-xs font-medium text-gray-800">{u.fullName || u.username}</p>
+                                      <p className="text-xs font-medium" style={{ color: '#e2ffe9' }}>{u.fullName || u.username}</p>
                                       <p className="text-[10px] text-gray-400">{u.role}</p>
                                     </div>
                                   </div>
@@ -555,7 +558,7 @@ export default function GreenhousePage() {
                           {(deviceConfig[g.id]?.sensors ?? []).map(s => (
                             <div key={s.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-xs">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-medium text-gray-800">{s.name}</span>
+                                <span className="font-medium" style={{ color: '#e2ffe9' }}>{s.name}</span>
                                 <span className="badge-blue">{s.type}</span>
                                 {s.protocol && <span className="badge-gray">{s.protocol}</span>}
                                 {s.gpioPin != null && <span className="badge-yellow">GPIO {s.gpioPin}</span>}
@@ -617,7 +620,7 @@ export default function GreenhousePage() {
                           {(deviceConfig[g.id]?.actuators ?? []).map(a => (
                             <div key={a.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-xs">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-medium text-gray-800">{a.name}</span>
+                                <span className="font-medium" style={{ color: '#e2ffe9' }}>{a.name}</span>
                                 {a.type && <span className="badge-purple">{a.type}</span>}
                                 {a.gpioPin != null && <span className="badge-yellow">GPIO {a.gpioPin}</span>}
                                 {a.activeLow && <span className="badge-yellow">ActiveLow</span>}

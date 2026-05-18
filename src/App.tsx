@@ -32,6 +32,27 @@ import MapPage        from './pages/MapPage'
 import SettingsPage   from './pages/SettingsPage'
 import NoAccessPage   from './pages/NoAccessPage'
 
+function LogoMarkSvg() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+      <defs><clipPath id="lmClip"><circle cx="28" cy="28" r="26"/></clipPath></defs>
+      <circle cx="28" cy="28" r="27" fill="#020d05" stroke="rgba(74,222,128,0.4)" strokeWidth="1.2"/>
+      <g clipPath="url(#lmClip)">
+        <rect x="2" y="2" width="52" height="52" fill="#071209"/>
+        <path d="M 8 31 A 20 20 0 0 1 48 31 Z" fill="#f59e0b"/>
+        <ellipse cx="28" cy="31" rx="16" ry="4" fill="rgba(251,191,36,0.22)"/>
+        <path d="M 2 31 Q 15 26 28 30 Q 41 34 54 31 L 54 54 L 2 54 Z" fill="#14532d"/>
+        <path d="M 2 36 Q 15 32 28 35 Q 41 38 54 36 L 54 54 L 2 54 Z" fill="#166534"/>
+        <path d="M 2 41 Q 15 38 28 40 Q 41 42 54 41 L 54 54 L 2 54 Z" fill="#15803d"/>
+        <path d="M 11 27 Q 5 20 9 13 Q 16 16 11 27 Z" fill="#22c55e" opacity="0.8"/>
+        <path d="M 45 27 Q 51 20 47 13 Q 40 16 45 27 Z" fill="#22c55e" opacity="0.8"/>
+        <path d="M 4 31 L 13 31 L 16 23 L 20 39 L 24 31 L 28 31 L 31 25 L 34 37 L 37 31 L 52 31"
+              stroke="#f87171" strokeWidth="1.7" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      </g>
+    </svg>
+  )
+}
+
 type PageId =
   | 'dashboard' | 'analytics' | 'sensors' | 'actuators' | 'rules' | 'reports'
   | 'greenhouses' | 'crops' | 'ai' | 'ml' | 'alerts' | 'logs' | 'users'
@@ -144,7 +165,7 @@ function AuthLoadingScreen() {
 
   return (
     <div className="min-h-screen flex items-center justify-center"
-         style={{ background: 'linear-gradient(135deg, #0A150D 0%, #162A1C 60%, #0D1F12 100%)' }}>
+         style={{ background: '#020d05' }}>
       <div ref={wrapRef} className="flex flex-col items-center gap-5">
         <div ref={iconRef}
              className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl
@@ -159,9 +180,10 @@ function AuthLoadingScreen() {
 }
 
 function AppInner() {
-  const { user, authLoading, allowedGreenhouseIds, logout } = useAuth()
+  const { user, authLoading, allowedGreenhouseIds, logout, refreshAccess } = useAuth()
   const [page, setPage]               = useState<PageId>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [accessTimedOut, setAccessTimedOut] = useState(false)
   const navRef  = useRef<HTMLElement>(null)
   const mainRef = useRef<HTMLElement>(null)
 
@@ -181,6 +203,20 @@ function AppInner() {
     }
   }, [sidebarOpen, user])
 
+  // Wait up to 8s for allowedGreenhouseIds to populate before showing NoAccessPage.
+  // Covers Render cold-start (~6s) so legitimate users don't see a false NoAccessPage.
+  useEffect(() => {
+    if (authLoading || !user) return
+    const isAdm = user.role === 'ADMIN' || user.role === 'admin'
+    if (isAdm || allowedGreenhouseIds === null || allowedGreenhouseIds.length > 0) {
+      setAccessTimedOut(false)
+      return
+    }
+    setAccessTimedOut(false)
+    const timer = setTimeout(() => setAccessTimedOut(true), 8000)
+    return () => clearTimeout(timer)
+  }, [authLoading, user?.id, allowedGreenhouseIds?.length])
+
   // Entrance animation on login
   useEffect(() => {
     if (!user || !mainRef.current) return
@@ -193,7 +229,32 @@ function AppInner() {
   if (!user) return <LoginPage />
 
   const isAdmin = user.role === 'ADMIN' || user.role === 'admin'
-  if (!isAdmin && allowedGreenhouseIds !== null && allowedGreenhouseIds.length === 0) return <NoAccessPage />
+  if (!isAdmin && allowedGreenhouseIds !== null && allowedGreenhouseIds.length === 0) {
+    if (!accessTimedOut) {
+      return (
+        <div className="min-h-screen flex items-center justify-center"
+             style={{ background: '#020d05' }}>
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-6 h-6 border-2 border-green-500/30 border-t-green-400 rounded-full animate-spin" />
+            <p className="text-sm text-white/50">Verificando acceso…</p>
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div>
+        <NoAccessPage />
+        <div className="fixed bottom-6 inset-x-0 flex justify-center">
+          <button
+            onClick={refreshAccess}
+            className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl shadow-lg transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const groups   = isAdmin ? ADMIN_GROUPS : USER_GROUPS
   const allItems = ALL_ITEMS(groups)
@@ -236,12 +297,15 @@ function AppInner() {
         <div className="px-4 pt-5 pb-4 border-b border-sidebar-border">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-glow-sm">
-                <Sprout size={16} className="text-white" />
-              </div>
+              <LogoMarkSvg />
               <div>
-                <span className="text-base font-bold text-white font-heading tracking-tight">AgroPulse</span>
-                <span className="ml-2 text-[9px] font-medium bg-green-500/20 text-green-300 px-1.5 py-0.5 rounded-md">v10</span>
+                <span className="text-base font-bold font-heading tracking-tight" style={{ color: '#e2ffe9' }}>
+                  Agro<span style={{ color: '#f97316' }}>Pulse</span>
+                </span>
+                <span className="ml-2 text-[9px] font-medium px-1.5 py-0.5 rounded-md"
+                      style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.2)' }}>
+                  v10
+                </span>
               </div>
             </div>
             <button
@@ -318,8 +382,8 @@ function AppInner() {
       </aside>
 
       {/* ── Header ──────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-20 lg:ml-64 bg-[#0A150D]/90 backdrop-blur-md
-                         border-b border-white/10">
+      <header className="sticky top-0 z-20 lg:ml-64 backdrop-blur-md"
+              style={{ background: 'rgba(2,13,5,0.92)', borderBottom: '1px solid rgba(74,222,128,0.08)' }}>
         <div className="flex items-center justify-between h-14 px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <button
