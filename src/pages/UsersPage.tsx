@@ -4,6 +4,7 @@ import anime from 'animejs'
 import { userRepository } from '../repositories'
 import { supabase, getCachedProfile, removeUserAccess } from '../context/AuthContext'
 import type { UserDto, UserRole } from '../types'
+import PageHeader from '../components/ui/PageHeader'
 
 interface MergedUser extends UserDto {
   source?: 'local' | 'supabase'
@@ -118,43 +119,42 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="section-title">Usuarios</h2>
-          <p className="section-subtitle">{users.length} usuario{users.length !== 1 ? 's' : ''} registrado{users.length !== 1 ? 's' : ''}</p>
-        </div>
-        <button onClick={() => setShowForm(!showForm)} className={showForm ? 'btn-secondary px-4 py-2 text-sm' : 'btn-primary px-4 py-2 text-sm'}>
-          {showForm ? <><X size={14} /> Cancelar</> : <><Plus size={14} /> Nuevo</>}
-        </button>
-      </div>
+      <PageHeader
+        title="Usuarios"
+        subtitle={`${users.length} usuario${users.length !== 1 ? 's' : ''} registrado${users.length !== 1 ? 's' : ''}`}
+        action={
+          <button onClick={() => setShowForm(!showForm)} className={showForm ? 'btn-secondary px-3 py-1.5 text-sm' : 'btn-primary px-3 py-1.5 text-sm'}>
+            {showForm ? <><X size={13} /> Cancelar</> : <><Plus size={13} /> Nuevo</>}
+          </button>
+        }
+      />
 
       {error && <div className="alert-danger text-sm">{error}</div>}
 
       {/* Form */}
       {showForm && (
-        <form ref={formRef} onSubmit={handleSubmit} className="card p-5 space-y-4">
-          <h3 className="font-semibold text-gray-800">Nuevo Usuario</h3>
+        <form ref={formRef} onSubmit={handleSubmit} className="biopunk-card p-5 space-y-4">
+          <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>Nuevo Usuario</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Usuario *</label>
+              <label className="biopunk-label block mb-1.5">Usuario *</label>
               <input type="text" placeholder="usuario123" value={form.username}
                 onChange={e => setForm({ ...form, username: e.target.value })} className="input-field" required />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Contraseña *</label>
+              <label className="biopunk-label block mb-1.5">Contraseña *</label>
               <input type="password" placeholder="••••••••" value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })} className="input-field" required />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nombre completo</label>
+              <label className="biopunk-label block mb-1.5">Nombre completo</label>
               <input type="text" placeholder="Nombre completo" value={form.fullName}
                 onChange={e => setForm({ ...form, fullName: e.target.value })} className="input-field" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Rol</label>
+              <label className="biopunk-label block mb-1.5">Rol</label>
               <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as UserRole })} className="input-field">
                 <option value="USER">Usuario</option>
                 <option value="ADMIN">Administrador</option>
@@ -178,18 +178,19 @@ export default function UsersPage() {
             const isAdmin     = u.role === 'ADMIN' || u.role === 'admin'
             const avatarUrl   = u.avatar || (u.email ? getCachedProfile(u.email)?.avatar : undefined)
             return (
-              <div key={u.id} id={`user-card-${u.id}`} className="card p-4">
+              <div key={u.id} id={`user-card-${u.id}`} className="biopunk-card p-4">
                 <div className="flex items-center gap-4">
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt="avatar" className="w-11 h-11 rounded-2xl object-cover ring-2 ring-green-200 shrink-0" />
+                    <img src={avatarUrl} alt="avatar" className="w-11 h-11 rounded-2xl object-cover shrink-0" style={{ border: '2px solid rgba(74,222,128,0.3)' }} />
                   ) : (
-                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white font-bold shadow-glow-sm shrink-0">
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-sm font-bold shrink-0"
+                         style={{ background: 'rgba(74,222,128,0.15)', border: '1px solid rgba(74,222,128,0.3)', color: '#4ade80' }}>
                       {initials}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-800 truncate">{displayName}</h3>
-                    <p className="text-xs text-gray-500 truncate">{u.email || 'Sin email'}</p>
+                    <h3 className="font-semibold truncate" style={{ color: '#e2ffe9' }}>{displayName}</h3>
+                    <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{u.email || 'Sin email'}</p>
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
                       <span className={isAdmin ? 'badge-red' : 'badge-blue'}>{isAdmin ? 'Admin' : 'Usuario'}</span>
                       {u.source === 'supabase' && (
@@ -201,7 +202,7 @@ export default function UsersPage() {
                   </div>
                   {u.source !== 'supabase' && (
                     <button onClick={() => handleDelete(u.id)}
-                      className="p-2 rounded-xl hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors shrink-0">
+                      className="p-2 rounded-xl text-red-400 hover:text-red-300 hover:bg-[rgba(248,113,113,0.1)] transition-colors shrink-0">
                       <Trash2 size={15} />
                     </button>
                   )}

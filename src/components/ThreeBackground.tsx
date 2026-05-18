@@ -12,6 +12,7 @@ export default function ThreeBackground() {
     const W = window.innerWidth
     const H = window.innerHeight
     const isMobile = W < 768
+    if (isMobile) return  // skip WebGL on mobile — causes visual artifacts
 
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))

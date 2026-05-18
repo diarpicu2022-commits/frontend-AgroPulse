@@ -18,9 +18,10 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;
   }
 
-  body { background: #020d05; color: #e2ffe9; }
+  body { background: #020d05; color: #e2ffe9; overflow-x: hidden; }
 
   h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', sans-serif; }
 

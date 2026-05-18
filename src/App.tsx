@@ -455,7 +455,8 @@ function AppInner() {
 
 export default function App() {
   useEffect(() => {
-    initLenis()
+    // Skip smooth scroll on mobile — causes visual glitches on touch devices
+    if (window.innerWidth >= 768) initLenis()
     return () => destroyLenis()
   }, [])
 
