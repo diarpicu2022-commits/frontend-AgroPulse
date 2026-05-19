@@ -28,6 +28,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers: {
       'Content-Type': 'application/json',
       ...(_userCtx.adminEmail ? { 'X-Admin-Email': _userCtx.adminEmail } : {}),
+      ...(_userCtx.id        ? { 'X-User-Id': String(_userCtx.id) }     : {}),
       ...(optHeaders ?? {}),
     },
     ...restOptions,
