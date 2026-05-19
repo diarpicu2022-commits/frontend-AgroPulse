@@ -1,20 +1,72 @@
 import { useEffect, useState, useRef } from 'react'
 import { MapPin, Activity } from 'lucide-react'
 import anime from 'animejs'
-import { Map, MapMarker, MarkerContent, MarkerPopup, MarkerTooltip, MapControls } from '@/components/ui/map'
+import { Map, MapMarker, MarkerContent, MarkerPopup, MarkerTooltip, MapControls, useMap } from '@/components/ui/map'
+import { fetchWeather, owmTileUrl, hasOwmKey, uvLabel, type WeatherData } from '../lib/weather'
 import { greenhouseRepository, readingRepository } from '../repositories'
 import type { GreenhouseDto, SensorReadingDto } from '../types'
 import PageHeader from '../components/ui/PageHeader'
 
+type WeatherLayer = 'none' | 'precipitation_new' | 'temp_new' | 'clouds_new' | 'wind_new'
+
+function WeatherTileLayer({ activeLayer }: { activeLayer: WeatherLayer }) {
+  const { map, isLoaded } = useMap()
+
+  useEffect(() => {
+    if (!map || !isLoaded) return
+
+    const SRC = 'owm-weather'
+    const LYR = 'owm-weather-layer'
+
+    const cleanup = () => {
+      try {
+        if (map.getLayer(LYR)) map.removeLayer(LYR)
+        if (map.getSource(SRC)) map.removeSource(SRC)
+      } catch { /* map already destroyed */ }
+    }
+
+    cleanup()
+
+    if (activeLayer !== 'none' && hasOwmKey()) {
+      map.addSource(SRC, {
+        type: 'raster',
+        tiles: [owmTileUrl(activeLayer)],
+        tileSize: 256,
+      })
+      map.addLayer({
+        id: LYR,
+        type: 'raster',
+        source: SRC,
+        paint: { 'raster-opacity': 0.7 },
+      })
+    }
+
+    return cleanup
+  }, [map, isLoaded, activeLayer])
+
+  return null
+}
+
 interface MapPageProps {
   onNavigate: (page: 'dashboard') => void
 }
+
+const WEATHER_LAYERS = [
+  { id: 'precipitation_new' as WeatherLayer, label: 'Lluvia',      icon: '🌧' },
+  { id: 'temp_new'          as WeatherLayer, label: 'Temperatura', icon: '🌡' },
+  { id: 'clouds_new'        as WeatherLayer, label: 'Nubes',       icon: '☁️' },
+  { id: 'wind_new'          as WeatherLayer, label: 'Viento',      icon: '💨' },
+]
 
 export default function MapPage({ onNavigate }: MapPageProps) {
   const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
   const [readings, setReadings] = useState<Record<number, SensorReadingDto[]>>({})
   const [loading, setLoading] = useState(true)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const [activeLayer,    setActiveLayer]    = useState<WeatherLayer>('none')
+  const [weather,        setWeather]        = useState<Record<number, WeatherData>>({})
+  const [weatherLoading, setWeatherLoading] = useState<Record<number, boolean>>({})
+  const layerBarRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let alive = true
@@ -25,10 +77,19 @@ export default function MapPage({ onNavigate }: MapPageProps) {
   }, [])
 
   const handleMarkerClick = (ghId: number) => {
-    if (readings[ghId]) return
-    readingRepository.list(null, 10, ghId).then(data => {
-      setReadings(prev => ({ ...prev, [ghId]: data.readings ?? [] }))
-    }).catch(() => {})
+    if (!readings[ghId]) {
+      readingRepository.list(null, 10, ghId).then(data => {
+        setReadings(prev => ({ ...prev, [ghId]: data.readings ?? [] }))
+      }).catch(() => {})
+    }
+    const gh = mapped.find(g => g.id === ghId)
+    if (gh && gh.latitude != null && gh.longitude != null && !weather[ghId] && !weatherLoading[ghId]) {
+      setWeatherLoading(prev => ({ ...prev, [ghId]: true }))
+      fetchWeather(gh.latitude, gh.longitude)
+        .then(w  => setWeather(prev => ({ ...prev, [ghId]: w })))
+        .catch(() => {})
+        .finally(() => setWeatherLoading(prev => ({ ...prev, [ghId]: false })))
+    }
   }
 
   useEffect(() => {
@@ -55,6 +116,20 @@ export default function MapPage({ onNavigate }: MapPageProps) {
       })
     }
   }, [loading, greenhouses.length])
+
+  useEffect(() => {
+    if (loading || !layerBarRef.current) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    anime({
+      targets:    layerBarRef.current,
+      opacity:    [0, 1],
+      translateY: [8, 0],
+      duration:   340,
+      delay:      200,
+      easing:     'easeOutCubic',
+    })
+  }, [loading])
 
   const mapped = greenhouses.filter(gh => gh.latitude != null && gh.longitude != null)
   const unmapped = greenhouses.filter(gh => gh.latitude == null || gh.longitude == null)
@@ -99,6 +174,7 @@ export default function MapPage({ onNavigate }: MapPageProps) {
            style={{ height: 'calc(100vh - 220px)', minHeight: '400px', border: '1px solid rgba(74,222,128,0.15)', borderRadius: '14px', overflow: 'hidden' }}>
         <Map center={center} zoom={zoom}>
           <MapControls />
+          <WeatherTileLayer activeLayer={activeLayer} />
           {mapped.map(gh => {
             const lastReadings = getLastReadings(gh.id)
             return (
@@ -137,6 +213,46 @@ export default function MapPage({ onNavigate }: MapPageProps) {
                       {gh.description && (
                         <p className="text-xs text-white/50 line-clamp-2">{gh.description}</p>
                       )}
+
+                      {/* Clima exterior */}
+                      {weatherLoading[gh.id] && (
+                        <div className="space-y-1.5 mb-2">
+                          <div className="skeleton h-3 rounded-lg w-1/2" />
+                          <div className="skeleton h-10 rounded-lg" />
+                          <div className="skeleton h-6 rounded-lg" />
+                        </div>
+                      )}
+                      {weather[gh.id] && !weatherLoading[gh.id] && (() => {
+                        const w = weather[gh.id]
+                        const uv = uvLabel(w.uvIndex)
+                        return (
+                          <div className="mb-2">
+                            <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                              🌦 Clima exterior
+                            </p>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-2xl leading-none">{w.icon}</span>
+                              <div>
+                                <div className="text-sm font-bold" style={{ color: '#7dd3fc' }}>{w.temperature}°C</div>
+                                <div className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{w.description}</div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1">
+                              {([
+                                { label: 'Humedad',     value: `${w.humidity}%`,          color: '#7dd3fc' },
+                                { label: 'Lluvia (1h)', value: `${w.precipitation} mm`,   color: '#7dd3fc' },
+                                { label: 'Viento',      value: `${w.windSpeed} km/h`,     color: '#7dd3fc' },
+                                { label: 'UV',          value: uv.label,                  color: uv.color  },
+                              ]).map(({ label, value, color }) => (
+                                <div key={label} className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(0,120,255,0.1)' }}>
+                                  <div className="text-[9px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</div>
+                                  <div className="text-[11px] font-semibold" style={{ color }}>{value}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })()}
 
                       {lastReadings.length > 0 ? (
                         <div className="space-y-1">
@@ -177,6 +293,51 @@ export default function MapPage({ onNavigate }: MapPageProps) {
             )
           })}
         </Map>
+      </div>
+
+      {/* Barra de capas climáticas */}
+      <div ref={layerBarRef} className="biopunk-card p-3" style={{ opacity: 0 }}>
+        <div className="flex flex-wrap items-center gap-2 justify-center">
+          {WEATHER_LAYERS.map(layer => {
+            const active = activeLayer === layer.id
+            const disabled = !hasOwmKey()
+            return (
+              <button
+                key={layer.id}
+                disabled={disabled}
+                aria-pressed={active}
+                onClick={() => setActiveLayer(prev => prev === layer.id ? 'none' : layer.id)}
+                className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+                style={{
+                  background:  active ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.05)',
+                  borderColor: active ? 'rgba(74,222,128,0.5)'  : 'rgba(255,255,255,0.1)',
+                  color:       active ? '#4ade80'                : 'rgba(255,255,255,0.5)',
+                  opacity:     disabled ? 0.4 : 1,
+                  cursor:      disabled ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {layer.icon} {layer.label}
+              </button>
+            )
+          })}
+          <button
+            aria-pressed={activeLayer === 'none'}
+            onClick={() => setActiveLayer('none')}
+            className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+            style={{
+              background:  activeLayer === 'none' ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.05)',
+              borderColor: activeLayer === 'none' ? 'rgba(74,222,128,0.5)'  : 'rgba(255,255,255,0.1)',
+              color:       activeLayer === 'none' ? '#4ade80'                : 'rgba(255,255,255,0.5)',
+            }}
+          >
+            ✕ Sin capa
+          </button>
+        </div>
+        {!hasOwmKey() && (
+          <p className="text-center mt-2" style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>
+            Agrega <code style={{ color: 'rgba(74,222,128,0.6)' }}>VITE_OPENWEATHER_KEY</code> en Vercel para activar las capas climáticas
+          </p>
+        )}
       </div>
 
       {unmapped.length > 0 && (
