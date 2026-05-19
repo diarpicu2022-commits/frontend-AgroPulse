@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { Activity, Plus, X, Cpu, Wifi, RefreshCw } from 'lucide-react'
+import { Activity, Plus, X, Cpu, Wifi, RefreshCw, Settings, ChevronDown, ChevronUp } from 'lucide-react'
 import anime from 'animejs'
 import { useAuth } from '../context/AuthContext'
 import { sensorRepository, greenhouseRepository } from '../repositories'
-import type { SensorDto, GreenhouseDto, SensorType, Protocol } from '../types'
+import type { SensorDto, GreenhouseDto, SensorType, Protocol, SensorThresholdDto } from '../types'
 import PageHeader from '../components/ui/PageHeader'
 
 const SENSOR_TYPES: SensorType[] = ['TEMPERATURE', 'HUMIDITY', 'SOIL_MOISTURE', 'LIGHT', 'CO2', 'PRESSURE']
@@ -35,6 +35,12 @@ export default function SensorsPage() {
   const [deduplicating, setDeduplicating] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [lastSyncSecs, setLastSyncSecs] = useState(0)
+  const [expandedThreshold, setExpandedThreshold] = useState<number | null>(null)
+  const [thresholds,        setThresholds]         = useState<Record<number, SensorThresholdDto>>({})
+  const [savingThreshold,   setSavingThreshold]    = useState<number | null>(null)
+  const [thresholdForms,    setThresholdForms]     = useState<Record<number, {
+    minValue: string; maxValue: string; noDataMinutes: string; stuckMinutes: string; spikePercent: string
+  }>>({})
   const gridRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -93,6 +99,29 @@ export default function SensorsPage() {
       setSensors(filtered)
       setLastSyncSecs(0)
       setError(null)
+      // Load thresholds for all sensors
+      const thresholdResults = await Promise.allSettled(
+        filtered.map(s => sensorRepository.getThreshold(s.id))
+      )
+      const newThresholds: Record<number, SensorThresholdDto> = {}
+      const newForms: Record<number, { minValue: string; maxValue: string; noDataMinutes: string; stuckMinutes: string; spikePercent: string }> = {}
+      filtered.forEach((s, i) => {
+        const result = thresholdResults[i]
+        if (result.status === 'fulfilled') {
+          newThresholds[s.id] = result.value
+          newForms[s.id] = {
+            minValue:      result.value.minValue     != null ? String(result.value.minValue)     : '',
+            maxValue:      result.value.maxValue     != null ? String(result.value.maxValue)     : '',
+            noDataMinutes: String(result.value.noDataMinutes),
+            stuckMinutes:  String(result.value.stuckMinutes),
+            spikePercent:  String(result.value.spikePercent),
+          }
+        } else {
+          newForms[s.id] = { minValue: '', maxValue: '', noDataMinutes: '10', stuckMinutes: '30', spikePercent: '50' }
+        }
+      })
+      setThresholds(newThresholds)
+      setThresholdForms(prev => ({ ...prev, ...newForms }))
       if (allowedGreenhouseIds === null) {
         runSilentDedup(all).catch(() => {})
       }
@@ -177,6 +206,28 @@ export default function SensorsPage() {
     if (!confirm('¿Eliminar sensor?')) return
     try { await sensorRepository.remove(id); loadSensors() }
     catch (err) { alert('Error: ' + (err as Error).message) }
+  }
+
+  const handleSaveThreshold = async (sensorId: number) => {
+    const form = thresholdForms[sensorId]
+    if (!form) return
+    setSavingThreshold(sensorId)
+    try {
+      const payload: Partial<SensorThresholdDto> = {
+        minValue:      form.minValue      ? parseFloat(form.minValue)      : null,
+        maxValue:      form.maxValue      ? parseFloat(form.maxValue)      : null,
+        noDataMinutes: form.noDataMinutes ? parseInt(form.noDataMinutes)   : 10,
+        stuckMinutes:  form.stuckMinutes  ? parseInt(form.stuckMinutes)    : 30,
+        spikePercent:  form.spikePercent  ? parseFloat(form.spikePercent)  : 50,
+      }
+      const saved = await sensorRepository.setThreshold(sensorId, payload)
+      setThresholds(prev => ({ ...prev, [sensorId]: saved }))
+      showToast('Umbrales guardados')
+      setExpandedThreshold(null)
+    } catch (err) {
+      showToast('Error guardando umbrales: ' + (err as Error).message)
+    }
+    setSavingThreshold(null)
   }
 
   const handleDeduplicate = async () => {
@@ -348,6 +399,102 @@ export default function SensorsPage() {
                   <p className="text-[11px] mt-2 pl-11 font-mono" style={{ color: 'rgba(255,255,255,0.35)' }}>
                     <Cpu size={9} className="inline mr-1" />{s.location}
                   </p>
+                )}
+
+                {/* Threshold toggle row */}
+                <div className="flex items-center justify-between mt-3 pt-2.5"
+                     style={{ borderTop: '1px solid rgba(74,222,128,0.08)' }}>
+                  {thresholds[s.id] ? (
+                    <span className="badge-green text-[10px]">✓ Umbrales configurados</span>
+                  ) : (
+                    <span className="badge-gray text-[10px]">Sin umbrales</span>
+                  )}
+                  <button
+                    onClick={() => {
+                      const next = expandedThreshold === s.id ? null : s.id
+                      setExpandedThreshold(next)
+                      if (next) {
+                        setTimeout(() => {
+                          const el = document.getElementById(`threshold-panel-${s.id}`)
+                          if (el) anime({ targets: el, opacity: [0, 1], translateY: [-6, 0], duration: 220, easing: 'easeOutCubic' })
+                        }, 10)
+                      }
+                    }}
+                    className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors"
+                    style={{ background: 'rgba(74,222,128,0.06)', color: 'rgba(255,255,255,0.6)' }}>
+                    <Settings size={11} />
+                    {expandedThreshold === s.id ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                  </button>
+                </div>
+
+                {/* Threshold panel */}
+                {expandedThreshold === s.id && (
+                  <div id={`threshold-panel-${s.id}`}
+                       className="mt-2 space-y-2 p-3 rounded-xl"
+                       style={{ background: '#051a0a', border: '1px solid rgba(74,222,128,0.10)' }}>
+                    <p className="biopunk-label mb-2">Configurar umbrales de alerta</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="biopunk-label block mb-1">Valor mínimo</label>
+                        <input type="number" placeholder="ej. 10"
+                          value={thresholdForms[s.id]?.minValue ?? ''}
+                          onChange={e => setThresholdForms(prev => ({
+                            ...prev, [s.id]: { ...prev[s.id], minValue: e.target.value }
+                          }))}
+                          className="w-full rounded-lg px-2 py-1.5 text-xs"
+                          style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
+                      </div>
+                      <div>
+                        <label className="biopunk-label block mb-1">Valor máximo</label>
+                        <input type="number" placeholder="ej. 40"
+                          value={thresholdForms[s.id]?.maxValue ?? ''}
+                          onChange={e => setThresholdForms(prev => ({
+                            ...prev, [s.id]: { ...prev[s.id], maxValue: e.target.value }
+                          }))}
+                          className="w-full rounded-lg px-2 py-1.5 text-xs"
+                          style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="biopunk-label block mb-1">Sin datos (min)</label>
+                        <input type="number" placeholder="10"
+                          value={thresholdForms[s.id]?.noDataMinutes ?? '10'}
+                          onChange={e => setThresholdForms(prev => ({
+                            ...prev, [s.id]: { ...prev[s.id], noDataMinutes: e.target.value }
+                          }))}
+                          className="w-full rounded-lg px-2 py-1.5 text-xs"
+                          style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
+                      </div>
+                      <div>
+                        <label className="biopunk-label block mb-1">Constante (min)</label>
+                        <input type="number" placeholder="30"
+                          value={thresholdForms[s.id]?.stuckMinutes ?? '30'}
+                          onChange={e => setThresholdForms(prev => ({
+                            ...prev, [s.id]: { ...prev[s.id], stuckMinutes: e.target.value }
+                          }))}
+                          className="w-full rounded-lg px-2 py-1.5 text-xs"
+                          style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
+                      </div>
+                      <div>
+                        <label className="biopunk-label block mb-1">Spike (%)</label>
+                        <input type="number" placeholder="50"
+                          value={thresholdForms[s.id]?.spikePercent ?? '50'}
+                          onChange={e => setThresholdForms(prev => ({
+                            ...prev, [s.id]: { ...prev[s.id], spikePercent: e.target.value }
+                          }))}
+                          className="w-full rounded-lg px-2 py-1.5 text-xs"
+                          style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleSaveThreshold(s.id)}
+                      disabled={savingThreshold === s.id}
+                      className="w-full py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                      style={{ background: '#4ade80', color: '#020d05' }}>
+                      {savingThreshold === s.id ? 'Guardando…' : 'Guardar umbrales'}
+                    </button>
+                  </div>
                 )}
               </div>
             )

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Building2, UserPlus, Cpu, Zap, ChevronDown, ChevronUp, Wifi, Loader2, Camera, Plus, X } from 'lucide-react'
+import { Building2, UserPlus, Cpu, Zap, ChevronDown, ChevronUp, Wifi, Loader2, Camera, Plus, X, Bell } from 'lucide-react'
 import anime from 'animejs'
 import PageHeader from '../components/ui/PageHeader'
 import { useAuth, saveAccess, readAccess, saveAccessByEmail, readAccessByEmail, supabase } from '../context/AuthContext'
@@ -7,7 +7,7 @@ import { greenhouseRepository, sensorRepository, actuatorRepository, deviceRepos
 import { userRepository } from '../repositories'
 import type {
   GreenhouseDto, UserDto, DeviceConfigDto, GpioOptionsDto,
-  SensorType, Protocol, ActuatorType,
+  SensorType, Protocol, ActuatorType, AlertRecipient,
 } from '../types'
 
 const SENSOR_TYPES: SensorType[]    = ['TEMPERATURE', 'TEMPERATURE_INTERNAL', 'TEMPERATURE_EXTERNAL', 'HUMIDITY', 'SOIL_MOISTURE', 'LIGHT', 'CO2', 'PRESSURE']
@@ -17,7 +17,7 @@ const ACTUATOR_TYPES: ActuatorType[] = ['PUMP', 'FAN', 'LED', 'SERVO', 'RELAY', 
 interface SensorForm  { name: string; type: string; protocol: string; gpioPin: string }
 interface ActuatorForm { name: string; type: string; gpioPin: string; activeLow: boolean }
 
-type GhTab = 'users' | 'device'
+type GhTab = 'users' | 'device' | 'alerts'
 
 // ── GPIO map constants (matches DeviceController) ─────────────────────────────
 const GPIO_RESERVED  = [0, 1, 2, 3, 6, 7, 8, 9, 10, 11, 21, 22]
@@ -50,6 +50,9 @@ export default function GreenhousePage() {
   const [showGpioMap,       setShowGpioMap]       = useState<Record<number, boolean>>({})
   const [error,             setError]             = useState<string | null>(null)
   const [photoUploading,    setPhotoUploading]    = useState<Record<number, boolean>>({})
+  const [ghRecipients,    setGhRecipients]    = useState<Record<number, AlertRecipient[]>>({})
+  const [recipientForm,   setRecipientForm]   = useState({ name: '', email: '', phone: '+57', callmebotApikey: '' })
+  const [savingRecipient, setSavingRecipient] = useState(false)
 
   const cardsRef = useRef<HTMLDivElement>(null)
   const formRef  = useRef<HTMLFormElement>(null)
@@ -130,12 +133,20 @@ export default function GreenhousePage() {
     }
   }
 
+  const loadRecipients = async (id: number) => {
+    try {
+      const data = await greenhouseRepository.listRecipients(id)
+      setGhRecipients(prev => ({ ...prev, [id]: data.recipients ?? [] }))
+    } catch { setGhRecipients(prev => ({ ...prev, [id]: [] })) }
+  }
+
   const toggleTab = (id: number, tab: GhTab) => {
     if (expandedId === id && ghTab[id] === tab) { setExpandedId(null); return }
     setExpandedId(id)
     setGhTab(prev => ({ ...prev, [id]: tab }))
     if (tab === 'users')  loadGhUsers(id)
     if (tab === 'device') loadDeviceConfig(id)
+    if (tab === 'alerts') loadRecipients(id)
 
     // Animate expanded panel
     setTimeout(() => {
@@ -208,6 +219,32 @@ export default function GreenhousePage() {
       await loadGhUsers(ghId)
       alert('Error removiendo usuario: ' + (err as Error).message)
     }
+  }
+
+  const handleAddRecipient = async (ghId: number) => {
+    if (!recipientForm.name.trim() || savingRecipient) return
+    setSavingRecipient(true)
+    try {
+      await greenhouseRepository.addRecipient(ghId, {
+        name:            recipientForm.name.trim(),
+        email:           recipientForm.email.trim() || undefined,
+        phone:           recipientForm.phone.trim() !== '+57' ? recipientForm.phone.trim() : undefined,
+        callmebotApikey: recipientForm.callmebotApikey.trim() || undefined,
+      })
+      setRecipientForm({ name: '', email: '', phone: '+57', callmebotApikey: '' })
+      loadRecipients(ghId)
+    } catch (err) { alert('Error: ' + (err as Error).message) }
+    setSavingRecipient(false)
+  }
+
+  const handleRemoveRecipient = async (ghId: number, recipientId: number) => {
+    try {
+      await greenhouseRepository.removeRecipient(ghId, recipientId)
+      setGhRecipients(prev => ({
+        ...prev,
+        [ghId]: (prev[ghId] ?? []).filter(r => r.id !== recipientId),
+      }))
+    } catch (err) { alert('Error: ' + (err as Error).message) }
   }
 
   const handleAddSensor = async (ghId: number) => {
@@ -424,6 +461,15 @@ export default function GreenhousePage() {
                             ? 'bg-purple-600 text-white' : 'hover:bg-[rgba(167,139,250,0.08)] text-purple-400'
                         }`}>
                         <Cpu size={12} /> Dispositivo
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button onClick={() => toggleTab(g.id, 'alerts')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                          expandedId === g.id && ghTab[g.id] === 'alerts'
+                            ? 'bg-amber-600 text-white' : 'hover:bg-[rgba(245,158,11,0.08)] text-amber-400'
+                        }`}>
+                        <Bell size={12} /> Alertas
                       </button>
                     )}
                     {isAdmin && (
@@ -676,6 +722,82 @@ export default function GreenhousePage() {
                               </button>
                             </div>
                           )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── Alerts (recipients) tab ── */}
+                    {ghTab[g.id] === 'alerts' && (
+                      <div className="space-y-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                          🔔 Destinatarios de alertas
+                        </p>
+
+                        {/* Recipient list */}
+                        {(ghRecipients[g.id] ?? []).length === 0 ? (
+                          <p className="text-xs py-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                            Sin destinatarios configurados
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {(ghRecipients[g.id] ?? []).map(r => (
+                              <div key={r.id} className="flex items-center justify-between rounded-lg px-3 py-2"
+                                   style={{ background: '#0a1e0f' }}>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                                       style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
+                                    {r.name[0].toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium" style={{ color: '#e2ffe9' }}>{r.name}</p>
+                                    <div className="flex gap-1 mt-0.5">
+                                      {r.email && <span className="badge-gray text-[9px]">📧 Email</span>}
+                                      {r.phone && <span className="badge-gray text-[9px]">💬 WhatsApp</span>}
+                                    </div>
+                                  </div>
+                                </div>
+                                <button onClick={() => handleRemoveRecipient(g.id, r.id)}
+                                  className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-[rgba(248,113,113,0.1)] transition-colors">
+                                  Quitar
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Add recipient form */}
+                        <div className="space-y-2 pt-2" style={{ borderTop: '1px solid rgba(74,222,128,0.08)' }}>
+                          <p className="biopunk-label">Agregar destinatario</p>
+                          <input placeholder="Nombre *" value={recipientForm.name}
+                            onChange={e => setRecipientForm(f => ({ ...f, name: e.target.value }))}
+                            className="w-full rounded-lg px-3 py-2 text-xs"
+                            style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
+                          <input placeholder="Email (opcional)" value={recipientForm.email}
+                            onChange={e => setRecipientForm(f => ({ ...f, email: e.target.value }))}
+                            className="w-full rounded-lg px-3 py-2 text-xs"
+                            style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
+                          <input placeholder="+573001234567 (WhatsApp)" value={recipientForm.phone}
+                            onChange={e => setRecipientForm(f => ({ ...f, phone: e.target.value }))}
+                            className="w-full rounded-lg px-3 py-2 text-xs"
+                            style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
+                          <input placeholder="CallMeBot API Key (opcional)" value={recipientForm.callmebotApikey}
+                            onChange={e => setRecipientForm(f => ({ ...f, callmebotApikey: e.target.value }))}
+                            className="w-full rounded-lg px-3 py-2 text-xs"
+                            style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
+                          <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                            ¿Cómo obtener mi API Key?{' '}
+                            <a href="https://www.callmebot.com/blog/free-api-whatsapp-messages/"
+                               target="_blank" rel="noreferrer"
+                               style={{ color: '#4ade80' }}>
+                              Ver instrucciones →
+                            </a>
+                          </p>
+                          <button onClick={() => handleAddRecipient(g.id)}
+                            disabled={!recipientForm.name.trim() || savingRecipient}
+                            className="w-full py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                            style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}>
+                            {savingRecipient ? 'Guardando…' : '+ Agregar destinatario'}
+                          </button>
                         </div>
                       </div>
                     )}

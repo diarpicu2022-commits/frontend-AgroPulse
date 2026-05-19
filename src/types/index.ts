@@ -198,3 +198,24 @@ export interface UserListResponse        { users: UserDto[] }
 export interface RuleListResponse        { rules: RuleDto[] }
 export interface LogListResponse         { logs: LogDto[] }
 export interface TicketListResponse      { tickets: TicketDto[] }
+
+export interface SensorThresholdDto {
+  id?: number
+  sensorId: number
+  minValue?: number | null
+  maxValue?: number | null
+  noDataMinutes: number
+  stuckMinutes: number
+  spikePercent: number
+  active?: boolean
+}
+
+export interface AlertRecipient {
+  id: number
+  greenhouseId: number
+  name: string
+  email?: string
+  phone?: string
+  callmebotApikey?: string
+  active: boolean
+}

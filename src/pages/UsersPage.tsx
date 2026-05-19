@@ -173,8 +173,11 @@ export default function UsersPage() {
       ) : (
         <div ref={listRef} className="space-y-3">
           {users.map(u => {
-            const displayName = u.full_name || (u as unknown as { fullName?: string }).fullName || u.username || '?'
-            const initials    = displayName[0].toUpperCase()
+            const fullNameRaw  = u.full_name || (u as unknown as { fullName?: string }).fullName || ''
+            // If username looks like an email, extract the local part to avoid showing email twice
+            const usernameDisplay = u.username?.includes('@') ? u.username.split('@')[0] : u.username
+            const displayName  = fullNameRaw || usernameDisplay || 'Sin nombre'
+            const initials     = displayName[0].toUpperCase()
             const isAdmin     = u.role === 'ADMIN' || u.role === 'admin'
             const avatarUrl   = u.avatar || (u.email ? getCachedProfile(u.email)?.avatar : undefined)
             return (

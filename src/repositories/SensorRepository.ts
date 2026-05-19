@@ -1,5 +1,5 @@
 import { BaseRepository } from '../core/ApiService'
-import type { SensorDto, SensorListResponse } from '../types'
+import type { SensorDto, SensorListResponse, SensorThresholdDto } from '../types'
 
 export class SensorRepository extends BaseRepository {
   private static instance: SensorRepository
@@ -30,6 +30,18 @@ export class SensorRepository extends BaseRepository {
 
   remove(id: number): Promise<void> {
     return this.delete(`/api/sensors/${id}`)
+  }
+
+  getThreshold(id: number): Promise<SensorThresholdDto> {
+    return this.get(`/api/sensors/${id}/threshold`)
+  }
+
+  setThreshold(id: number, data: Partial<SensorThresholdDto>): Promise<SensorThresholdDto> {
+    return this.put(`/api/sensors/${id}/threshold`, data)
+  }
+
+  deleteThreshold(id: number): Promise<void> {
+    return this.delete(`/api/sensors/${id}/threshold`)
   }
 }
 

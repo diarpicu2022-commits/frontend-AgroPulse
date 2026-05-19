@@ -3,6 +3,7 @@ import type {
   GreenhouseDto,
   GreenhouseListResponse,
   UserListResponse,
+  AlertRecipient,
 } from '../types'
 
 export class GreenhouseRepository extends BaseRepository {
@@ -45,6 +46,18 @@ export class GreenhouseRepository extends BaseRepository {
 
   removeUser(id: number, userId: number): Promise<void> {
     return this.delete(`/api/greenhouses/${id}/users/${userId}`)
+  }
+
+  listRecipients(id: number): Promise<{ recipients: AlertRecipient[] }> {
+    return this.get(`/api/greenhouses/${id}/alert-recipients`)
+  }
+
+  addRecipient(id: number, data: Omit<AlertRecipient, 'id' | 'greenhouseId' | 'active'>): Promise<AlertRecipient> {
+    return this.post(`/api/greenhouses/${id}/alert-recipients`, data)
+  }
+
+  removeRecipient(id: number, recipientId: number): Promise<void> {
+    return this.delete(`/api/greenhouses/${id}/alert-recipients/${recipientId}`)
   }
 }
 
