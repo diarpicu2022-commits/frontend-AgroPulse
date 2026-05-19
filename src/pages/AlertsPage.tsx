@@ -61,7 +61,8 @@ export default function AlertsPage() {
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('ALL')
   const [ghFilter,    setGhFilter]    = useState<number | ''>('')
   const [error,       setError]       = useState<string | null>(null)
-  const [form, setForm] = useState<AlertForm>({ message: '', level: 'INFO', greenhouse_id: '' })
+  const [form,        setForm]        = useState<AlertForm>({ message: '', level: 'INFO', greenhouse_id: '' })
+  const [visibleCount, setVisibleCount] = useState(50)
 
   const listRef    = useRef<HTMLDivElement>(null)
   const formRef    = useRef<HTMLFormElement>(null)
@@ -217,9 +218,10 @@ export default function AlertsPage() {
   const ghName = (id?: number) =>
     id ? (greenhouses.find(g => g.id === id)?.name ?? `Inv. ${id}`) : null
 
-  const displayed = alerts
+  const allFiltered = alerts
     .filter(a => levelFilter === 'ALL' || a.level === levelFilter)
     .filter(a => ghFilter === '' || a.greenhouseId === ghFilter)
+  const displayed = allFiltered.slice(0, visibleCount)
 
   const counts = {
     CRITICAL: alerts.filter(a => a.level === 'CRITICAL').length,
@@ -270,6 +272,8 @@ export default function AlertsPage() {
             return (
               <button
                 key={lvl}
+                aria-pressed={levelFilter === lvl}
+                aria-label={`Filtrar por nivel ${meta.label}`}
                 onClick={() => setLevelFilter(prev => prev === lvl ? 'ALL' : lvl)}
                 className={`card p-3 flex items-center gap-3 transition-all duration-200 cursor-pointer text-left
                   ${levelFilter === lvl ? `${meta.cardBg} ${meta.cardBorder} ring-1 ring-inset ring-current` : 'hover:shadow-sm'}`}
@@ -301,10 +305,12 @@ export default function AlertsPage() {
 
           {/* Greenhouse selector */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <label htmlFor="alert-greenhouse" className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
               Invernadero
             </label>
             <select
+              id="alert-greenhouse"
+              aria-label="Seleccionar invernadero para la alerta"
               value={form.greenhouse_id}
               onChange={e => setForm({ ...form, greenhouse_id: e.target.value === '' ? '' : parseInt(e.target.value) })}
               className="input-field"
@@ -386,13 +392,15 @@ export default function AlertsPage() {
       ) : (
         <div ref={listRef} className="space-y-2">
           {displayed.map(a => {
-            const meta   = LEVEL[a.level] ?? LEVEL.INFO
-            const Icon   = meta.Icon
+            const meta    = LEVEL[a.level] ?? LEVEL.INFO
+            const Icon    = meta.Icon
             const ghLabel = ghName(a.greenhouseId)
             return (
               <div
                 key={a.id}
                 data-alert-id={a.id}
+                role="article"
+                aria-label={`Alerta ${meta.label}: ${a.message}`}
                 className={`card p-4 border-l-4 ${meta.cardBorder} flex items-start gap-3
                   transition-all duration-200 ${a.read ? 'opacity-55' : ''}`}
               >
@@ -446,6 +454,17 @@ export default function AlertsPage() {
             )
           })}
         </div>
+      )}
+
+      {/* Load more */}
+      {allFiltered.length > visibleCount && (
+        <button
+          onClick={() => setVisibleCount(c => c + 50)}
+          className="w-full py-2.5 rounded-xl text-xs font-semibold border transition-all"
+          style={{ background: 'rgba(74,222,128,0.06)', borderColor: 'rgba(74,222,128,0.2)', color: 'rgba(255,255,255,0.5)' }}
+        >
+          Ver más ({allFiltered.length - visibleCount} restantes)
+        </button>
       )}
 
     </div>

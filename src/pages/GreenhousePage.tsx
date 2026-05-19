@@ -52,6 +52,7 @@ export default function GreenhousePage() {
   const [photoUploading,    setPhotoUploading]    = useState<Record<number, boolean>>({})
   const [ghRecipients,    setGhRecipients]    = useState<Record<number, AlertRecipient[]>>({})
   const [recipientForm,   setRecipientForm]   = useState({ name: '', email: '', phone: '+57', callmebotApikey: '' })
+  const [recipientError,  setRecipientError]  = useState<string | null>(null)
   const [savingRecipient, setSavingRecipient] = useState(false)
 
   const cardsRef = useRef<HTMLDivElement>(null)
@@ -223,12 +224,25 @@ export default function GreenhousePage() {
 
   const handleAddRecipient = async (ghId: number) => {
     if (!recipientForm.name.trim() || savingRecipient) return
+    setRecipientError(null)
+
+    const emailVal = recipientForm.email.trim()
+    if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      setRecipientError('El email no tiene un formato válido.')
+      return
+    }
+    const phoneVal = recipientForm.phone.trim()
+    if (phoneVal && phoneVal !== '+57' && !/^\+\d{7,15}$/.test(phoneVal)) {
+      setRecipientError('El teléfono debe tener formato internacional: +573001234567')
+      return
+    }
+
     setSavingRecipient(true)
     try {
       await greenhouseRepository.addRecipient(ghId, {
         name:            recipientForm.name.trim(),
-        email:           recipientForm.email.trim() || undefined,
-        phone:           recipientForm.phone.trim() !== '+57' ? recipientForm.phone.trim() : undefined,
+        email:           emailVal || undefined,
+        phone:           phoneVal !== '+57' ? phoneVal : undefined,
         callmebotApikey: recipientForm.callmebotApikey.trim() || undefined,
       })
       setRecipientForm({ name: '', email: '', phone: '+57', callmebotApikey: '' })
@@ -768,19 +782,31 @@ export default function GreenhousePage() {
                         {/* Add recipient form */}
                         <div className="space-y-2 pt-2" style={{ borderTop: '1px solid rgba(74,222,128,0.08)' }}>
                           <p className="biopunk-label">Agregar destinatario</p>
-                          <input placeholder="Nombre *" value={recipientForm.name}
-                            onChange={e => setRecipientForm(f => ({ ...f, name: e.target.value }))}
+                          {recipientError && (
+                            <p className="text-[11px] text-red-400 bg-red-900/10 rounded-lg px-2 py-1.5">
+                              {recipientError}
+                            </p>
+                          )}
+                          <label className="sr-only" htmlFor={`rec-name-${g.id}`}>Nombre del destinatario</label>
+                          <input id={`rec-name-${g.id}`} placeholder="Nombre *" value={recipientForm.name}
+                            aria-required="true"
+                            onChange={e => { setRecipientError(null); setRecipientForm(f => ({ ...f, name: e.target.value })) }}
                             className="w-full rounded-lg px-3 py-2 text-xs"
                             style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
-                          <input placeholder="Email (opcional)" value={recipientForm.email}
-                            onChange={e => setRecipientForm(f => ({ ...f, email: e.target.value }))}
+                          <label className="sr-only" htmlFor={`rec-email-${g.id}`}>Email del destinatario</label>
+                          <input id={`rec-email-${g.id}`} type="email" placeholder="Email (opcional)" value={recipientForm.email}
+                            aria-describedby={`rec-email-hint-${g.id}`}
+                            onChange={e => { setRecipientError(null); setRecipientForm(f => ({ ...f, email: e.target.value })) }}
                             className="w-full rounded-lg px-3 py-2 text-xs"
                             style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
-                          <input placeholder="+573001234567 (WhatsApp)" value={recipientForm.phone}
-                            onChange={e => setRecipientForm(f => ({ ...f, phone: e.target.value }))}
+                          <label className="sr-only" htmlFor={`rec-phone-${g.id}`}>Teléfono WhatsApp del destinatario</label>
+                          <input id={`rec-phone-${g.id}`} type="tel" placeholder="+573001234567 (WhatsApp)" value={recipientForm.phone}
+                            aria-describedby={`rec-phone-hint-${g.id}`}
+                            onChange={e => { setRecipientError(null); setRecipientForm(f => ({ ...f, phone: e.target.value })) }}
                             className="w-full rounded-lg px-3 py-2 text-xs"
                             style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
-                          <input placeholder="CallMeBot API Key (opcional)" value={recipientForm.callmebotApikey}
+                          <label className="sr-only" htmlFor={`rec-apikey-${g.id}`}>CallMeBot API Key</label>
+                          <input id={`rec-apikey-${g.id}`} placeholder="CallMeBot API Key (opcional)" value={recipientForm.callmebotApikey}
                             onChange={e => setRecipientForm(f => ({ ...f, callmebotApikey: e.target.value }))}
                             className="w-full rounded-lg px-3 py-2 text-xs"
                             style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.15)', color: '#e2ffe9' }} />
