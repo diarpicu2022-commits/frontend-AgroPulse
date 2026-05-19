@@ -206,11 +206,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (isAdminRole(role)) {
             setAllowedGreenhouseIds(null)
           } else {
-            // Use greenhouse IDs from backend (source of truth), fall back to localStorage
-            const ghIds = (data.greenhouseIds && data.greenhouseIds.length > 0)
-              ? data.greenhouseIds
-              : resolveAccess(data.id || 0, authUser.email)
-            setAllowedGreenhouseIds(ghIds)
+            // Backend is authoritative on success — never fall back to localStorage here.
+            // A deleted+re-registered user gets a new ID with empty greenhouse_access;
+            // falling back to stale localStorage would bypass the pending-access flow.
+            setAllowedGreenhouseIds(data.greenhouseIds ?? [])
           }
           return
         }
@@ -276,9 +275,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (admin) {
       setAllowedGreenhouseIds(null)
     } else {
-      // Use backend greenhouse IDs (source of truth), fallback to localStorage
-      const ghIds = (userData.greenhouseIds && userData.greenhouseIds.length > 0)
-        ? userData.greenhouseIds
+      // Backend is authoritative: trust its greenhouse IDs directly.
+      // When id > 0 the response came from the backend and is the source of truth.
+      // When id === 0 (cold-start fallback) we have no backend data yet, so use localStorage.
+      const ghIds = userData.id > 0
+        ? (userData.greenhouseIds ?? [])
         : resolveAccess(userData.id, userData.email)
       setAllowedGreenhouseIds(ghIds)
 
