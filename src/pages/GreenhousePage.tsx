@@ -325,8 +325,9 @@ export default function GreenhousePage() {
         prev.map(g => g.id === ghId ? { ...g, photoUrl: urlData.publicUrl } : g)
       )
     } catch (err) {
+      const msg = (err as { message?: string })?.message ?? String(err)
       console.error('Error subiendo foto:', err)
-      setError('No se pudo subir la foto. Verifica que el bucket "greenhouse-photos" existe en Supabase.')
+      setError(`No se pudo subir la foto: ${msg}`)
     } finally {
       setPhotoUploading(prev => ({ ...prev, [ghId]: false }))
       e.target.value = ''

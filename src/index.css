@@ -21,16 +21,16 @@
     overflow-x: hidden;
   }
 
-  body { background: #020d05; color: #e2ffe9; overflow-x: hidden; }
+  body { background: #080e05; color: #f0fdf4; overflow-x: hidden; }
 
   h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', sans-serif; }
 
   ::-webkit-scrollbar            { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track      { background: transparent; }
-  ::-webkit-scrollbar-thumb      { background: rgba(74,222,128,0.25); border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover{ background: rgba(74,222,128,0.45); }
+  ::-webkit-scrollbar-thumb      { background: rgba(251,146,60,0.25); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover{ background: rgba(251,146,60,0.45); }
 
-  :focus-visible { outline: none; box-shadow: 0 0 0 2px #020d05, 0 0 0 4px #4ade80; }
+  :focus-visible { outline: none; box-shadow: 0 0 0 2px #080e05, 0 0 0 4px #fb923c; }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -41,19 +41,19 @@
   }
 
   :root {
-    --background: #020d05; --foreground: #e2ffe9;
-    --card: #0a1e0f; --card-foreground: #e2ffe9;
-    --popover: #0a1e0f; --popover-foreground: #e2ffe9;
-    --primary: #4ade80; --primary-foreground: #020d05;
-    --secondary: #051a0a; --secondary-foreground: #e2ffe9;
+    --background: #080e05; --foreground: #f0fdf4;
+    --card: #0d1a0a; --card-foreground: #f0fdf4;
+    --popover: #0d1a0a; --popover-foreground: #f0fdf4;
+    --primary: #fb923c; --primary-foreground: #080e05;
+    --secondary: #051a0a; --secondary-foreground: #f0fdf4;
     --muted: #051a0a; --muted-foreground: rgba(255,255,255,0.35);
-    --accent: #051a0a; --accent-foreground: #4ade80;
-    --destructive: #f87171; --border: rgba(74,222,128,0.12);
-    --input: rgba(74,222,128,0.08); --ring: #4ade80; --radius: 0.625rem;
-    --sidebar: #030f07; --sidebar-foreground: #e2ffe9;
-    --sidebar-primary: #4ade80; --sidebar-primary-foreground: #020d05;
-    --sidebar-accent: rgba(74,222,128,0.08); --sidebar-accent-foreground: #4ade80;
-    --sidebar-border: rgba(74,222,128,0.07); --sidebar-ring: #4ade80;
+    --accent: #051a0a; --accent-foreground: #fb923c;
+    --destructive: #f87171; --border: rgba(251,146,60,0.12);
+    --input: rgba(251,146,60,0.08); --ring: #fb923c; --radius: 0.625rem;
+    --sidebar: #040a03; --sidebar-foreground: #f0fdf4;
+    --sidebar-primary: #fb923c; --sidebar-primary-foreground: #080e05;
+    --sidebar-accent: rgba(251,146,60,0.08); --sidebar-accent-foreground: #fb923c;
+    --sidebar-border: rgba(251,146,60,0.07); --sidebar-ring: #fb923c;
   }
   * { @apply border-border; }
   .maplibregl-popup-content { @apply bg-transparent! shadow-none! p-0! rounded-none!; }
@@ -76,14 +76,14 @@
 
   .btn-primary {
     @apply btn text-sm px-4 py-2.5;
-    background: #4ade80;
-    color: #020d05;
+    background: #fb923c;
+    color: #080e05;
     font-weight: 700;
-    box-shadow: 0 0 16px rgba(74,222,128,0.25);
+    box-shadow: 0 0 16px rgba(251,146,60,0.25);
   }
   .btn-primary:hover {
-    background: #86efac;
-    box-shadow: 0 0 24px rgba(74,222,128,0.4);
+    background: #fdba74;
+    box-shadow: 0 0 24px rgba(251,146,60,0.4);
     transform: translateY(-1px);
   }
   .btn-secondary {
@@ -115,8 +115,8 @@
 
   /* ── Cards ── */
   .card {
-    background: #0a1e0f;
-    border: 1px solid rgba(74,222,128,0.12);
+    background: #0d1a0a;
+    border: 1px solid rgba(251,146,60,0.1);
     border-radius: 14px;
   }
   .card-hover {
@@ -131,7 +131,7 @@
   .card-glass-dark { @apply card; backdrop-filter: blur(12px); }
 
   /* Biopunk utilities */
-  .biopunk-card    { background: #0a1e0f; border: 1px solid rgba(74,222,128,0.12); border-radius: 14px; }
+  .biopunk-card    { background: #0d1a0a; border: 1px solid rgba(251,146,60,0.1); border-radius: 14px; }
   .biopunk-surface { background: #051a0a; }
   .biopunk-label   { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.35); }
   .biopunk-value   { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; color: #e2ffe9; }
@@ -198,10 +198,10 @@
   .nav-item:hover { background: rgba(74,222,128,0.06); color: rgba(255,255,255,0.75); }
   .nav-item-active {
     @apply nav-item;
-    background: rgba(74,222,128,0.08);
-    color: #4ade80;
-    border-left-color: #4ade80;
-    box-shadow: inset 0 0 12px rgba(74,222,128,0.04);
+    background: rgba(251,146,60,0.08);
+    color: #fb923c;
+    border-left-color: #fb923c;
+    box-shadow: inset 0 0 12px rgba(251,146,60,0.04);
   }
 
   /* ── Empty state ── */

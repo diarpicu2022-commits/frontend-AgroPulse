@@ -1,13 +1,15 @@
 export const COLORS = {
-  bgDeep:      '#020d05',
+  bgDeep:      '#080e05',
   bgSurface:   '#051a0a',
-  bgCard:      '#0a1e0f',
-  bgSidebar:   '#030f07',
-  green:       '#4ade80',
+  bgCard:      '#0d1a0a',
+  bgSidebar:   '#040a03',
+  amber:       '#fb923c',
+  golden:      '#fbbf24',
   cyan:        '#22d3ee',
-  lime:        '#a3e635',
+  violet:      '#a78bfa',
+  green:       '#4ade80',
   red:         '#f87171',
-  textPrimary: '#e2ffe9',
+  textPrimary: '#f0fdf4',
   textMuted:   'rgba(255,255,255,0.35)',
 } as const
 
@@ -16,18 +18,22 @@ export const FONTS = {
   data: "'JetBrains Mono', monospace",
 } as const
 
-export type AccentColor = 'green' | 'cyan' | 'lime' | 'red'
+export type AccentColor = 'amber' | 'golden' | 'cyan' | 'violet' | 'green' | 'red'
 
 export const ACCENT_HEX: Record<AccentColor, string> = {
-  green: '#4ade80',
-  cyan:  '#22d3ee',
-  lime:  '#a3e635',
-  red:   '#f87171',
+  amber:  '#fb923c',
+  golden: '#fbbf24',
+  cyan:   '#22d3ee',
+  violet: '#a78bfa',
+  green:  '#4ade80',
+  red:    '#f87171',
 }
 
 export const ACCENT_RGBA: Record<AccentColor, (a: number) => string> = {
-  green: (a) => `rgba(74,222,128,${a})`,
-  cyan:  (a) => `rgba(34,211,238,${a})`,
-  lime:  (a) => `rgba(163,230,53,${a})`,
-  red:   (a) => `rgba(248,113,113,${a})`,
+  amber:  (a) => `rgba(251,146,60,${a})`,
+  golden: (a) => `rgba(251,191,36,${a})`,
+  cyan:   (a) => `rgba(34,211,238,${a})`,
+  violet: (a) => `rgba(167,139,250,${a})`,
+  green:  (a) => `rgba(74,222,128,${a})`,
+  red:    (a) => `rgba(248,113,113,${a})`,
 }

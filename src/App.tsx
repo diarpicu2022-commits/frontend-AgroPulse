@@ -8,7 +8,7 @@ import type { LucideIcon } from 'lucide-react'
 import anime from 'animejs'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import type { AppUser } from './types'
-import ThreeBackground from './components/ThreeBackground'
+import AgroBackground from './components/AgroBackground'
 import { initLenis, destroyLenis } from './lib/lenis'
 
 // ── Pages ──────────────────────────────────────────────────────────────────────
@@ -302,10 +302,6 @@ function AppInner() {
                 <span className="text-base font-bold font-heading tracking-tight" style={{ color: '#e2ffe9' }}>
                   Agro<span style={{ color: '#f97316' }}>Pulse</span>
                 </span>
-                <span className="ml-2 text-[9px] font-medium px-1.5 py-0.5 rounded-md"
-                      style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.2)' }}>
-                  v10
-                </span>
               </div>
             </div>
             <button
@@ -355,9 +351,9 @@ function AppInner() {
                       className={active ? 'nav-item-active w-full text-left' : 'nav-item w-full text-left'}
                       aria-current={active ? 'page' : undefined}
                     >
-                      <Icon size={16} className={active ? 'text-green-400' : 'text-white/40'} />
+                      <Icon size={16} style={{ color: active ? '#fb923c' : 'rgba(255,255,255,0.4)' }} />
                       <span className="flex-1">{item.label}</span>
-                      {active && <ChevronRight size={12} className="text-green-400/70" />}
+                      {active && <ChevronRight size={12} style={{ color: 'rgba(251,146,60,0.7)' }} />}
                     </button>
                   )
                 })}
@@ -404,9 +400,10 @@ function AppInner() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 bg-green-900/30 border border-green-500/20 rounded-xl px-3 py-1.5">
+            <div className="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-1.5"
+                 style={{ background:'rgba(251,146,60,0.08)', border:'1px solid rgba(251,146,60,0.2)' }}>
               <div className="live-dot" />
-              <span className="text-xs font-medium text-green-400">En línea</span>
+              <span className="text-xs font-medium" style={{ color:'#fb923c' }}>En línea</span>
             </div>
 
             <div className="text-right hidden sm:block">
@@ -462,7 +459,7 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <ThreeBackground />
+      <AgroBackground />
       <AppInner />
     </AuthProvider>
   )

@@ -9,26 +9,25 @@ import { Sprout } from 'lucide-react'
 import { greenhouseRepository, readingRepository, alertRepository, cropRepository } from '../repositories'
 import SensorCard from '../components/SensorCard'
 import AlertsBanner from '../components/AlertsBanner'
-import SplineGreenhouse from '../components/SplineGreenhouse'
 import anime from 'animejs'
 import type { GreenhouseDto, CropDto, AlertDto, SensorReadingDto, SensorType, AutoAlert } from '../types'
 import PageHeader from '../components/ui/PageHeader'
 import type { AccentColor } from '../styles/tokens'
 
-interface SensorMeta { label: string; unit: string; icon: LucideIcon; accent: AccentColor }
+interface SensorMeta { label: string; unit: string; icon: LucideIcon; accent: AccentColor; source?: string }
 
 const SENSOR_META: Record<string, SensorMeta> = {
-  TEMPERATURE_INTERNAL: { label: 'Temp. Interior',   unit: '°C',  icon: Thermometer, accent: 'red'   },
-  TEMPERATURE_EXTERNAL: { label: 'Temp. Exterior',   unit: '°C',  icon: Thermometer, accent: 'cyan'  },
-  TEMPERATURE:          { label: 'Temperatura',      unit: '°C',  icon: Thermometer, accent: 'red'   },
-  HUMIDITY:             { label: 'Humedad Interior', unit: '%',   icon: Droplets,    accent: 'cyan'  },
-  HUMIDITY_EXTERNAL:    { label: 'Humedad Exterior', unit: '%',   icon: Droplets,    accent: 'cyan'  },
-  SOIL_MOISTURE:        { label: 'Humedad Suelo',    unit: '%',   icon: Leaf,        accent: 'lime'  },
-  LIGHT:                { label: 'Luminosidad',      unit: 'lx',  icon: Sun,         accent: 'lime'  },
-  CO2:                  { label: 'CO₂',              unit: 'ppm', icon: Activity,    accent: 'green' },
+  TEMPERATURE_INTERNAL: { label: 'Temp. Interior', unit: '°C',  icon: Thermometer, accent: 'amber',  source: 'DHT22' },
+  TEMPERATURE:          { label: 'Temp. Interior', unit: '°C',  icon: Thermometer, accent: 'amber',  source: 'DHT22' },
+  HUMIDITY:             { label: 'Hum. Interior',  unit: '%',   icon: Droplets,    accent: 'cyan',   source: 'DHT22' },
+  TEMPERATURE_EXTERNAL: { label: 'Temp. Exterior', unit: '°C',  icon: Thermometer, accent: 'golden', source: 'DHT11' },
+  HUMIDITY_EXTERNAL:    { label: 'Hum. Exterior',  unit: '%',   icon: Droplets,    accent: 'violet', source: 'DHT11' },
+  SOIL_MOISTURE:        { label: 'Hum. Suelo',     unit: '%',   icon: Leaf,        accent: 'green',  source: 'Capacitivo' },
+  LIGHT:                { label: 'Luminosidad',    unit: 'lx',  icon: Sun,         accent: 'golden', source: 'LDR' },
+  CO2:                  { label: 'CO₂',            unit: 'ppm', icon: Activity,    accent: 'amber',  source: 'MQ135' },
 }
 
-interface ChartPoint { time: string; temp: number }
+interface ChartPoint { time: string; interior: number; exterior?: number }
 
 export default function Dashboard() {
   const { allowedGreenhouseIds } = useAuth()
@@ -98,17 +97,26 @@ export default function Dashboard() {
       const readingsData = await readingRepository.list(null, 200, selectedGh.id)
       if (readingsData?.readings) {
         setReadings(readingsData.readings)
-        const tempType = (['TEMPERATURE_INTERNAL', 'TEMPERATURE', 'TEMPERATURE_EXTERNAL'] as SensorType[])
+        const intType = (['TEMPERATURE_INTERNAL', 'TEMPERATURE'] as SensorType[])
           .find(t => readingsData.readings.some(r => r.sensorType === t))
-        if (tempType) {
-          const tempData = readingsData.readings
-            .filter(r => r.sensorType === tempType).slice(0, 20).reverse()
-            .map(r => ({
-              time: parseTs(r.timestamp).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' }),
-              temp: parseFloat(r.value.toFixed(1)),
-            }))
-          setHistory(tempData)
-        } else setHistory([])
+        const extType = 'TEMPERATURE_EXTERNAL' as SensorType
+        const intReadings = intType
+          ? readingsData.readings.filter(r => r.sensorType === intType).slice(0, 20).reverse()
+          : []
+        const extMap = new Map(
+          readingsData.readings
+            .filter(r => r.sensorType === extType)
+            .map(r => [parseTs(r.timestamp).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' }), r.value])
+        )
+        if (intReadings.length > 0) {
+          const chartData = intReadings.map(r => {
+            const t = parseTs(r.timestamp).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' })
+            return { time: t, interior: parseFloat(r.value.toFixed(1)), exterior: extMap.has(t) ? parseFloat(extMap.get(t)!.toFixed(1)) : undefined }
+          })
+          setHistory(chartData)
+        } else {
+          setHistory([])
+        }
         try {
           const cropsData = await cropRepository.list()
           if ((cropsData?.crops?.length ?? 0) > 0) {
@@ -177,35 +185,115 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── 3D Hero ───────────────────────────────────────────────── */}
+      <style>{`
+        @keyframes agro-float    { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+        @keyframes agro-peck     { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(18deg)} }
+        @keyframes agro-breathe  { 0%,100%{transform:scaleX(1)} 50%{transform:scaleX(1.06)} }
+      `}</style>
+
+      {/* ── Hero Banner — Invernadero + Cultivo ── */}
       <div style={{
-        display:        'flex',
-        justifyContent: 'flex-end',
-        alignItems:     'center',
-        height:         200,
-        position:       'relative',
-        borderRadius:   '1.5rem',
-        overflow:       'hidden',
-        background:     'linear-gradient(135deg, #0f2d17 0%, #0a1a10 100%)',
-        border:         '1px solid #1e4d2b55',
-        padding:        '1rem',
+        background: 'linear-gradient(135deg,#0d2210 0%,#131a0a 40%,#0f1e0b 100%)',
+        border: '1px solid rgba(251,146,60,0.18)',
+        borderRadius: '14px',
+        padding: '16px 18px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        minHeight: 110,
       }}>
-        <div style={{ position: 'absolute', left: '1.5rem', top: '50%', transform: 'translateY(-50%)' }}>
-          <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#4ade8066', marginBottom: '0.3rem' }}>
-            Invernadero 3D
-          </p>
-          <p style={{ fontSize: '1.4rem', fontWeight: 800, color: '#bbf7d0', lineHeight: 1.1 }}>
-            {selectedGh?.name ?? 'Sin invernadero'}
-          </p>
-          {selectedGh && (
-            <p style={{ fontSize: '0.75rem', color: '#4ade8077', marginTop: '0.4rem' }}>
-              {sensorEntries.length} sensores activos
-            </p>
-          )}
+        {/* Dot grid */}
+        <div style={{ position:'absolute', inset:0, backgroundImage:'radial-gradient(rgba(251,146,60,0.07) 1px,transparent 1px)', backgroundSize:'20px 20px', pointerEvents:'none' }} />
+
+        {/* Animalitos fondo */}
+        <div style={{ position:'absolute', right:12, bottom:0, display:'flex', alignItems:'flex-end', gap:14, opacity:0.17, pointerEvents:'none' }}>
+          {/* Vaca */}
+          <svg width="48" height="42" viewBox="0 0 52 46" style={{ animation:'agro-float 3.5s ease-in-out infinite' }}>
+            <ellipse cx="28" cy="30" rx="18" ry="12" fill="#f5f0e8"/>
+            <ellipse cx="17" cy="27" rx="5" ry="4" fill="#3d2b1f" opacity="0.5"/>
+            <ellipse cx="32" cy="32" rx="4" ry="3" fill="#3d2b1f" opacity="0.4"/>
+            <ellipse cx="10" cy="20" rx="9" ry="8" fill="#f5f0e8"/>
+            <ellipse cx="5" cy="13" rx="3" ry="4" fill="#f5f0e8"/>
+            <circle cx="8" cy="18" r="2" fill="#1a0a00"/>
+            <ellipse cx="7" cy="25" rx="4.5" ry="3" fill="#f9c5b0"/>
+            <rect x="12" y="40" width="4" height="6" rx="2" fill="#e8ddd0"/>
+            <rect x="18" y="40" width="4" height="6" rx="2" fill="#e8ddd0"/>
+            <rect x="28" y="40" width="4" height="6" rx="2" fill="#e8ddd0"/>
+            <rect x="34" y="40" width="4" height="6" rx="2" fill="#e8ddd0"/>
+          </svg>
+          {/* Gallina */}
+          <svg width="30" height="38" viewBox="0 0 34 40" style={{ animation:'agro-float 2.8s ease-in-out infinite 0.6s' }}>
+            <ellipse cx="17" cy="28" rx="12" ry="9" fill="#e8a020"/>
+            <rect x="13" y="17" width="8" height="8" rx="4" fill="#e8a020"/>
+            <g style={{ transformOrigin:'13px 14px', animation:'agro-peck 1.1s ease-in-out infinite' }}>
+              <ellipse cx="13" cy="13" rx="7" ry="6" fill="#e8a020"/>
+              <path d="M7 13 L4 14 L7 15" fill="#f59e0b"/>
+              <path d="M10 8 Q11 4 12 7 Q13 3 14 7 Q15 4 16 8" fill="#f87171"/>
+              <circle cx="15" cy="11" r="1.8" fill="#1a0a00"/>
+            </g>
+            <line x1="13" y1="36" x2="11" y2="40" stroke="#f59e0b" strokeWidth="1.8"/>
+            <line x1="21" y1="36" x2="23" y2="40" stroke="#f59e0b" strokeWidth="1.8"/>
+          </svg>
+          {/* Cerdo */}
+          <svg width="40" height="36" viewBox="0 0 42 38" style={{ transformOrigin:'50% 50%', animation:'agro-breathe 2.3s ease-in-out infinite 0.3s' }}>
+            <ellipse cx="24" cy="26" rx="16" ry="10" fill="#f9a8d4"/>
+            <ellipse cx="10" cy="22" rx="9" ry="8" fill="#f9a8d4"/>
+            <ellipse cx="5" cy="14" rx="3" ry="4" fill="#f9a8d4" transform="rotate(-20 5 14)"/>
+            <ellipse cx="7" cy="24" rx="5" ry="3.5" fill="#fb9ebe"/>
+            <circle cx="5.5" cy="24" r="1.2" fill="#c06080"/>
+            <circle cx="8.5" cy="24" r="1.2" fill="#c06080"/>
+            <circle cx="12" cy="20" r="2" fill="#1a0a00"/>
+            <rect x="13" y="34" width="4" height="4" rx="2" fill="#f9a8d4"/>
+            <rect x="20" y="34" width="4" height="4" rx="2" fill="#f9a8d4"/>
+            <rect x="27" y="34" width="4" height="4" rx="2" fill="#f9a8d4"/>
+          </svg>
         </div>
-        <div style={{ width: 200, height: 180, flexShrink: 0 }}>
-          <SplineGreenhouse />
+
+        {/* Izquierda: nombre invernadero */}
+        <div style={{ position:'relative', zIndex:1 }}>
+          <p style={{ color:'rgba(255,255,255,0.35)', fontSize:9, letterSpacing:'2px', textTransform:'uppercase', marginBottom:4 }}>Invernadero activo</p>
+          <p style={{ color:'#fbbf24', fontSize:18, fontWeight:800, marginBottom:6 }}>{selectedGh?.name ?? 'Sin invernadero'}</p>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.25)', borderRadius:20, color:'#4ade80', fontSize:8, padding:'2px 8px', fontWeight:600 }}>● Óptimo</span>
+            {selectedGh?.deviceId && <span style={{ color:'rgba(255,255,255,0.25)', fontSize:9, fontFamily:'JetBrains Mono,monospace' }}>ESP32: {selectedGh.deviceId}</span>}
+          </div>
         </div>
+
+        {/* Derecha: info cultivo activo */}
+        {crop && (
+          <div style={{ display:'flex', alignItems:'center', gap:14, position:'relative', zIndex:1, marginRight:170 }}>
+            <div style={{ width:56, height:56, background:'linear-gradient(135deg,#14532d,#1a4a1a)', border:'1px solid rgba(74,222,128,0.2)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>
+              🌱
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+              <div>
+                <p style={{ color:'rgba(255,255,255,0.3)', fontSize:8, letterSpacing:'1.5px', textTransform:'uppercase' }}>Cultivo activo</p>
+                <p style={{ color:'#f0fdf4', fontSize:13, fontWeight:700, marginTop:1 }}>{crop.name}</p>
+              </div>
+              {(crop.temp_min != null || crop.humidity_min != null) && (
+                <div style={{ display:'flex', gap:10 }}>
+                  {crop.temp_min != null && crop.temp_max != null && (
+                    <div>
+                      <p style={{ color:'rgba(255,255,255,0.25)', fontSize:7, textTransform:'uppercase', letterSpacing:1 }}>Rango temp.</p>
+                      <p style={{ color:'#fb923c', fontSize:12, fontWeight:700, fontFamily:'JetBrains Mono,monospace' }}>{crop.temp_min}–{crop.temp_max}°C</p>
+                    </div>
+                  )}
+                  {crop.humidity_min != null && crop.humidity_max != null && (
+                    <>
+                      <div style={{ width:1, background:'rgba(255,255,255,0.06)' }}/>
+                      <div>
+                        <p style={{ color:'rgba(255,255,255,0.25)', fontSize:7, textTransform:'uppercase', letterSpacing:1 }}>Rango hum.</p>
+                        <p style={{ color:'#22d3ee', fontSize:12, fontWeight:700, fontFamily:'JetBrains Mono,monospace' }}>{crop.humidity_min}–{crop.humidity_max}%</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <PageHeader
@@ -249,8 +337,8 @@ export default function Dashboard() {
 
       {/* Sensor grid */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="skeleton h-32 rounded-3xl" />
           ))}
         </div>
@@ -262,7 +350,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div ref={gridRef} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div ref={gridRef} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {sensorEntries.map(r => {
               const type = r.sensorType ?? ''
               const meta  = SENSOR_META[type] ?? { label: type, unit: '', icon: Activity, accent: 'green' as AccentColor }
@@ -272,28 +360,40 @@ export default function Dashboard() {
               else if (type === 'SOIL_MOISTURE' && crop)   { min = crop.soil_moisture_min; max = crop.soil_moisture_max }
               return (
                 <SensorCard key={r.sensorId} icon={meta.icon} label={meta.label} unit={meta.unit}
-                  value={r.value} accent={meta.accent} min={min} max={max} />
+                  value={r.value} accent={meta.accent} source={meta.source}
+                  min={min} max={max} />
               )
             })}
           </div>
 
           {history.length > 0 && (
             <div className="card p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingUp size={15} className="text-green-500" />
-                <h3 className="text-sm font-semibold text-gray-800">Temperatura — Últimas lecturas</h3>
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={15} style={{ color:'#fb923c' }} />
+                  <h3 className="text-sm font-semibold" style={{ color:'#f0fdf4' }}>Temperatura — Últimas lecturas</h3>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:9, color:'rgba(255,255,255,0.35)' }}>
+                    <div style={{ width:6, height:6, borderRadius:'50%', background:'#fb923c', boxShadow:'0 0 4px #fb923c' }}/>Interior (DHT22)
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:9, color:'rgba(255,255,255,0.35)' }}>
+                    <div style={{ width:6, height:6, borderRadius:'50%', background:'#fbbf24' }}/>Exterior (DHT11)
+                  </div>
+                </div>
               </div>
-              <div className="rounded-[14px] p-4" style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.1)' }}>
+              <div className="rounded-[14px] p-4" style={{ background:'#0d1a0a', border:'1px solid rgba(251,146,60,0.1)' }}>
                 <ResponsiveContainer width="100%" height={160}>
                   <LineChart data={history}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(74,222,128,0.06)" />
-                    <XAxis dataKey="time" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(251,146,60,0.06)" />
+                    <XAxis dataKey="time" tick={{ fill:'rgba(255,255,255,0.3)', fontSize:10, fontFamily:'JetBrains Mono' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill:'rgba(255,255,255,0.3)', fontSize:10, fontFamily:'JetBrains Mono' }} axisLine={false} tickLine={false} domain={['auto','auto']} />
                     <Tooltip
-                      contentStyle={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.2)', borderRadius: 10, color: '#e2ffe9', fontFamily: 'JetBrains Mono' }}
-                      formatter={(v: number) => [`${v}°C`, 'Temperatura']}
+                      contentStyle={{ background:'#0d1a0a', border:'1px solid rgba(251,146,60,0.2)', borderRadius:10, color:'#f0fdf4', fontFamily:'JetBrains Mono' }}
+                      formatter={(v: number, name: string) => [`${v}°C`, name === 'interior' ? 'Interior' : 'Exterior']}
                     />
-                    <Line type="monotone" dataKey="temp" stroke="#4ade80" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#4ade80' }} />
+                    <Line type="monotone" dataKey="interior" stroke="#fb923c" strokeWidth={2} dot={false} activeDot={{ r:4, fill:'#fb923c' }} name="interior" />
+                    <Line type="monotone" dataKey="exterior" stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="5 3" dot={false} activeDot={{ r:3, fill:'#fbbf24' }} name="exterior" connectNulls />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
