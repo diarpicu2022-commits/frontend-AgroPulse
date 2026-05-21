@@ -11,7 +11,8 @@ export class CropRepository extends BaseRepository {
     return CropRepository.instance
   }
 
-  list(): Promise<CropListResponse> {
+  list(greenhouseId?: number | null): Promise<CropListResponse> {
+    if (greenhouseId) return this.get(`/api/crops?greenhouseId=${greenhouseId}`)
     return this.get('/api/crops')
   }
 
