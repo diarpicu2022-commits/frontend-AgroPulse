@@ -94,13 +94,19 @@ export default function Dashboard() {
   const loadData = async () => {
     if (!selectedGh) return
     try {
-      // Cargar cultivo siempre — independiente de si hay lecturas
+      // Cargar cultivo: primero caché local (mismo que CropsPage), luego API
       try {
-        const cropsRaw = await cropRepository.list()
-        const cropsList = Array.isArray(cropsRaw)
-          ? (cropsRaw as unknown as import('../types').CropDto[])
-          : (cropsRaw?.crops ?? [])
-        console.log('[Dashboard] crops loaded:', cropsList.length, cropsList)
+        let cropsList: import('../types').CropDto[] = []
+        try {
+          const cached = localStorage.getItem('agropulse_crops_v1')
+          if (cached) cropsList = JSON.parse(cached) as import('../types').CropDto[]
+        } catch { /* ignore */ }
+        if (cropsList.length === 0) {
+          const cropsRaw = await cropRepository.list()
+          cropsList = Array.isArray(cropsRaw)
+            ? (cropsRaw as unknown as import('../types').CropDto[])
+            : (cropsRaw?.crops ?? [])
+        }
         if (cropsList.length > 0) {
           const activeCrop = cropsList.find(c => Boolean(c.active)) ?? cropsList[0]
           setCrop(activeCrop)
