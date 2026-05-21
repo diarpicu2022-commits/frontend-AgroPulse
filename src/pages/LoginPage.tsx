@@ -38,7 +38,10 @@ export default function LoginPage() {
   // Mount animations
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced) return
+    if (reduced) {
+      if (cardRef.current) cardRef.current.style.opacity = '1'
+      return
+    }
     anime({
       targets: cardRef.current,
       opacity: [0, 1],
