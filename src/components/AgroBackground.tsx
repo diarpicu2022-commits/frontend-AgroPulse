@@ -15,120 +15,121 @@ export default function AgroBackground() {
       style={{
         position: 'fixed', inset: 0, zIndex: 0,
         pointerEvents: 'none', overflow: 'hidden',
-        opacity: 0, transition: 'opacity 1.2s ease',
+        opacity: 0, transition: 'opacity 1.4s ease',
       }}
     >
       <style>{`
         @keyframes agro-sway {
           0%,100% { transform: rotate(-4deg) scale(1); }
-          50%      { transform: rotate(4deg)  scale(1.04); }
+          50%      { transform: rotate(4deg) scale(1.04); }
         }
         @keyframes agro-float {
           0%,100% { transform: translateY(0px); }
-          50%      { transform: translateY(-8px); }
+          50%      { transform: translateY(-9px); }
         }
         @keyframes agro-peck {
-          0%,100% { transform: rotate(0deg); }
-          50%      { transform: rotate(18deg); }
+          0%,35%,100% { transform: rotate(0deg) translateY(0); }
+          50%          { transform: rotate(22deg) translateY(3px); }
         }
         @keyframes agro-breathe {
-          0%,100% { transform: scaleX(1); }
-          50%      { transform: scaleX(1.06); }
+          0%,100% { transform: scaleX(1) scaleY(1); }
+          50%      { transform: scaleX(1.07) scaleY(0.97); }
         }
         @keyframes agro-flutter {
-          0%,100% { transform: scaleX(1)  rotate(-5deg); }
-          50%      { transform: scaleX(0.7) rotate(5deg); }
+          0%,100% { transform: scaleX(1); }
+          50%      { transform: scaleX(0.55); }
         }
         @keyframes agro-drift {
-          0%   { transform: translate(0,0) rotate(0deg); }
-          25%  { transform: translate(6px,-4px) rotate(8deg); }
-          50%  { transform: translate(0,-8px) rotate(0deg); }
-          75%  { transform: translate(-6px,-4px) rotate(-8deg); }
-          100% { transform: translate(0,0) rotate(0deg); }
+          0%   { transform: translate(0,0); }
+          25%  { transform: translate(7px,-5px); }
+          50%  { transform: translate(0,-10px); }
+          75%  { transform: translate(-7px,-5px); }
+          100% { transform: translate(0,0); }
+        }
+        @keyframes agro-tail {
+          0%,100% { transform: rotate(-15deg); }
+          50%      { transform: rotate(15deg); }
         }
         @media (prefers-reduced-motion: reduce) {
           [data-agro] * { animation: none !important; }
         }
       `}</style>
 
-      {/* ── PLANTAS — esquinas y bordes ─────────────────── */}
+      {/* ══ PLANTAS ══════════════════════════════════════════════ */}
 
-      {/* Esquina inferior izquierda — arbusto grande */}
+      {/* Esquina inferior izquierda — arbusto con flores */}
       <svg data-agro style={{ position:'absolute', bottom:-20, left:-10, opacity:0.09 }}
-           width="220" height="260" viewBox="0 0 220 260">
-        <line x1="110" y1="260" x2="110" y2="80" stroke="#4ade80" strokeWidth="4" strokeLinecap="round"/>
-        <line x1="110" y1="180" x2="50" y2="120" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round"/>
-        <line x1="110" y1="140" x2="40" y2="90" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round"/>
-        <line x1="110" y1="180" x2="170" y2="120" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round"/>
-        <line x1="110" y1="150" x2="175" y2="100" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round"/>
-        <ellipse cx="45" cy="108" rx="22" ry="12" fill="#4ade80" style={{ transformOrigin:'45px 108px', animation:'agro-sway 3.8s ease-in-out infinite' }} transform="rotate(-30)"/>
-        <ellipse cx="35" cy="82" rx="18" ry="10" fill="#22d3ee" style={{ transformOrigin:'35px 82px', animation:'agro-sway 4.2s ease-in-out infinite 0.5s' }} transform="rotate(-50)"/>
-        <ellipse cx="175" cy="108" rx="22" ry="12" fill="#4ade80" style={{ transformOrigin:'175px 108px', animation:'agro-sway 3.5s ease-in-out infinite 0.8s' }} transform="rotate(30)"/>
-        <ellipse cx="180" cy="88" rx="18" ry="10" fill="#fb923c" opacity="0.7" style={{ transformOrigin:'180px 88px', animation:'agro-sway 4s ease-in-out infinite 1.2s' }} transform="rotate(50)"/>
-        <ellipse cx="110" cy="72" rx="20" ry="28" fill="#4ade80" style={{ transformOrigin:'110px 72px', animation:'agro-sway 3.2s ease-in-out infinite 0.3s' }}/>
-        <circle cx="110" cy="60" r="8" fill="#fbbf24" opacity="0.8"/>
-        <circle cx="110" cy="60" r="4" fill="#fb923c"/>
+           width="200" height="240" viewBox="0 0 200 240">
+        <line x1="100" y1="240" x2="100" y2="80" stroke="#4ade80" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="100" y1="170" x2="45"  y2="115" stroke="#4ade80"  strokeWidth="2.5" strokeLinecap="round"/>
+        <line x1="100" y1="140" x2="38"  y2="90"  stroke="#22d3ee" strokeWidth="2"   strokeLinecap="round"/>
+        <line x1="100" y1="170" x2="158" y2="115" stroke="#4ade80"  strokeWidth="2.5" strokeLinecap="round"/>
+        <line x1="100" y1="148" x2="162" y2="98"  stroke="#22d3ee" strokeWidth="2"   strokeLinecap="round"/>
+        <ellipse cx="40"  cy="104" rx="20" ry="11" fill="#4ade80" style={{ transformOrigin:'40px 104px',  animation:'agro-sway 3.8s ease-in-out infinite' }}      transform="rotate(-30)"/>
+        <ellipse cx="32"  cy="80"  rx="16" ry="9"  fill="#22d3ee" style={{ transformOrigin:'32px 80px',   animation:'agro-sway 4.3s ease-in-out infinite 0.5s' }} transform="rotate(-50)"/>
+        <ellipse cx="162" cy="104" rx="20" ry="11" fill="#4ade80" style={{ transformOrigin:'162px 104px', animation:'agro-sway 3.5s ease-in-out infinite 0.8s' }} transform="rotate(30)"/>
+        <ellipse cx="168" cy="84"  rx="16" ry="9"  fill="#fb923c" opacity="0.7" style={{ transformOrigin:'168px 84px', animation:'agro-sway 4s ease-in-out infinite 1.2s' }} transform="rotate(50)"/>
+        <ellipse cx="100" cy="68"  rx="18" ry="26" fill="#4ade80" style={{ transformOrigin:'100px 68px',  animation:'agro-sway 3.2s ease-in-out infinite 0.3s' }}/>
+        <circle cx="100" cy="56" r="7"  fill="#fbbf24" opacity="0.85"/>
+        <circle cx="100" cy="56" r="3.5" fill="#fb923c"/>
       </svg>
 
       {/* Esquina superior derecha — planta trepadora */}
       <svg data-agro style={{ position:'absolute', top:-10, right:-10, opacity:0.08 }}
-           width="200" height="200" viewBox="0 0 200 200">
-        <line x1="200" y1="0" x2="100" y2="120" stroke="#22d3ee" strokeWidth="3" strokeLinecap="round"/>
-        <line x1="180" y1="0" x2="80" y2="140" stroke="#4ade80" strokeWidth="2" strokeLinecap="round"/>
-        <ellipse cx="85" cy="100" rx="20" ry="11" fill="#22d3ee" style={{ transformOrigin:'85px 100px', animation:'agro-sway 4s ease-in-out infinite' }} transform="rotate(-40)"/>
-        <ellipse cx="105" cy="80" rx="18" ry="10" fill="#4ade80" style={{ transformOrigin:'105px 80px', animation:'agro-sway 3.5s ease-in-out infinite 0.7s' }} transform="rotate(-20)"/>
-        <ellipse cx="70" cy="130" rx="16" ry="9" fill="#fbbf24" opacity="0.6" style={{ transformOrigin:'70px 130px', animation:'agro-sway 4.5s ease-in-out infinite 1s' }} transform="rotate(-55)"/>
-        <circle cx="95" cy="68" r="6" fill="#fb923c" opacity="0.7"/>
-        <circle cx="95" cy="68" r="3" fill="#fbbf24"/>
+           width="190" height="190" viewBox="0 0 190 190">
+        <line x1="190" y1="0" x2="95"  y2="115" stroke="#22d3ee" strokeWidth="3" strokeLinecap="round"/>
+        <line x1="172" y1="0" x2="76"  y2="132" stroke="#4ade80" strokeWidth="2" strokeLinecap="round"/>
+        <ellipse cx="80"  cy="96"  rx="19" ry="10" fill="#22d3ee" style={{ transformOrigin:'80px 96px',  animation:'agro-sway 4s ease-in-out infinite' }}      transform="rotate(-40)"/>
+        <ellipse cx="100" cy="76"  rx="17" ry="9"  fill="#4ade80" style={{ transformOrigin:'100px 76px', animation:'agro-sway 3.5s ease-in-out infinite 0.7s' }} transform="rotate(-20)"/>
+        <ellipse cx="65"  cy="124" rx="15" ry="8"  fill="#fbbf24" opacity="0.6" style={{ transformOrigin:'65px 124px', animation:'agro-sway 4.5s ease-in-out infinite 1s' }} transform="rotate(-55)"/>
+        <circle cx="90" cy="64" r="5" fill="#fb923c" opacity="0.7"/>
+        <circle cx="90" cy="64" r="2.5" fill="#fbbf24"/>
       </svg>
 
       {/* Borde derecho — caña de bambú */}
-      <svg data-agro style={{ position:'absolute', right:20, top:'30%', opacity:0.07 }}
-           width="60" height="300" viewBox="0 0 60 300">
-        <line x1="30" y1="0" x2="30" y2="300" stroke="#4ade80" strokeWidth="5" strokeLinecap="round"/>
-        {[60,120,180,240].map(y => (
+      <svg data-agro style={{ position:'absolute', right:18, top:'28%', opacity:0.07 }}
+           width="58" height="280" viewBox="0 0 58 280">
+        <line x1="28" y1="0" x2="28" y2="280" stroke="#4ade80" strokeWidth="5" strokeLinecap="round"/>
+        {[55,110,165,220].map(y => (
           <g key={y}>
-            <line x1="30" y1={y} x2="30" y2={y+8} stroke="#22d3ee" strokeWidth="7" strokeLinecap="round"/>
-            <line x1="30" y1={y+4} x2="55" y2={y-15} stroke="#4ade80" strokeWidth="2" strokeLinecap="round"/>
-            <ellipse cx="52" cy={y-20} rx="14" ry="7" fill="#4ade80"
-              style={{ transformOrigin:`52px ${y-20}px`, animation:`agro-sway 3.5s ease-in-out infinite ${y*0.01}s` }}
+            <line x1="28" y1={y}   x2="28" y2={y+8} stroke="#22d3ee" strokeWidth="7" strokeLinecap="round"/>
+            <line x1="28" y1={y+4} x2="52" y2={y-14} stroke="#4ade80" strokeWidth="2" strokeLinecap="round"/>
+            <ellipse cx="50" cy={y-18} rx="13" ry="6" fill="#4ade80"
+              style={{ transformOrigin:`50px ${y-18}px`, animation:`agro-sway 3.5s ease-in-out infinite ${y*0.01}s` }}
               transform="rotate(-20)"/>
           </g>
         ))}
       </svg>
 
-      {/* Borde izquierdo centro — helecho */}
-      <svg data-agro style={{ position:'absolute', left:-5, top:'40%', opacity:0.08 }}
-           width="120" height="200" viewBox="0 0 120 200">
-        <line x1="20" y1="200" x2="80" y2="60" stroke="#4ade80" strokeWidth="3" strokeLinecap="round"/>
-        {[0,1,2,3,4,5].map(i => {
-          const y  = 180 - i * 24
-          const xl = 80 - i * 10
-          const xr = 80 - i * 10
+      {/* Borde izquierdo — helecho */}
+      <svg data-agro style={{ position:'absolute', left:-6, top:'38%', opacity:0.08 }}
+           width="115" height="190" viewBox="0 0 115 190">
+        <line x1="18" y1="190" x2="76" y2="56" stroke="#4ade80" strokeWidth="3" strokeLinecap="round"/>
+        {[0,1,2,3,4].map(i => {
+          const y = 172 - i * 26; const xb = 76 - i * 10
           return (
             <g key={i}>
-              <ellipse cx={xl - 25} cy={y - 10} rx="20" ry="8" fill="#22d3ee"
-                style={{ transformOrigin:`${xl-25}px ${y-10}px`, animation:`agro-sway ${3.5+i*0.3}s ease-in-out infinite ${i*0.2}s` }}
+              <ellipse cx={xb-24} cy={y-9} rx="19" ry="7" fill="#22d3ee"
+                style={{ transformOrigin:`${xb-24}px ${y-9}px`, animation:`agro-sway ${3.5+i*0.3}s ease-in-out infinite ${i*0.2}s` }}
                 transform="rotate(-30)" opacity="0.9"/>
-              <ellipse cx={xr + 15} cy={y - 10} rx="18" ry="7" fill="#4ade80"
-                style={{ transformOrigin:`${xr+15}px ${y-10}px`, animation:`agro-sway ${3.8+i*0.2}s ease-in-out infinite ${i*0.3}s` }}
+              <ellipse cx={xb+14} cy={y-9} rx="17" ry="7" fill="#4ade80"
+                style={{ transformOrigin:`${xb+14}px ${y-9}px`, animation:`agro-sway ${3.8+i*0.2}s ease-in-out infinite ${i*0.3}s` }}
                 transform="rotate(30)" opacity="0.9"/>
             </g>
           )
         })}
       </svg>
 
-      {/* Centro fondo — flores silvestres dispersas */}
-      {[
-        { x:300, y:120, c:'#fbbf24', r:6 },
-        { x:600, y:80,  c:'#fb923c', r:5 },
-        { x:900, y:150, c:'#a78bfa', r:7 },
-        { x:450, y:400, c:'#22d3ee', r:5 },
-        { x:750, y:350, c:'#4ade80', r:6 },
-        { x:200, y:500, c:'#fbbf24', r:4 },
-        { x:1100,y:200, c:'#fb923c', r:5 },
-      ].map(({ x, y, c, r }, i) => (
-        <svg key={i} style={{ position:'absolute', left:x, top:y, opacity:0.07 }}
+      {/* Centro fondo — flores silvestres */}
+      {([
+        { x:280,  y:110, c:'#fbbf24', r:6 },
+        { x:580,  y:75,  c:'#fb923c', r:5 },
+        { x:860,  y:140, c:'#a78bfa', r:7 },
+        { x:440,  y:390, c:'#22d3ee', r:5 },
+        { x:730,  y:340, c:'#4ade80', r:6 },
+        { x:1060, y:190, c:'#fbbf24', r:5 },
+      ] as const).map(({ x, y, c, r }, i) => (
+        <svg key={i} style={{ position:'absolute', left:x, top:y, opacity:0.065 }}
              width={r*8} height={r*8} viewBox={`0 0 ${r*8} ${r*8}`}>
           {[0,60,120,180,240,300].map(a => (
             <ellipse key={a} cx={r*4} cy={r*4-r*2} rx={r*0.9} ry={r*1.4}
@@ -139,131 +140,172 @@ export default function AgroBackground() {
         </svg>
       ))}
 
-      {/* Esquina inferior derecha — árbol pequeño */}
+      {/* Esquina inferior derecha — árbol frutal */}
       <svg data-agro style={{ position:'absolute', bottom:-30, right:-20, opacity:0.08 }}
-           width="180" height="240" viewBox="0 0 180 240">
-        <line x1="90" y1="240" x2="90" y2="100" stroke="#fb923c" strokeWidth="6" strokeLinecap="round" opacity="0.6"/>
-        <ellipse cx="90" cy="80" rx="55" ry="45" fill="#14532d"/>
-        <ellipse cx="65" cy="65" rx="38" ry="32" fill="#166534"/>
-        <ellipse cx="115" cy="70" rx="35" ry="30" fill="#15803d"/>
-        <ellipse cx="90" cy="50" rx="32" ry="28" fill="#22c55e"
+           width="170" height="230" viewBox="0 0 170 230">
+        <line x1="85" y1="230" x2="85" y2="100" stroke="#fb923c" strokeWidth="6" strokeLinecap="round" opacity="0.5"/>
+        <ellipse cx="85" cy="78"  rx="52" ry="43" fill="#14532d"/>
+        <ellipse cx="62" cy="63"  rx="36" ry="30" fill="#166534"/>
+        <ellipse cx="110" cy="68" rx="33" ry="28" fill="#15803d"/>
+        <ellipse cx="85" cy="48"  rx="30" ry="26" fill="#22c55e"
           style={{ animation:'agro-sway 4s ease-in-out infinite' }}/>
-        <circle cx="70" cy="72" r="6" fill="#f87171" opacity="0.9"/>
-        <circle cx="105" cy="68" r="5" fill="#fb923c" opacity="0.9"/>
-        <circle cx="88" cy="55" r="5" fill="#fbbf24" opacity="0.9"/>
+        <circle cx="68"  cy="70" r="5.5" fill="#f87171" opacity="0.9"/>
+        <circle cx="100" cy="66" r="5"   fill="#fb923c" opacity="0.9"/>
+        <circle cx="84"  cy="53" r="5"   fill="#fbbf24" opacity="0.9"/>
       </svg>
 
-      {/* ── ANIMALES — dispersos por la página ─────────────── */}
+      {/* ══ ANIMALES DE GRANJA ═══════════════════════════════════ */}
 
-      {/* Abeja — esquina superior izquierda */}
-      <svg data-agro style={{ position:'absolute', top:80, left:180, opacity:0.10 }}
-           width="40" height="32" viewBox="0 0 40 32">
+      {/* VACA — izquierda centro-alta */}
+      <svg data-agro style={{ position:'absolute', top:'18%', left:55, opacity:0.10 }}
+           width="80" height="60" viewBox="0 0 80 60">
+        <g style={{ animation:'agro-float 4s ease-in-out infinite' }}>
+          {/* Cuerpo */}
+          <ellipse cx="46" cy="38" rx="26" ry="16" fill="#f0ebe0"/>
+          {/* Manchas */}
+          <ellipse cx="40" cy="34" rx="7"  ry="5"  fill="#3d2b1f" opacity="0.35"/>
+          <ellipse cx="56" cy="40" rx="5"  ry="4"  fill="#3d2b1f" opacity="0.28"/>
+          {/* Cabeza */}
+          <ellipse cx="16" cy="28" rx="13" ry="11" fill="#f0ebe0"/>
+          {/* Orejas */}
+          <ellipse cx="7"  cy="19" rx="4"  ry="5.5" fill="#f0ebe0" transform="rotate(-15 7 19)"/>
+          <ellipse cx="25" cy="18" rx="3.5" ry="5"  fill="#f0ebe0" transform="rotate(10 25 18)"/>
+          {/* Nariz */}
+          <ellipse cx="8" cy="30" rx="6" ry="4" fill="#f5c5b0"/>
+          <circle  cx="6.5" cy="30" r="1.4" fill="#8b5040"/>
+          <circle  cx="9.5" cy="30" r="1.4" fill="#8b5040"/>
+          {/* Ojo */}
+          <circle cx="18" cy="25" r="2.5" fill="#1a0a00"/>
+          <circle cx="18.6" cy="24.4" r="0.9" fill="#fff"/>
+          {/* Cuernos */}
+          <path d="M10 17 Q7 10 5 12"  fill="none" stroke="#c8b89a" strokeWidth="1.8" strokeLinecap="round"/>
+          <path d="M24 17 Q26 10 28 12" fill="none" stroke="#c8b89a" strokeWidth="1.8" strokeLinecap="round"/>
+          {/* Patas */}
+          <rect x="30" y="52" width="5" height="8" rx="2" fill="#e0d5c4"/>
+          <rect x="38" y="52" width="5" height="8" rx="2" fill="#e0d5c4"/>
+          <rect x="52" y="52" width="5" height="8" rx="2" fill="#e0d5c4"/>
+          <rect x="60" y="52" width="5" height="8" rx="2" fill="#e0d5c4"/>
+          {/* Ubre */}
+          <ellipse cx="38" cy="52" rx="8" ry="4" fill="#f9c5b0"/>
+          {/* Cola */}
+          <path d="M72 35 Q80 28 76 22" fill="none" stroke="#c8b89a" strokeWidth="2" strokeLinecap="round"
+            style={{ transformOrigin:'72px 35px', animation:'agro-tail 2s ease-in-out infinite' }}/>
+        </g>
+      </svg>
+
+      {/* GALLINA — borde inferior izquierda */}
+      <svg data-agro style={{ position:'absolute', bottom:50, left:'18%', opacity:0.10 }}
+           width="52" height="58" viewBox="0 0 52 58">
+        <g style={{ animation:'agro-float 3s ease-in-out infinite 0.8s' }}>
+          {/* Cuerpo */}
+          <ellipse cx="26" cy="40" rx="18" ry="13" fill="#d48c20"/>
+          {/* Ala */}
+          <ellipse cx="20" cy="38" rx="12" ry="8" fill="#c07818" opacity="0.7" transform="rotate(-10 20 38)"/>
+          {/* Cola */}
+          <path d="M44 38 Q52 28 50 22 Q46 26 44 38Z" fill="#a06010"/>
+          <path d="M44 38 Q54 32 54 24 Q49 29 44 38Z" fill="#c07818" opacity="0.8"/>
+          {/* Cuello */}
+          <rect x="20" y="26" width="10" height="12" rx="5" fill="#d4a030"/>
+          {/* Cabeza — animada picoteando */}
+          <g style={{ transformOrigin:'25px 24px', animation:'agro-peck 1.4s ease-in-out infinite' }}>
+            <ellipse cx="25" cy="18" rx="10" ry="8" fill="#d4a030"/>
+            {/* Cresta */}
+            <path d="M20 10 Q21 5 23 8 Q24 3 26 7 Q27 4 29 8 Q31 5 32 10" fill="#f87171"/>
+            {/* Pico */}
+            <path d="M15 18 L10 20 L15 22" fill="#f59e0b"/>
+            {/* Ojo */}
+            <circle cx="28" cy="16" r="2.5" fill="#1a0a00"/>
+            <circle cx="28.7" cy="15.3" r="0.9" fill="#fff"/>
+            {/* Papada */}
+            <ellipse cx="17" cy="22" rx="3" ry="4" fill="#f87171"/>
+          </g>
+          {/* Patas */}
+          <line x1="20" y1="52" x2="17" y2="58" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round"/>
+          <line x1="30" y1="52" x2="33" y2="58" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M17 58 L13 56 M17 58 L15 60 M17 58 L19 60" fill="none" stroke="#f59e0b" strokeWidth="1.4" strokeLinecap="round"/>
+          <path d="M33 58 L29 56 M33 58 L31 60 M33 58 L35 60" fill="none" stroke="#f59e0b" strokeWidth="1.4" strokeLinecap="round"/>
+        </g>
+      </svg>
+
+      {/* CERDO — borde inferior derecho */}
+      <svg data-agro style={{ position:'absolute', bottom:45, right:'15%', opacity:0.10 }}
+           width="72" height="54" viewBox="0 0 72 54">
+        <g style={{ transformOrigin:'36px 36px', animation:'agro-breathe 2.6s ease-in-out infinite 0.4s' }}>
+          {/* Cuerpo */}
+          <ellipse cx="42" cy="36" rx="26" ry="16" fill="#f9b8cf"/>
+          {/* Cabeza */}
+          <ellipse cx="14" cy="30" rx="14" ry="12" fill="#f9b8cf"/>
+          {/* Oreja izq */}
+          <ellipse cx="7"  cy="18" rx="4.5" ry="6"  fill="#f9b8cf" transform="rotate(-20 7 18)"/>
+          <ellipse cx="7"  cy="19" rx="2.5" ry="3.5" fill="#f4a0be" transform="rotate(-20 7 19)"/>
+          {/* Oreja der */}
+          <ellipse cx="21" cy="18" rx="4"   ry="5.5" fill="#f9b8cf" transform="rotate(15 21 18)"/>
+          <ellipse cx="21" cy="19" rx="2.2" ry="3.2" fill="#f4a0be" transform="rotate(15 21 19)"/>
+          {/* Hocico */}
+          <ellipse cx="5" cy="32" rx="7" ry="5.5" fill="#f4a0be"/>
+          <circle cx="3"  cy="32" r="1.6" fill="#c06080"/>
+          <circle cx="7"  cy="32" r="1.6" fill="#c06080"/>
+          {/* Ojo */}
+          <circle cx="16" cy="26" r="2.8" fill="#1a0a00"/>
+          <circle cx="16.8" cy="25.2" r="1" fill="#fff"/>
+          {/* Patas */}
+          <rect x="24" y="50" width="7" height="4" rx="2" fill="#f4a0be"/>
+          <rect x="34" y="50" width="7" height="4" rx="2" fill="#f4a0be"/>
+          <rect x="50" y="50" width="7" height="4" rx="2" fill="#f4a0be"/>
+          <rect x="60" y="50" width="7" height="4" rx="2" fill="#f4a0be"/>
+          {/* Rabo */}
+          <path d="M68 32 Q76 26 74 20 Q70 25 68 32" fill="none" stroke="#f9b8cf" strokeWidth="2" strokeLinecap="round"
+            style={{ transformOrigin:'68px 32px', animation:'agro-tail 1.8s ease-in-out infinite 0.3s' }}/>
+        </g>
+      </svg>
+
+      {/* ABEJA — esquina superior izquierda */}
+      <svg data-agro style={{ position:'absolute', top:75, left:185, opacity:0.11 }}
+           width="42" height="34" viewBox="0 0 42 34">
         <g style={{ animation:'agro-drift 6s ease-in-out infinite' }}>
-          <ellipse cx="20" cy="18" rx="10" ry="7" fill="#fbbf24"/>
-          <line x1="14" y1="16" x2="26" y2="16" stroke="#1a0a00" strokeWidth="2"/>
-          <line x1="13" y1="20" x2="27" y2="20" stroke="#1a0a00" strokeWidth="2"/>
-          <ellipse cx="14" cy="10" rx="9" ry="5" fill="#e2ffe9" opacity="0.6"
-            style={{ transformOrigin:'14px 10px', animation:'agro-flutter 0.3s ease-in-out infinite' }}/>
-          <ellipse cx="26" cy="10" rx="9" ry="5" fill="#e2ffe9" opacity="0.6"
-            style={{ transformOrigin:'26px 10px', animation:'agro-flutter 0.3s ease-in-out infinite 0.15s' }}/>
-          <circle cx="30" cy="18" r="5" fill="#fbbf24"/>
-          <circle cx="32" cy="16" r="1.2" fill="#1a0a00"/>
-          <path d="M10 18 L5 18" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round"/>
+          {/* Cuerpo */}
+          <ellipse cx="21" cy="20" rx="10" ry="7" fill="#fbbf24"/>
+          <line x1="15" y1="18" x2="27" y2="18" stroke="#1a0a00" strokeWidth="2.2"/>
+          <line x1="14" y1="22" x2="28" y2="22" stroke="#1a0a00" strokeWidth="2.2"/>
+          {/* Alas */}
+          <ellipse cx="14" cy="11" rx="10" ry="5.5" fill="#e2ffe9" opacity="0.6"
+            style={{ transformOrigin:'14px 11px', animation:'agro-flutter 0.28s ease-in-out infinite' }}/>
+          <ellipse cx="28" cy="11" rx="10" ry="5.5" fill="#e2ffe9" opacity="0.6"
+            style={{ transformOrigin:'28px 11px', animation:'agro-flutter 0.28s ease-in-out infinite 0.14s' }}/>
+          {/* Cabeza */}
+          <circle cx="31" cy="20" r="5.5" fill="#fbbf24"/>
+          <circle cx="33" cy="18" r="1.3" fill="#1a0a00"/>
+          {/* Aguijón */}
+          <path d="M11 20 L5 20" stroke="#f59e0b" strokeWidth="1.6" strokeLinecap="round"/>
         </g>
       </svg>
 
-      {/* Mariposa — centro izquierda */}
-      <svg data-agro style={{ position:'absolute', top:'25%', left:'12%', opacity:0.09 }}
-           width="50" height="44" viewBox="0 0 50 44">
-        <g style={{ animation:'agro-drift 8s ease-in-out infinite 1s' }}>
-          <ellipse cx="18" cy="18" rx="14" ry="12" fill="#a78bfa"
-            style={{ transformOrigin:'18px 22px', animation:'agro-flutter 0.8s ease-in-out infinite' }}/>
-          <ellipse cx="32" cy="18" rx="14" ry="12" fill="#fb923c"
-            style={{ transformOrigin:'32px 22px', animation:'agro-flutter 0.8s ease-in-out infinite 0.4s' }}/>
-          <ellipse cx="16" cy="28" rx="10" ry="8" fill="#fbbf24"
-            style={{ transformOrigin:'16px 24px', animation:'agro-flutter 0.8s ease-in-out infinite 0.2s' }}/>
-          <ellipse cx="34" cy="28" rx="10" ry="8" fill="#22d3ee"
-            style={{ transformOrigin:'34px 24px', animation:'agro-flutter 0.8s ease-in-out infinite 0.6s' }}/>
-          <ellipse cx="25" cy="22" rx="2.5" ry="10" fill="#1a0a00"/>
-          <line x1="25" y1="13" x2="18" y2="4" stroke="#1a0a00" strokeWidth="1"/>
-          <circle cx="18" cy="3" r="1.5" fill="#fb923c"/>
-          <line x1="25" y1="13" x2="32" y2="4" stroke="#1a0a00" strokeWidth="1"/>
-          <circle cx="32" cy="3" r="1.5" fill="#a78bfa"/>
-        </g>
-      </svg>
-
-      {/* Rana — borde inferior centro-izquierda */}
-      <svg data-agro style={{ position:'absolute', bottom:40, left:'25%', opacity:0.10 }}
-           width="44" height="36" viewBox="0 0 44 36">
-        <g style={{ animation:'agro-float 2.5s ease-in-out infinite' }}>
-          <ellipse cx="22" cy="24" rx="14" ry="10" fill="#22c55e"/>
-          <ellipse cx="22" cy="14" rx="12" ry="9" fill="#22c55e"/>
-          <circle cx="14" cy="8" r="5" fill="#4ade80"/>
-          <circle cx="30" cy="8" r="5" fill="#4ade80"/>
-          <circle cx="14" cy="8" r="2.5" fill="#1a0a00"/>
-          <circle cx="30" cy="8" r="2.5" fill="#1a0a00"/>
-          <circle cx="15" cy="7" r="1" fill="#fff"/>
-          <circle cx="31" cy="7" r="1" fill="#fff"/>
-          <path d="M15 18 Q22 22 29 18" fill="none" stroke="#166534" strokeWidth="1.5" strokeLinecap="round"/>
-          <path d="M8 28 Q2 32 4 36" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round"/>
-          <path d="M36 28 Q42 32 40 36" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round"/>
-          <path d="M4 36 L0 34 M4 36 L2 38" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M40 36 L44 34 M40 36 L42 38" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"/>
-        </g>
-      </svg>
-
-      {/* Gusano/oruga — borde inferior derecha */}
-      <svg data-agro style={{ position:'absolute', bottom:60, right:'20%', opacity:0.09 }}
-           width="80" height="30" viewBox="0 0 80 30">
-        <g style={{ animation:'agro-float 3s ease-in-out infinite 0.5s' }}>
-          {[0,1,2,3].map(i => (
-            <circle key={i} cx={12 + i*16} cy="18" r="10"
-              fill={(['#4ade80','#22d3ee','#4ade80','#a78bfa'] as const)[i]}/>
-          ))}
-          <circle cx="74" cy="16" r="11" fill="#fb923c"/>
-          <circle cx="70" cy="12" r="2.5" fill="#1a0a00"/>
-          <circle cx="78" cy="12" r="2.5" fill="#1a0a00"/>
-          <circle cx="70.8" cy="11.2" r="1" fill="#fff"/>
-          <circle cx="78.8" cy="11.2" r="1" fill="#fff"/>
-          <line x1="70" y1="6" x2="66" y2="0" stroke="#1a0a00" strokeWidth="1"/>
-          <circle cx="66" cy="0" r="1.5" fill="#fbbf24"/>
-          <line x1="78" y1="6" x2="82" y2="0" stroke="#1a0a00" strokeWidth="1"/>
-          <circle cx="82" cy="0" r="1.5" fill="#fbbf24"/>
-        </g>
-      </svg>
-
-      {/* Pajarito volando — parte superior centro */}
-      <svg data-agro style={{ position:'absolute', top:60, left:'45%', opacity:0.09 }}
-           width="48" height="28" viewBox="0 0 48 28">
-        <g style={{ animation:'agro-drift 10s ease-in-out infinite 2s' }}>
-          <ellipse cx="24" cy="18" rx="10" ry="6" fill="#fbbf24"/>
-          <path d="M24 16 Q10 6 4 10" fill="none" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round"
-            style={{ transformOrigin:'24px 16px', animation:'agro-flutter 0.5s ease-in-out infinite' }}/>
-          <path d="M24 16 Q38 6 44 10" fill="none" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round"
-            style={{ transformOrigin:'24px 16px', animation:'agro-flutter 0.5s ease-in-out infinite 0.25s' }}/>
-          <circle cx="33" cy="16" r="6" fill="#fbbf24"/>
-          <path d="M38 16 L44 15 L38 17" fill="#fb923c"/>
-          <circle cx="35" cy="14" r="1.8" fill="#1a0a00"/>
-          <circle cx="35.5" cy="13.5" r="0.7" fill="#fff"/>
-          <path d="M14 18 L6 14 M14 18 L5 18 M14 18 L6 22" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round"/>
-        </g>
-      </svg>
-
-      {/* Caracol — esquina inferior izquierda alta */}
-      <svg data-agro style={{ position:'absolute', bottom:120, left:60, opacity:0.09 }}
-           width="50" height="36" viewBox="0 0 50 36">
-        <g style={{ animation:'agro-float 4s ease-in-out infinite 1s' }}>
-          <circle cx="32" cy="18" r="14" fill="none" stroke="#fb923c" strokeWidth="3"/>
-          <circle cx="32" cy="18" r="9"  fill="none" stroke="#fbbf24" strokeWidth="2"/>
-          <circle cx="32" cy="18" r="5"  fill="#fb923c" opacity="0.6"/>
-          <circle cx="32" cy="18" r="2"  fill="#fbbf24"/>
-          <ellipse cx="18" cy="26" rx="16" ry="7" fill="#4ade80"/>
-          <ellipse cx="6" cy="22" rx="7" ry="6" fill="#4ade80"/>
-          <line x1="4" y1="17" x2="1" y2="10" stroke="#22d3ee" strokeWidth="1.5"/>
-          <circle cx="1" cy="9" r="2" fill="#22d3ee"/>
-          <line x1="8" y1="16" x2="10" y2="9" stroke="#22d3ee" strokeWidth="1.5"/>
-          <circle cx="10" cy="8" r="2" fill="#22d3ee"/>
-        </g>
+      {/* GIRASOL — derecha centro */}
+      <svg data-agro style={{ position:'absolute', top:'28%', right:'8%', opacity:0.09 }}
+           width="70" height="200" viewBox="0 0 70 200">
+        {/* Tallo */}
+        <path d="M35 200 Q30 160 35 120 Q40 80 35 40" stroke="#4ade80" strokeWidth="4" fill="none" strokeLinecap="round"/>
+        {/* Hoja izquierda */}
+        <ellipse cx="20" cy="140" rx="18" ry="9" fill="#22d3ee" opacity="0.9"
+          style={{ transformOrigin:'20px 140px', animation:'agro-sway 4s ease-in-out infinite' }}
+          transform="rotate(-35)"/>
+        {/* Hoja derecha */}
+        <ellipse cx="50" cy="110" rx="18" ry="9" fill="#4ade80" opacity="0.9"
+          style={{ transformOrigin:'50px 110px', animation:'agro-sway 3.8s ease-in-out infinite 0.6s' }}
+          transform="rotate(35)"/>
+        {/* Pétalos */}
+        {[0,40,80,120,160,200,240,280,320].map(a => (
+          <ellipse key={a} cx="35" cy="22" rx="5" ry="12" fill="#fbbf24"
+            transform={`rotate(${a} 35 40)`}
+            style={{ transformOrigin:'35px 40px', animation:`agro-sway 3.5s ease-in-out infinite ${a*0.01}s` }}/>
+        ))}
+        {/* Centro */}
+        <circle cx="35" cy="40" r="12" fill="#92400e"/>
+        <circle cx="35" cy="40" r="8"  fill="#78350f"/>
+        {/* Puntitos centro */}
+        {[0,45,90,135,180,225,270,315].map(a => (
+          <circle key={a} cx={35 + 5*Math.cos(a*Math.PI/180)} cy={40 + 5*Math.sin(a*Math.PI/180)} r="1.2" fill="#fbbf24" opacity="0.6"/>
+        ))}
       </svg>
 
     </div>

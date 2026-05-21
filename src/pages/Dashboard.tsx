@@ -261,39 +261,71 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Derecha: info cultivo activo */}
-        {crop && (
-          <div style={{ display:'flex', alignItems:'center', gap:14, position:'relative', zIndex:1, marginRight:170 }}>
-            <div style={{ width:56, height:56, background:'linear-gradient(135deg,#14532d,#1a4a1a)', border:'1px solid rgba(74,222,128,0.2)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>
-              🌱
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-              <div>
-                <p style={{ color:'rgba(255,255,255,0.3)', fontSize:8, letterSpacing:'1.5px', textTransform:'uppercase' }}>Cultivo activo</p>
-                <p style={{ color:'#f0fdf4', fontSize:13, fontWeight:700, marginTop:1 }}>{crop.name}</p>
-              </div>
-              {(crop.temp_min != null || crop.humidity_min != null) && (
-                <div style={{ display:'flex', gap:10 }}>
-                  {crop.temp_min != null && crop.temp_max != null && (
-                    <div>
-                      <p style={{ color:'rgba(255,255,255,0.25)', fontSize:7, textTransform:'uppercase', letterSpacing:1 }}>Rango temp.</p>
-                      <p style={{ color:'#fb923c', fontSize:12, fontWeight:700, fontFamily:'JetBrains Mono,monospace' }}>{crop.temp_min}–{crop.temp_max}°C</p>
-                    </div>
-                  )}
-                  {crop.humidity_min != null && crop.humidity_max != null && (
-                    <>
-                      <div style={{ width:1, background:'rgba(255,255,255,0.06)' }}/>
-                      <div>
-                        <p style={{ color:'rgba(255,255,255,0.25)', fontSize:7, textTransform:'uppercase', letterSpacing:1 }}>Rango hum.</p>
-                        <p style={{ color:'#22d3ee', fontSize:12, fontWeight:700, fontFamily:'JetBrains Mono,monospace' }}>{crop.humidity_min}–{crop.humidity_max}%</p>
-                      </div>
-                    </>
-                  )}
+        {/* Derecha: progreso del cultivo activo */}
+        <div style={{ position:'relative', zIndex:1, marginRight:180 }}>
+          {crop ? (() => {
+            const STAGES = ['SEEDING','GROWING','FLOWERING','HARVESTING','DORMANT'] as const
+            const STAGE_ES: Record<string, string> = { SEEDING:'Siembra', GROWING:'Crecimiento', FLOWERING:'Floración', HARVESTING:'Cosecha', DORMANT:'Reposo' }
+            const STAGE_EMOJI: Record<string, string> = { SEEDING:'🌱', GROWING:'🌿', FLOWERING:'🌸', HARVESTING:'🌾', DORMANT:'💤' }
+            const stageIdx = crop.currentStage ? STAGES.indexOf(crop.currentStage) : 0
+            const stagePct = Math.round(((stageIdx + 1) / STAGES.length) * 100)
+            const diasPlantado = crop.plantingDate
+              ? Math.floor((Date.now() - new Date(crop.plantingDate).getTime()) / 86400000)
+              : null
+            return (
+              <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+                <div style={{ width:58, height:58, background:'linear-gradient(135deg,#0f3d20,#163a18)', border:'1px solid rgba(74,222,128,0.25)', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>
+                  {STAGE_EMOJI[crop.currentStage ?? 'SEEDING']}
                 </div>
-              )}
+                <div style={{ display:'flex', flexDirection:'column', gap:5, minWidth:160 }}>
+                  <div>
+                    <p style={{ color:'rgba(255,255,255,0.28)', fontSize:8, letterSpacing:'2px', textTransform:'uppercase', marginBottom:2 }}>Cultivo activo</p>
+                    <p style={{ color:'#f0fdf4', fontSize:14, fontWeight:800, lineHeight:1.1 }}>
+                      {crop.name}{crop.variety ? <span style={{ color:'rgba(255,255,255,0.4)', fontWeight:400, fontSize:11 }}> · {crop.variety}</span> : null}
+                    </p>
+                  </div>
+                  <div style={{ display:'flex', gap:14 }}>
+                    {diasPlantado !== null && (
+                      <div>
+                        <p style={{ color:'rgba(255,255,255,0.28)', fontSize:7, textTransform:'uppercase', letterSpacing:1 }}>Días plantado</p>
+                        <p style={{ color:'#fbbf24', fontSize:13, fontWeight:700, fontFamily:'JetBrains Mono,monospace' }}>{diasPlantado}d</p>
+                      </div>
+                    )}
+                    <div>
+                      <p style={{ color:'rgba(255,255,255,0.28)', fontSize:7, textTransform:'uppercase', letterSpacing:1 }}>Etapa</p>
+                      <p style={{ color:'#4ade80', fontSize:12, fontWeight:700 }}>{STAGE_ES[crop.currentStage ?? 'SEEDING']}</p>
+                    </div>
+                    <div>
+                      <p style={{ color:'rgba(255,255,255,0.28)', fontSize:7, textTransform:'uppercase', letterSpacing:1 }}>Progreso</p>
+                      <p style={{ color:'#fb923c', fontSize:13, fontWeight:700, fontFamily:'JetBrains Mono,monospace' }}>{stagePct}%</p>
+                    </div>
+                  </div>
+                  {/* Barra de progreso del ciclo */}
+                  <div>
+                    <div style={{ height:4, background:'rgba(255,255,255,0.06)', borderRadius:99 }}>
+                      <div style={{ width:`${stagePct}%`, height:'100%', background:'linear-gradient(90deg,#4ade80,#fbbf24)', borderRadius:99, boxShadow:'0 0 8px rgba(74,222,128,0.4)', transition:'width 1s ease' }}/>
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginTop:3 }}>
+                      {STAGES.map((s,i) => (
+                        <span key={s} style={{ fontSize:6, color: i <= stageIdx ? 'rgba(74,222,128,0.7)' : 'rgba(255,255,255,0.2)', fontFamily:'JetBrains Mono,monospace', letterSpacing:0.5 }}>
+                          {STAGE_ES[s].slice(0,3).toUpperCase()}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })() : (
+            <div style={{ display:'flex', alignItems:'center', gap:10, opacity:0.4 }}>
+              <div style={{ width:46, height:46, border:'1px dashed rgba(74,222,128,0.3)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🌿</div>
+              <div>
+                <p style={{ color:'rgba(255,255,255,0.3)', fontSize:8, letterSpacing:'2px', textTransform:'uppercase' }}>Sin cultivo</p>
+                <p style={{ color:'rgba(255,255,255,0.35)', fontSize:10 }}>Asigna un cultivo al invernadero</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <PageHeader

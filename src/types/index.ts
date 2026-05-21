@@ -68,9 +68,12 @@ export interface SensorReadingDto {
   greenhouseId?: number
 }
 
+export type CropStage = 'SEEDING' | 'GROWING' | 'FLOWERING' | 'HARVESTING' | 'DORMANT'
+
 export interface CropDto {
   id: number
   name: string
+  variety?: string
   active: boolean | number
   greenhouseId?: number
   temp_min?: number
@@ -84,6 +87,8 @@ export interface CropDto {
   co2_min?: number
   co2_max?: number
   description?: string
+  plantingDate?: string
+  currentStage?: CropStage
 }
 
 export interface AlertDto {
