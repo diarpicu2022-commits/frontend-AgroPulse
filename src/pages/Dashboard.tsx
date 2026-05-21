@@ -94,6 +94,15 @@ export default function Dashboard() {
   const loadData = async () => {
     if (!selectedGh) return
     try {
+      // Cargar cultivo siempre — independiente de si hay lecturas
+      try {
+        const cropsData = await cropRepository.list()
+        if ((cropsData?.crops?.length ?? 0) > 0) {
+          const activeCrop = cropsData.crops.find(c => c.active === 1 || c.active === true) ?? cropsData.crops[0]
+          setCrop(activeCrop)
+        }
+      } catch { /* crops not critical */ }
+
       const readingsData = await readingRepository.list(null, 200, selectedGh.id)
       if (readingsData?.readings) {
         setReadings(readingsData.readings)
@@ -117,12 +126,10 @@ export default function Dashboard() {
         } else {
           setHistory([])
         }
-        try {
-          const cropsData = await cropRepository.list()
-          if ((cropsData?.crops?.length ?? 0) > 0) {
-            const activeCrop = cropsData.crops.find(c => c.active === 1 || c.active === true) ?? cropsData.crops[0]
-            setCrop(activeCrop)
-            const newAutoAlerts = generateAutoAlerts(readingsData.readings, activeCrop)
+        // Generar auto-alertas solo si hay cultivo cargado
+        setCrop(prev => {
+          if (prev) {
+            const newAutoAlerts = generateAutoAlerts(readingsData.readings, prev)
             if (newAutoAlerts.length > 0) {
               setAutoAlerts(newAutoAlerts)
               newAutoAlerts.forEach(a =>
@@ -130,7 +137,8 @@ export default function Dashboard() {
               )
             } else setAutoAlerts([])
           }
-        } catch { /* crops not critical */ }
+          return prev
+        })
       }
       try {
         const alertsData = await alertRepository.list()
