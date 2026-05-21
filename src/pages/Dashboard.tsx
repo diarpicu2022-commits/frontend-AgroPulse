@@ -96,16 +96,16 @@ export default function Dashboard() {
     try {
       // Cargar cultivo siempre — independiente de si hay lecturas
       try {
-        const cropsRaw = await cropRepository.list(selectedGh.id)
-        // El backend puede retornar { crops: [...] } o un array directo
+        const cropsRaw = await cropRepository.list()
         const cropsList = Array.isArray(cropsRaw)
           ? (cropsRaw as unknown as import('../types').CropDto[])
           : (cropsRaw?.crops ?? [])
+        console.log('[Dashboard] crops loaded:', cropsList.length, cropsList)
         if (cropsList.length > 0) {
           const activeCrop = cropsList.find(c => Boolean(c.active)) ?? cropsList[0]
           setCrop(activeCrop)
         }
-      } catch (e) { console.error('crops load error:', e) }
+      } catch (e) { console.error('[Dashboard] crops load error:', e) }
 
       const readingsData = await readingRepository.list(null, 200, selectedGh.id)
       if (readingsData?.readings) {
