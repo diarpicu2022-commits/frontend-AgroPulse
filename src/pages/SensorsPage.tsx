@@ -56,9 +56,10 @@ export default function SensorsPage() {
 
   const runSilentDedup = async (allSensors: SensorDto[]) => {
     if (allowedGreenhouseIds !== null) return
+    // Group by type+greenhouseId: one sensor record per variable per greenhouse
     const groups = new Map<string, SensorDto[]>()
     for (const s of allSensors) {
-      const key = `${s.type ?? ''}|${s.gpioPin ?? ''}|${s.greenhouseId ?? ''}`
+      const key = `${s.type ?? ''}|${s.greenhouseId ?? ''}`
       if (!groups.has(key)) groups.set(key, [])
       groups.get(key)!.push(s)
     }
@@ -96,7 +97,14 @@ export default function SensorsPage() {
             }
             return false
           })
-      setSensors(filtered)
+      // One card per variable: keep the highest ID (most recently registered) for each type per greenhouse
+      const dedupMap = new Map<string, SensorDto>()
+      for (const s of filtered) {
+        const key = `${s.type ?? ''}|${s.greenhouseId ?? ''}`
+        const existing = dedupMap.get(key)
+        if (!existing || s.id > existing.id) dedupMap.set(key, s)
+      }
+      setSensors(Array.from(dedupMap.values()))
       setLastSyncSecs(0)
       setError(null)
       // Load thresholds for all sensors
@@ -237,7 +245,7 @@ export default function SensorsPage() {
       const all  = data.sensors ?? []
       const groups = new Map<string, SensorDto[]>()
       for (const s of all) {
-        const key = `${s.type ?? ''}|${s.gpioPin ?? ''}|${s.greenhouseId ?? ''}`
+        const key = `${s.type ?? ''}|${s.greenhouseId ?? ''}`
         if (!groups.has(key)) groups.set(key, [])
         groups.get(key)!.push(s)
       }
