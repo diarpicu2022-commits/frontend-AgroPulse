@@ -4,10 +4,13 @@ export type SensorType =
   | 'TEMPERATURE_INTERNAL'
   | 'TEMPERATURE_EXTERNAL'
   | 'HUMIDITY'
+  | 'HUMIDITY_INTERNAL'
   | 'HUMIDITY_EXTERNAL'
   | 'SOIL_MOISTURE'
   | 'LIGHT'
   | 'CO2'
+  | 'WIND_SPEED'
+  | 'PH'
   | 'PRESSURE'
 
 export type ActuatorType = 'PUMP' | 'FAN' | 'LED' | 'SERVO' | 'RELAY' | 'MOTOR'
@@ -204,6 +207,14 @@ export interface UserListResponse        { users: UserDto[] }
 export interface RuleListResponse        { rules: RuleDto[] }
 export interface LogListResponse         { logs: LogDto[] }
 export interface TicketListResponse      { tickets: TicketDto[] }
+
+export interface SystemSettingDto {
+  id: number
+  key: string
+  value: string
+  description?: string
+  updatedAt?: string
+}
 
 export interface SensorThresholdDto {
   id?: number

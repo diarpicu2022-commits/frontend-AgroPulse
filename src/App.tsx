@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   Home, Activity, Leaf, Bell, Bot, Settings, LogOut,
   Cpu, Zap, BarChart3, ChevronRight, Mail,
-  Sprout, X, Menu, Key, Wifi, MapPin
+  Sprout, X, Menu, Key, Wifi, MapPin, Database
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import anime from 'animejs'
@@ -29,8 +29,9 @@ import ReportsPage    from './pages/ReportsPage'
 import RulesPage      from './pages/RulesPage'
 import GreenhousePage from './pages/GreenhousePage'
 import MapPage        from './pages/MapPage'
-import SettingsPage   from './pages/SettingsPage'
-import NoAccessPage   from './pages/NoAccessPage'
+import SettingsPage        from './pages/SettingsPage'
+import SystemSettingsPage  from './pages/SystemSettingsPage'
+import NoAccessPage        from './pages/NoAccessPage'
 
 function LogoMarkSvg() {
   return (
@@ -56,7 +57,7 @@ function LogoMarkSvg() {
 type PageId =
   | 'dashboard' | 'analytics' | 'sensors' | 'actuators' | 'rules' | 'reports'
   | 'greenhouses' | 'crops' | 'ai' | 'ml' | 'alerts' | 'logs' | 'users'
-  | 'admin' | 'support' | 'settings' | 'map'
+  | 'admin' | 'support' | 'settings' | 'map' | 'system-settings'
 
 interface NavGroup {
   label: string
@@ -100,11 +101,12 @@ const ADMIN_GROUPS: NavGroup[] = [
   {
     label: 'Administración',
     items: [
-      { id: 'logs',        label: 'Logs',           icon: Activity  },
-      { id: 'users',       label: 'Usuarios',       icon: Key       },
-      { id: 'admin',       label: 'Roles',          icon: Settings  },
-      { id: 'support',     label: 'Soporte',        icon: Mail      },
-      { id: 'settings',    label: 'Configuración',  icon: Settings  },
+      { id: 'logs',            label: 'Logs',               icon: Activity  },
+      { id: 'users',           label: 'Usuarios',           icon: Key       },
+      { id: 'admin',           label: 'Roles',              icon: Settings  },
+      { id: 'support',         label: 'Soporte',            icon: Mail      },
+      { id: 'settings',        label: 'Configuración',      icon: Settings  },
+      { id: 'system-settings', label: 'Config. Sistema',    icon: Database  },
     ],
   },
 ]
@@ -441,9 +443,10 @@ function AppInner() {
           {page === 'alerts'      && <AlertsPage />}
           {page === 'logs'        && <LogsPage />}
           {page === 'users'       && <UsersPage />}
-          {page === 'admin'       && <AdminPanel user={user} />}
-          {page === 'support'     && <SupportPage />}
-          {page === 'settings'    && <SettingsPage />}
+          {page === 'admin'           && <AdminPanel user={user} />}
+          {page === 'support'         && <SupportPage />}
+          {page === 'settings'        && <SettingsPage />}
+          {page === 'system-settings' && <SystemSettingsPage />}
         </div>
       </main>
     </div>
