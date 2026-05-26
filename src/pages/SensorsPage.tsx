@@ -54,12 +54,18 @@ export default function SensorsPage() {
     setTimeout(() => setToast(null), 3000)
   }
 
+  const normSensorTypeGlobal = (t?: string | null) => {
+    if (t === 'TEMPERATURE_INTERNAL') return 'TEMPERATURE'
+    if (t === 'HUMIDITY_INTERNAL')    return 'HUMIDITY'
+    return t ?? ''
+  }
+
   const runSilentDedup = async (allSensors: SensorDto[]) => {
     if (allowedGreenhouseIds !== null) return
-    // Group by type+greenhouseId: one sensor record per variable per greenhouse
+    // Group by normalized type+greenhouseId: one sensor record per variable per greenhouse
     const groups = new Map<string, SensorDto[]>()
     for (const s of allSensors) {
-      const key = `${s.type ?? ''}|${s.greenhouseId ?? ''}`
+      const key = `${normSensorTypeGlobal(s.type)}|${s.greenhouseId ?? ''}`
       if (!groups.has(key)) groups.set(key, [])
       groups.get(key)!.push(s)
     }
@@ -97,10 +103,25 @@ export default function SensorsPage() {
             }
             return false
           })
+      // Normalize aliased types so TEMPERATURE_INTERNAL and TEMPERATURE count as one variable
+      const normSensorType = (t?: string | null) => {
+        if (t === 'TEMPERATURE_INTERNAL') return 'TEMPERATURE'
+        if (t === 'HUMIDITY_INTERNAL')    return 'HUMIDITY'
+        return t ?? ''
+      }
+      // Resolve greenhouse for sensors registered without explicit greenhouseId (deviceSource path)
+      const resolveGhId = (s: SensorDto): string => {
+        if (s.greenhouseId != null) return String(s.greenhouseId)
+        if (s.deviceSource) {
+          const gh = greenhouses.find(g => g.deviceId && norm(g.deviceId) === norm(s.deviceSource!))
+          if (gh) return String(gh.id)
+        }
+        return ''
+      }
       // One card per variable: keep the highest ID (most recently registered) for each type per greenhouse
       const dedupMap = new Map<string, SensorDto>()
       for (const s of filtered) {
-        const key = `${s.type ?? ''}|${s.greenhouseId ?? ''}`
+        const key = `${normSensorType(s.type)}|${resolveGhId(s)}`
         const existing = dedupMap.get(key)
         if (!existing || s.id > existing.id) dedupMap.set(key, s)
       }
@@ -245,7 +266,7 @@ export default function SensorsPage() {
       const all  = data.sensors ?? []
       const groups = new Map<string, SensorDto[]>()
       for (const s of all) {
-        const key = `${s.type ?? ''}|${s.greenhouseId ?? ''}`
+        const key = `${normSensorTypeGlobal(s.type)}|${s.greenhouseId ?? ''}`
         if (!groups.has(key)) groups.set(key, [])
         groups.get(key)!.push(s)
       }

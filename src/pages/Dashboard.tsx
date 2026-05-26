@@ -177,14 +177,20 @@ export default function Dashboard() {
   // Force UTC parsing: backend timestamps may lack 'Z' suffix
   const parseTs = (ts: string) => new Date(/Z|[+-]\d{2}:\d{2}$/.test(ts) ? ts : ts + 'Z')
 
-  // One card per physical sensor (keyed by sensorId — not sensorType)
-  const latestBySensor = new Map<number, SensorReadingDto>()
-  for (const r of readings) {
-    if (r.sensorId && r.sensorType && !latestBySensor.has(r.sensorId)) {
-      latestBySensor.set(r.sensorId, r)
-    }
+  // TEMPERATURE_INTERNAL and HUMIDITY_INTERNAL are aliases — normalize before dedup
+  const normType = (t: string) => {
+    if (t === 'TEMPERATURE_INTERNAL') return 'TEMPERATURE'
+    if (t === 'HUMIDITY_INTERNAL')    return 'HUMIDITY'
+    return t
   }
-  const sensorEntries = Array.from(latestBySensor.values())
+  // One card per variable type — keeps the most recent reading per normalized type
+  const latestByType = new Map<string, SensorReadingDto>()
+  for (const r of readings) {
+    if (!r.sensorType) continue
+    const key = normType(r.sensorType)
+    if (!latestByType.has(key)) latestByType.set(key, r)
+  }
+  const sensorEntries = Array.from(latestByType.values())
 
   const alertLevelCls: Record<string, string> = {
     CRITICAL: 'alert-danger',
