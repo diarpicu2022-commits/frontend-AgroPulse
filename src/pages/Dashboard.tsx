@@ -6,11 +6,11 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Sprout } from 'lucide-react'
-import { greenhouseRepository, readingRepository, alertRepository, cropRepository } from '../repositories'
+import { greenhouseRepository, readingRepository, alertRepository, cropRepository, sensorRepository } from '../repositories'
 import SensorCard from '../components/SensorCard'
 import AlertsBanner from '../components/AlertsBanner'
 import anime from 'animejs'
-import type { GreenhouseDto, CropDto, AlertDto, SensorReadingDto, SensorType, AutoAlert } from '../types'
+import type { GreenhouseDto, CropDto, AlertDto, SensorReadingDto, SensorDto, SensorType, AutoAlert } from '../types'
 import PageHeader from '../components/ui/PageHeader'
 import type { AccentColor } from '../styles/tokens'
 
@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
   const [selectedGh,  setSelectedGh]  = useState<GreenhouseDto | null>(null)
   const [readings,    setReadings]    = useState<SensorReadingDto[]>([])
+  const [dbSensors,   setDbSensors]   = useState<SensorDto[]>([])
   const [history,     setHistory]     = useState<ChartPoint[]>([])
   const [alerts,      setAlerts]      = useState<AlertDto[]>([])
   const [autoAlerts,  setAutoAlerts]  = useState<AutoAlert[]>([])
@@ -155,6 +156,11 @@ export default function Dashboard() {
         const alertsData = await alertRepository.list()
         if (alertsData?.alerts) setAlerts(alertsData.alerts.slice(0, 5))
       } catch { /* alerts may not be ready */ }
+      // Cargar sensores registrados en la BD (fuente de verdad para qué tarjetas mostrar)
+      try {
+        const sd = await sensorRepository.list(selectedGh.id)
+        setDbSensors((sd?.sensors ?? []).filter(s => s.active !== false))
+      } catch { /* ignore */ }
       setLastUpdate(new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' }))
       setError(null)
     } catch (err) { setError((err as Error).message) }
@@ -178,15 +184,40 @@ export default function Dashboard() {
   // Force UTC parsing: backend timestamps may lack 'Z' suffix
   const parseTs = (ts: string) => new Date(/Z|[+-]\d{2}:\d{2}$/.test(ts) ? ts : ts + 'Z')
 
-  // One card per physical sensor (sensorId) — keeps the most recent reading.
-  // Sensors of the same type family (e.g. HUMIDITY / HUMIDITY_EXTERNAL) each
-  // get their own card; SENSOR_META maps the exact type to the right label.
+  // Build reading lookup maps (readings are newest-first)
   const latestBySensorId = new Map<number, SensorReadingDto>()
+  const latestByType     = new Map<string, SensorReadingDto>()
   for (const r of readings) {
     if (!r.sensorType) continue
     if (!latestBySensorId.has(r.sensorId)) latestBySensorId.set(r.sensorId, r)
+    if (!latestByType.has(r.sensorType))   latestByType.set(r.sensorType, r)
   }
-  const sensorEntries = Array.from(latestBySensorId.values())
+
+  // Card list: DB sensors are the source of truth (show card even with no recent reading).
+  // Readings not covered by any registered sensor are appended as extra cards.
+  type CardEntry = { key: string; type: string; reading?: SensorReadingDto }
+  const cardEntries: CardEntry[] = []
+  const seenTypes = new Set<string>()
+
+  for (const s of dbSensors) {
+    const t = s.type as string
+    if (!t || seenTypes.has(t)) continue
+    seenTypes.add(t)
+    // Prefer sensorId match (accurate when firmware uses backendId);
+    // fall back to type match (when firmware uses i+1 fallback IDs).
+    const reading = latestBySensorId.get(s.id) ?? latestByType.get(t)
+    cardEntries.push({ key: `db-${s.id}`, type: t, reading })
+  }
+  // Append readings whose type wasn't covered by any DB sensor
+  for (const r of latestBySensorId.values()) {
+    const t = r.sensorType ?? ''
+    if (!t || seenTypes.has(t)) continue
+    seenTypes.add(t)
+    cardEntries.push({ key: `rd-${r.sensorId}`, type: t, reading: r })
+  }
+
+  // Fallback when neither DB sensors nor readings loaded yet
+  const sensorEntries = cardEntries
 
   const alertLevelCls: Record<string, string> = {
     CRITICAL: 'alert-danger',
@@ -394,26 +425,25 @@ export default function Dashboard() {
             <div key={i} className="skeleton h-32 rounded-3xl" />
           ))}
         </div>
-      ) : sensorEntries.length === 0 ? (
+      ) : sensorEntries.length === 0 && dbSensors.length === 0 ? (
         <div className="empty-state card p-10">
           <Activity size={40} className="empty-state-icon" />
-          <p className="empty-state-title">Sin lecturas para {selectedGh?.name ?? 'este invernadero'}</p>
+          <p className="empty-state-title">Sin sensores para {selectedGh?.name ?? 'este invernadero'}</p>
           <p className="empty-state-sub">El ESP32 comenzará a enviar datos cuando esté vinculado y conectado.</p>
         </div>
       ) : (
         <>
           <div ref={gridRef} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {sensorEntries.map(r => {
-              const type = r.sensorType ?? ''
-              const meta  = SENSOR_META[type] ?? { label: type, unit: '', icon: Activity, accent: 'green' as AccentColor }
+            {sensorEntries.map(({ key, type, reading }) => {
+              const meta = SENSOR_META[type] ?? { label: type, unit: '', icon: Activity, accent: 'green' as AccentColor }
               let min: number | undefined, max: number | undefined
               if (type.startsWith('TEMPERATURE') && crop) { min = crop.temp_min;          max = crop.temp_max }
               else if (type === 'HUMIDITY' && crop)        { min = crop.humidity_min;      max = crop.humidity_max }
               else if (type === 'SOIL_MOISTURE' && crop)   { min = crop.soil_moisture_min; max = crop.soil_moisture_max }
               return (
-                <SensorCard key={r.sensorId} icon={meta.icon} label={meta.label} unit={meta.unit}
-                  value={r.value} accent={meta.accent} source={meta.source}
-                  min={min} max={max} timestamp={r.timestamp} />
+                <SensorCard key={key} icon={meta.icon} label={meta.label} unit={meta.unit}
+                  value={reading?.value} accent={meta.accent} source={meta.source}
+                  min={min} max={max} timestamp={reading?.timestamp} />
               )
             })}
           </div>
