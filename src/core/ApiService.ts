@@ -64,7 +64,11 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
   if (!res.ok) {
     const err = (data ?? {}) as Record<string, string>
-    throw new Error(err.error || err.message || `Error ${res.status} en ${endpoint}`)
+    const fallback = res.status === 401 ? 'No autorizado'
+      : res.status === 403 ? 'Acceso denegado'
+      : res.status >= 500 ? 'Error del servidor. Intenta de nuevo.'
+      : 'Ocurrió un error inesperado.'
+    throw new Error(err.error || err.message || fallback)
   }
   return data as T
 }
