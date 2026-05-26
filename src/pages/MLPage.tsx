@@ -3,12 +3,43 @@ import { Cpu, TrendingUp, Sparkles } from 'lucide-react'
 import anime from 'animejs'
 import { callAI } from '../services/ai-service'
 import type { AIResult } from '../services/ai-service'
+import { readingRepository } from '../repositories'
+import type { SensorReadingDto } from '../types'
+
+const SENSOR_LABELS: Record<string, string> = {
+  TEMPERATURE: 'Temperatura', TEMPERATURE_INTERNAL: 'Temp. Interior',
+  TEMPERATURE_EXTERNAL: 'Temp. Exterior', HUMIDITY: 'Humedad',
+  HUMIDITY_INTERNAL: 'Hum. Interior', HUMIDITY_EXTERNAL: 'Hum. Exterior',
+  SOIL_MOISTURE: 'Humedad Suelo', LIGHT: 'Luminosidad', CO2: 'CO₂', PRESSURE: 'Presión',
+}
+const SENSOR_UNITS: Record<string, string> = {
+  TEMPERATURE: '°C', TEMPERATURE_INTERNAL: '°C', TEMPERATURE_EXTERNAL: '°C',
+  HUMIDITY: '%', HUMIDITY_INTERNAL: '%', HUMIDITY_EXTERNAL: '%',
+  SOIL_MOISTURE: '%', LIGHT: ' lx', CO2: ' ppm', PRESSURE: ' hPa',
+}
+
+function buildSensorContext(readings: SensorReadingDto[]): string {
+  const seen = new Map<string, SensorReadingDto>()
+  for (const r of readings) {
+    if (r.sensorType && !seen.has(r.sensorType)) seen.set(r.sensorType, r)
+  }
+  return Array.from(seen.values())
+    .map(r => `${SENSOR_LABELS[r.sensorType!] ?? r.sensorType}: ${r.value}${SENSOR_UNITS[r.sensorType!] ?? ''}`)
+    .join('\n')
+}
 
 export default function MLPage() {
-  const [prediction, setPrediction] = useState<AIResult | null>(null)
-  const [loading,    setLoading]    = useState(false)
-  const [error,      setError]      = useState<string | null>(null)
+  const [prediction,    setPrediction]    = useState<AIResult | null>(null)
+  const [loading,       setLoading]       = useState(false)
+  const [error,         setError]         = useState<string | null>(null)
+  const [sensorContext, setSensorContext] = useState('')
   const resultRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    readingRepository.list(null, 100).then(d => {
+      setSensorContext(buildSensorContext(d.readings ?? []))
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!resultRef.current || !prediction) return
@@ -29,7 +60,7 @@ Presenta los resultados con:
 
 Sé conciso y práctico.`
     try {
-      const result = await callAI(prompt, '')
+      const result = await callAI(prompt, sensorContext)
       setPrediction(result)
     } catch (err) { setError((err as Error).message) }
     setLoading(false)

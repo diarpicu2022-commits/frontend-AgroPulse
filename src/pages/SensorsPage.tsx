@@ -82,8 +82,8 @@ export default function SensorsPage() {
       if (group.length <= 1) continue
       group.sort((a, b) => b.id - a.id)
       for (let i = 1; i < group.length; i++) {
-        await sensorRepository.remove(group[i].id).catch(() => {})
-        deleted++
+        const ok = await sensorRepository.remove(group[i].id).then(() => true).catch(() => false)
+        if (ok) deleted++
       }
     }
     if (deleted > 0) {

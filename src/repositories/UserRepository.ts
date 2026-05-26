@@ -49,6 +49,10 @@ export class UserRepository extends BaseRepository {
     return this.get('/api/auth/users')
   }
 
+  bootstrapAdmin(email: string): Promise<UserDto> {
+    return this.post('/api/auth/bootstrap-admin', { email })
+  }
+
   changeRole(userId: number, role: string): Promise<void> {
     return this.put(`/api/auth/users/${userId}/role`, { role })
   }

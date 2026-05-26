@@ -52,6 +52,10 @@ export default function SystemSettingsPage() {
     try {
       const updated = await systemSettingRepository.update(key, value)
       setSettings(prev => prev.map(s => s.key === key ? updated : s))
+      // Cache AI settings locally so ai-service.ts can read them immediately
+      if (key === 'ai.provider' || key === 'ai.model') {
+        try { localStorage.setItem(`agropulse_${key.replace('.', '_')}`, value) } catch {}
+      }
       setSaved(key)
       setTimeout(() => setSaved(null), 2500)
     } catch (e) { setError((e as Error).message) }

@@ -300,7 +300,11 @@ export default function GreenhousePage() {
     const ALLOWED_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
     const rawExt = (file.name.split('.').pop() ?? 'jpg').toLowerCase()
     const ext = ALLOWED_EXTS.includes(rawExt) ? rawExt : 'jpg'
-    const path = `${ghId}.${ext}`
+
+    // Include Supabase auth UID in path so RLS policy (auth.uid() = folder) is satisfied
+    const { data: { user: sbUser } } = await supabase.auth.getUser()
+    const uid = sbUser?.id ?? 'public'
+    const path = `${uid}/${ghId}.${ext}`
 
     setPhotoUploading(prev => ({ ...prev, [ghId]: true }))
 

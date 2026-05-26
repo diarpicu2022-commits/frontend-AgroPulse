@@ -124,9 +124,10 @@ export default function CropsPage() {
   const fillRangesWithAI = async () => {
     if (!form.name.trim()) { alert('Ingresa el nombre del cultivo primero'); return }
     setAiLoading(true); setAiProvider('')
-    const prompt = `Dame los rangos óptimos para cultivo de invernadero de "${form.name}"${form.variety ? ` variedad "${form.variety}"` : ''}.
-Responde SOLO con JSON válido sin markdown:
-{"temp_min":18,"temp_max":26,"humidity_min":60,"humidity_max":80,"soil_moisture_min":50,"soil_moisture_max":70}`
+    const prompt = `Proporciona los rangos óptimos de cultivo en invernadero para "${form.name}"${form.variety ? ` variedad "${form.variety}"` : ''}.
+Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto extra) con esta estructura:
+{"temp_min":<°C mínima>,"temp_max":<°C máxima>,"humidity_min":<% HR mín>,"humidity_max":<% HR máx>,"soil_moisture_min":<% suelo mín>,"soil_moisture_max":<% suelo máx>}
+Usa valores específicos para este cultivo y variedad, no valores genéricos.`
     try {
       const result = await callAI(prompt, '')
       const jsonStr = result.text.trim().match(/\{[\s\S]*\}/)?.[0]

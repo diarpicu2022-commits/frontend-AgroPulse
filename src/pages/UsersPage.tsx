@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Users, Plus, X, Trash2, Chrome } from 'lucide-react'
+import { Users, Plus, X, Trash2, ShieldCheck, Chrome } from 'lucide-react'
 import anime from 'animejs'
 import { userRepository } from '../repositories'
-import { supabase, getCachedProfile, removeUserAccess } from '../context/AuthContext'
+import { supabase, getCachedProfile, removeUserAccess, useAuth } from '../context/AuthContext'
 import type { UserDto, UserRole } from '../types'
 import PageHeader from '../components/ui/PageHeader'
 
@@ -19,13 +19,18 @@ interface UserForm {
 }
 
 export default function UsersPage() {
+  const { user: authUser, login } = useAuth()
   const [users,     setUsers]    = useState<MergedUser[]>([])
   const [loading,   setLoading]  = useState(true)
   const [showForm,  setShowForm] = useState(false)
   const [form,      setForm]     = useState<UserForm>({ username: '', password: '', fullName: '', role: 'USER' })
   const [error,     setError]    = useState<string | null>(null)
+  const [bootstrapping, setBootstrapping] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
+
+  const isForbidden = error === 'Acceso denegado'
+  const isAdmin = authUser?.role === 'ADMIN' || authUser?.role === 'admin'
 
   useEffect(() => { loadUsers() }, [])
 
@@ -52,12 +57,19 @@ export default function UsersPage() {
 
   const loadUsers = async () => {
     setLoading(true)
+    let restUsers: MergedUser[] = []
     try {
-      const restData    = await userRepository.list()
-      const restUsers: MergedUser[] = (restData.users || []).map(u => ({ ...u, source: 'local' as const }))
+      const restData = await userRepository.list()
+      restUsers = (restData.users || []).map(u => ({ ...u, source: 'local' as const }))
+      setError(null)
+    } catch (err) {
+      const msg = (err as Error).message
+      setError(msg)
+    }
 
-      let supabaseUsers: MergedUser[] = []
-      if (supabase) {
+    let supabaseUsers: MergedUser[] = []
+    if (supabase) {
+      try {
         const { data, error: sbErr } = await supabase
           .from('users')
           .select('id, username, full_name, email, role, avatar, active')
@@ -69,14 +81,24 @@ export default function UsersPage() {
             source:   'supabase' as const,
           }))
         }
-      }
+      } catch {}
+    }
 
-      const emailsSeen    = new Set(restUsers.map(u => u.email?.toLowerCase()).filter(Boolean))
-      const onlySupabase  = supabaseUsers.filter(u => !emailsSeen.has(u.email?.toLowerCase()))
-      setUsers([...restUsers, ...onlySupabase])
-      setError(null)
-    } catch (err) { setError((err as Error).message) }
-    finally { setLoading(false) }
+    const emailsSeen   = new Set(restUsers.map(u => u.email?.toLowerCase()).filter(Boolean))
+    const onlySupabase = supabaseUsers.filter(u => !emailsSeen.has(u.email?.toLowerCase()))
+    setUsers([...restUsers, ...onlySupabase])
+    setLoading(false)
+  }
+
+  const handleBootstrapAdmin = async () => {
+    if (!authUser?.email) return
+    setBootstrapping(true)
+    try {
+      const updated = await userRepository.bootstrapAdmin(authUser.email) as UserDto & { token?: string }
+      if (updated.token) login({ ...authUser, ...updated })
+      await loadUsers()
+    } catch (err) { alert('Error: ' + (err as Error).message) }
+    setBootstrapping(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -129,7 +151,29 @@ export default function UsersPage() {
         }
       />
 
-      {error && <div className="alert-danger text-sm">{error}</div>}
+      {error && !isForbidden && <div className="alert-danger text-sm">{error}</div>}
+
+      {/* Bootstrap-admin: shown only when no admin exists yet */}
+      {isForbidden && !isAdmin && (
+        <div className="card p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={18} className="text-yellow-400" />
+            <span className="font-semibold text-sm" style={{ color: '#fde68a' }}>Sin administrador configurado</span>
+          </div>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            Tu cuenta ({authUser?.email}) aún no tiene rol de administrador. Si eres el primer usuario del sistema, puedes activar el acceso de administrador.
+          </p>
+          <button
+            onClick={handleBootstrapAdmin}
+            disabled={bootstrapping}
+            className="btn-primary px-4 py-2 text-sm"
+          >
+            {bootstrapping
+              ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Activando...</>
+              : <><ShieldCheck size={13} /> Activar mi cuenta como Administrador</>}
+          </button>
+        </div>
+      )}
 
       {/* Form */}
       {showForm && (
