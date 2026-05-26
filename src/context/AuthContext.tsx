@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { setUserContext } from '../core/ApiService'
+import { setUserContext, saveToken, clearToken } from '../core/ApiService'
 import type { AppUser } from '../types'
 
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) || ''
@@ -269,6 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (userData: AppUser) => {
     if (userData.active === false) return // Block deleted/deactivated users
+    if (userData.token) saveToken(userData.token)
     setUser(userData)
     if (userData.email && userData.avatar) cacheProfile(userData.email, { avatar: userData.avatar, full_name: userData.full_name })
     const admin = isAdminRole(userData.role)
@@ -298,9 +299,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setUserContext({
-      id:         userData.id,
-      role:       userData.role,
-      adminEmail: admin ? userData.email : undefined,
+      id:   userData.id,
+      role: userData.role,
     })
   }
 
@@ -350,6 +350,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
+    clearToken()
     setUser(null)
     setAllowedGreenhouseIds(null)
     setUserContext({})

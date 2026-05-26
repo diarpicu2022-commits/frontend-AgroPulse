@@ -114,6 +114,7 @@ export interface UserDto {
   provider?: string
   googleId?: string
   greenhouseIds?: number[]
+  token?: string
 }
 
 export interface RuleDto {

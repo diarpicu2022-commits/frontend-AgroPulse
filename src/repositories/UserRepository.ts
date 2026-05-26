@@ -44,24 +44,21 @@ export class UserRepository extends BaseRepository {
     return this.get('/api/auth/me')
   }
 
-  listAll(adminEmail: string): Promise<UserListResponse> {
-    return this.get('/api/auth/users', { headers: { 'X-Admin-Email': adminEmail } })
+  // JWT token is sent automatically via ApiService; no manual headers needed
+  listAll(): Promise<UserListResponse> {
+    return this.get('/api/auth/users')
   }
 
-  changeRole(userId: number, role: string, adminEmail: string): Promise<void> {
-    return this.put(`/api/auth/users/${userId}/role`, { role }, {
-      headers: { 'X-Admin-Email': adminEmail },
-    })
+  changeRole(userId: number, role: string): Promise<void> {
+    return this.put(`/api/auth/users/${userId}/role`, { role })
   }
 
   getGreenhouses(userId: number): Promise<{ ids: number[] }> {
     return this.get(`/api/users/${userId}/greenhouses`)
   }
 
-  setGreenhouses(userId: number, ids: number[], adminEmail: string): Promise<{ ids: number[] }> {
-    return this.put(`/api/auth/users/${userId}/greenhouses`, { ids }, {
-      headers: { 'X-Admin-Email': adminEmail },
-    })
+  setGreenhouses(userId: number, ids: number[]): Promise<{ ids: number[] }> {
+    return this.put(`/api/auth/users/${userId}/greenhouses`, { ids })
   }
 }
 

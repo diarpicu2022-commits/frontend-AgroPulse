@@ -1,6 +1,20 @@
 // ── Base HTTP service with generic typed methods ──────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
+const TOKEN_KEY = 'agropulse_jwt'
+
+export function saveToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token)
+}
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY)
+}
+
 interface RequestOptions extends RequestInit {
   headers?: Record<string, string>
 }
@@ -8,7 +22,6 @@ interface RequestOptions extends RequestInit {
 interface UserContext {
   id?: number
   role?: string
-  adminEmail?: string
 }
 
 let _userCtx: UserContext = {}
@@ -24,11 +37,11 @@ export function getUserContext(): UserContext {
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const url = `${API_URL}${endpoint}`
   const { headers: optHeaders, ...restOptions } = options
+  const token = getToken()
   const config: RequestOptions = {
     headers: {
       'Content-Type': 'application/json',
-      ...(_userCtx.adminEmail ? { 'X-Admin-Email': _userCtx.adminEmail } : {}),
-      ...(_userCtx.id        ? { 'X-User-Id': String(_userCtx.id) }     : {}),
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(optHeaders ?? {}),
     },
     ...restOptions,
