@@ -30,10 +30,26 @@ const SENSOR_META: Record<string, ChartConfig> = {
   TEMPERATURE_INTERNAL: { type: 'TEMPERATURE_INTERNAL', label: 'Temperatura Interior', icon: Thermometer, color: '#f97316', unit: '°C'  },
   TEMPERATURE_EXTERNAL: { type: 'TEMPERATURE_EXTERNAL', label: 'Temperatura Exterior', icon: Thermometer, color: '#fb923c', unit: '°C'  },
   HUMIDITY:             { type: 'HUMIDITY',             label: 'Humedad Ambiente',     icon: Droplets,    color: '#0ea5e9', unit: '%'   },
+  HUMIDITY_INTERNAL:    { type: 'HUMIDITY_INTERNAL',    label: 'Hum. Interior',        icon: Droplets,    color: '#38bdf8', unit: '%'   },
+  HUMIDITY_EXTERNAL:    { type: 'HUMIDITY_EXTERNAL',    label: 'Hum. Exterior',        icon: Droplets,    color: '#7dd3fc', unit: '%'   },
   SOIL_MOISTURE:        { type: 'SOIL_MOISTURE',        label: 'Humedad del Suelo',    icon: Leaf,        color: '#22c55e', unit: '%'   },
   LIGHT:                { type: 'LIGHT',                label: 'Luminosidad',          icon: Sun,         color: '#eab308', unit: 'lx'  },
   CO2:                  { type: 'CO2',                  label: 'CO₂',                  icon: FlaskConical,color: '#8b5cf6', unit: 'ppm' },
+  WIND_SPEED:           { type: 'WIND_SPEED',           label: 'Viento',               icon: Wind,        color: '#94a3b8', unit: 'm/s' },
   PRESSURE:             { type: 'PRESSURE',             label: 'Presión',              icon: Wind,        color: '#6366f1', unit: 'hPa' },
+  PH:                   { type: 'PH',                   label: 'pH',                   icon: FlaskConical,color: '#a78bfa', unit: 'pH'  },
+}
+
+// Parse timestamps that may lack 'Z' suffix (backend returns local ISO strings)
+const parseTs = (ts: string): Date => new Date(ts.endsWith('Z') ? ts : ts + 'Z')
+
+// Match reading type to chart type — base types alias their _INTERNAL/_EXTERNAL variants
+const typeMatches = (readingType: string | null | undefined, chartType: string): boolean => {
+  if (!readingType) return false
+  if (readingType === chartType) return true
+  if (readingType.startsWith(chartType + '_')) return true
+  if (chartType.startsWith(readingType + '_')) return true
+  return false
 }
 
 const RANGES: { key: RangeKey; label: string }[] = [
@@ -58,7 +74,7 @@ export default function AnalyticsPage() {
     greenhouseRepository.list().then(d => setGreenhouses(d.greenhouses || [])).catch(() => {})
   }, [])
 
-  useEffect(() => { loadReadings() }, [ghFilter])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadReadings() }, [ghFilter, range])  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!headerRef.current) return
@@ -84,7 +100,8 @@ export default function AnalyticsPage() {
   const loadReadings = async () => {
     setLoading(true)
     try {
-      const data = await readingRepository.list(null, 500, ghFilter !== '' ? (ghFilter as number) : null)
+      const limit = range === '24h' ? 500 : range === '7d' ? 2000 : 5000
+      const data = await readingRepository.list(null, limit, ghFilter !== '' ? (ghFilter as number) : null)
       setReadings(data.readings || [])
       setError(null)
     } catch (err) { setError((err as Error).message) }
@@ -101,11 +118,11 @@ export default function AnalyticsPage() {
 
   const getFilteredReadings = (): SensorReadingDto[] => {
     const cutoff = getRangeCutoff(); const now = new Date()
-    return readings.filter(r => { const d = new Date(r.timestamp); return d >= cutoff && d <= now })
+    return readings.filter(r => { const d = parseTs(r.timestamp); return d >= cutoff && d <= now })
   }
 
   const getTimeKey = (timestamp: string): string => {
-    const d = new Date(timestamp)
+    const d = parseTs(timestamp)
     if (range === '24h') return d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false })
     if (range === '7d')  return d.toLocaleDateString('es-CO', { weekday: 'short', day: '2-digit' })
     return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })
@@ -113,7 +130,7 @@ export default function AnalyticsPage() {
 
   const getChartData = (sensorType: string, source: SensorReadingDto[]) => {
     const byTime: Record<string, number[]> = {}
-    source.filter(r => r.sensorType === sensorType).forEach(r => {
+    source.filter(r => typeMatches(r.sensorType, sensorType)).forEach(r => {
       const key = getTimeKey(r.timestamp)
       if (!byTime[key]) byTime[key] = []
       byTime[key].push(r.value)
@@ -124,7 +141,7 @@ export default function AnalyticsPage() {
   }
 
   const getStats = (sensorType: string, source: SensorReadingDto[]): Stats => {
-    const values = source.filter(r => r.sensorType === sensorType).map(r => r.value)
+    const values = source.filter(r => typeMatches(r.sensorType, sensorType)).map(r => r.value)
     if (values.length === 0) return { min: '—', max: '—', avg: '—', current: '—' }
     const current = values[0]
     return {
@@ -351,7 +368,7 @@ export default function AnalyticsPage() {
                     <Icon size={16} style={{ color }} />
                     <h3 className="font-semibold text-sm" style={{ color: '#e2ffe9' }}>{label}</h3>
                     <span className="ml-auto text-[10px] font-mono px-2 py-0.5 rounded-lg" style={{ color: 'rgba(255,255,255,0.35)', background: '#051a0a', border: '1px solid rgba(74,222,128,0.12)' }}>
-                      {filteredReadings.filter(r => r.sensorType === type).length} lect.
+                      {filteredReadings.filter(r => typeMatches(r.sensorType, type)).length} lect.
                     </span>
                   </div>
                   {data.length === 0 ? (
