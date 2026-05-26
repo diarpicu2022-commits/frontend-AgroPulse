@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
       byTime[key].push(r.value)
     })
     return Object.entries(byTime)
-      .map(([time, values]) => ({ time, value: (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) }))
+      .map(([time, values]) => ({ time, value: parseFloat((values.reduce((a, b) => a + b, 0) / values.length).toFixed(1)) }))
       .slice(-30)
   }
 
@@ -377,16 +377,17 @@ export default function AnalyticsPage() {
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height={200}>
-                      <LineChart data={data}>
+                      <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f4f0" />
                         <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false}
-                          domain={['dataMin - 2', 'dataMax + 2']} />
+                          domain={['auto', 'auto']} tickCount={5} />
                         <Tooltip
                           contentStyle={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 4px 16px rgba(0,0,0,0.06)', fontSize: 12 }}
-                          formatter={(v: number | string) => [`${v}${unit}`, label]}
+                          formatter={(v: number) => [`${v}${unit}`, label]}
                         />
-                        <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} activeDot={{ r: 3 }} />
+                        <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2}
+                          dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
                       </LineChart>
                     </ResponsiveContainer>
                   )}

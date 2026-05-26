@@ -17,10 +17,11 @@ import type { AccentColor } from '../styles/tokens'
 interface SensorMeta { label: string; unit: string; icon: LucideIcon; accent: AccentColor; source?: string }
 
 const SENSOR_META: Record<string, SensorMeta> = {
-  TEMPERATURE_INTERNAL: { label: 'Temp. Interior', unit: '°C',  icon: Thermometer, accent: 'amber',  source: 'DHT22' },
   TEMPERATURE:          { label: 'Temp. Interior', unit: '°C',  icon: Thermometer, accent: 'amber',  source: 'DHT22' },
-  HUMIDITY:             { label: 'Hum. Interior',  unit: '%',   icon: Droplets,    accent: 'cyan',   source: 'DHT22' },
+  TEMPERATURE_INTERNAL: { label: 'Temp. Interior', unit: '°C',  icon: Thermometer, accent: 'amber',  source: 'DHT22' },
   TEMPERATURE_EXTERNAL: { label: 'Temp. Exterior', unit: '°C',  icon: Thermometer, accent: 'golden', source: 'DHT11' },
+  HUMIDITY:             { label: 'Hum. Interior',  unit: '%',   icon: Droplets,    accent: 'cyan',   source: 'DHT22' },
+  HUMIDITY_INTERNAL:    { label: 'Hum. Interior',  unit: '%',   icon: Droplets,    accent: 'cyan',   source: 'DHT22' },
   HUMIDITY_EXTERNAL:    { label: 'Hum. Exterior',  unit: '%',   icon: Droplets,    accent: 'violet', source: 'DHT11' },
   SOIL_MOISTURE:        { label: 'Hum. Suelo',     unit: '%',   icon: Leaf,        accent: 'green',  source: 'Capacitivo' },
   LIGHT:                { label: 'Luminosidad',    unit: 'lx',  icon: Sun,         accent: 'golden', source: 'LDR' },
@@ -177,20 +178,15 @@ export default function Dashboard() {
   // Force UTC parsing: backend timestamps may lack 'Z' suffix
   const parseTs = (ts: string) => new Date(/Z|[+-]\d{2}:\d{2}$/.test(ts) ? ts : ts + 'Z')
 
-  // TEMPERATURE_INTERNAL and HUMIDITY_INTERNAL are aliases — normalize before dedup
-  const normType = (t: string) => {
-    if (t === 'TEMPERATURE_INTERNAL') return 'TEMPERATURE'
-    if (t === 'HUMIDITY_INTERNAL')    return 'HUMIDITY'
-    return t
-  }
-  // One card per variable type — keeps the most recent reading per normalized type
-  const latestByType = new Map<string, SensorReadingDto>()
+  // One card per physical sensor (sensorId) — keeps the most recent reading.
+  // Sensors of the same type family (e.g. HUMIDITY / HUMIDITY_EXTERNAL) each
+  // get their own card; SENSOR_META maps the exact type to the right label.
+  const latestBySensorId = new Map<number, SensorReadingDto>()
   for (const r of readings) {
     if (!r.sensorType) continue
-    const key = normType(r.sensorType)
-    if (!latestByType.has(key)) latestByType.set(key, r)
+    if (!latestBySensorId.has(r.sensorId)) latestBySensorId.set(r.sensorId, r)
   }
-  const sensorEntries = Array.from(latestByType.values())
+  const sensorEntries = Array.from(latestBySensorId.values())
 
   const alertLevelCls: Record<string, string> = {
     CRITICAL: 'alert-danger',
