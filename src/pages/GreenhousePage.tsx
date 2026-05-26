@@ -60,7 +60,7 @@ export default function GreenhousePage() {
 
   useEffect(() => {
     loadGreenhouses()
-    if (isAdmin) userRepository.listAll(user?.email || '').then(d => {
+    if (isAdmin) userRepository.listAll().then(d => {
       const list = Array.isArray(d) ? (d as UserDto[]) : (d.users ?? [])
       setAllUsers(list)
     }).catch(() => {})
@@ -198,7 +198,7 @@ export default function GreenhousePage() {
       // Belt-and-suspenders: push updated IDs to backend directly in case of cold-start race
       const finalIds = readAccess(uid)
       if (user?.email) {
-        userRepository.setGreenhouses(uid, finalIds, user.email).catch(() => {})
+        userRepository.setGreenhouses(uid, finalIds).catch(() => {})
       }
       setAssignUserId('')
     } catch (err) { alert('Error asignando usuario: ' + (err as Error).message) }

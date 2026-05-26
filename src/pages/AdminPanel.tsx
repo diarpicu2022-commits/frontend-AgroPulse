@@ -53,7 +53,7 @@ export default function AdminPanel({ user }: AdminPanelProps) {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const data = await userRepository.listAll(adminUser?.email || '')
+      const data = await userRepository.listAll()
       setUsers(data.users || [])
       setError('')
     } catch (err) {
@@ -65,7 +65,7 @@ export default function AdminPanel({ user }: AdminPanelProps) {
   const changeRole = async (userId: number, newRole: string) => {
     try {
       setChanging(userId)
-      await userRepository.changeRole(userId, newRole, adminUser?.email || '')
+      await userRepository.changeRole(userId, newRole)
       await loadUsers()
     } catch (err) {
       setError('Error cambiando rol: ' + (err as Error).message)
@@ -83,7 +83,7 @@ export default function AdminPanel({ user }: AdminPanelProps) {
 
     // Persist to backend (source of truth)
     try {
-      await userRepository.setGreenhouses(userId, updated, adminUser?.email || '')
+      await userRepository.setGreenhouses(userId, updated)
     } catch {
       // Revert on failure
       setAccessMap(prev => ({ ...prev, [userId]: current }))
