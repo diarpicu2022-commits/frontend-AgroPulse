@@ -199,24 +199,38 @@ export default function Dashboard() {
   const cardEntries: CardEntry[] = []
   const seenTypes = new Set<string>()
 
+  // Normalize aliases so TEMPERATURE_INTERNAL and TEMPERATURE share one card slot,
+  // and HUMIDITY_INTERNAL and HUMIDITY share one card slot.
+  const normKey = (t: string) =>
+    t === 'TEMPERATURE_INTERNAL' ? 'TEMPERATURE' :
+    t === 'HUMIDITY_INTERNAL'    ? 'HUMIDITY' : t
+
   for (const s of dbSensors) {
-    const t = s.type as string
-    if (!t || seenTypes.has(t)) continue
-    seenTypes.add(t)
+    const t   = s.type as string
+    const key = normKey(t)
+    if (!key || seenTypes.has(key)) continue
+    seenTypes.add(key)
     // Prefer sensorId match (accurate when firmware uses backendId);
     // fall back to type match (when firmware uses i+1 fallback IDs).
-    const reading = latestBySensorId.get(s.id) ?? latestByType.get(t)
+    const reading = latestBySensorId.get(s.id) ?? latestByType.get(t) ?? latestByType.get(key)
     cardEntries.push({ key: `db-${s.id}`, type: t, reading })
   }
   // Append readings whose type wasn't covered by any DB sensor
   for (const r of latestBySensorId.values()) {
-    const t = r.sensorType ?? ''
-    if (!t || seenTypes.has(t)) continue
-    seenTypes.add(t)
+    const t   = r.sensorType ?? ''
+    const key = normKey(t)
+    if (!key || seenTypes.has(key)) continue
+    seenTypes.add(key)
     cardEntries.push({ key: `rd-${r.sensorId}`, type: t, reading: r })
   }
+  // If DHT11 (TEMPERATURE_EXTERNAL) is registered but HUMIDITY_EXTERNAL is not yet
+  // in the DB, add a placeholder card — same sensor, just not reporting yet.
+  if (seenTypes.has('TEMPERATURE_EXTERNAL') && !seenTypes.has('HUMIDITY_EXTERNAL')) {
+    const reading = latestByType.get('HUMIDITY_EXTERNAL')
+    cardEntries.push({ key: 'inferred-HUMIDITY_EXTERNAL', type: 'HUMIDITY_EXTERNAL', reading })
+    seenTypes.add('HUMIDITY_EXTERNAL')
+  }
 
-  // Fallback when neither DB sensors nor readings loaded yet
   const sensorEntries = cardEntries
 
   const alertLevelCls: Record<string, string> = {

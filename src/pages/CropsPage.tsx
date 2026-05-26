@@ -124,23 +124,35 @@ export default function CropsPage() {
   const fillRangesWithAI = async () => {
     if (!form.name.trim()) { alert('Ingresa el nombre del cultivo primero'); return }
     setAiLoading(true); setAiProvider('')
-    const prompt = `Proporciona los rangos óptimos de cultivo en invernadero para "${form.name}"${form.variety ? ` variedad "${form.variety}"` : ''}.
-Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto extra) con esta estructura:
-{"temp_min":<°C mínima>,"temp_max":<°C máxima>,"humidity_min":<% HR mín>,"humidity_max":<% HR máx>,"soil_moisture_min":<% suelo mín>,"soil_moisture_max":<% suelo máx>}
-Usa valores específicos para este cultivo y variedad, no valores genéricos.`
+    const cropDesc = `${form.name}${form.variety ? ` variedad "${form.variety}"` : ''}`
+    const prompt = `Eres un agrónomo experto. Necesito los parámetros de cultivo en invernadero para: ${cropDesc}.
+
+Devuelve SOLO este JSON con los valores numéricos reales para ese cultivo (sin texto adicional, sin markdown):
+{"temp_min":NUMERO,"temp_max":NUMERO,"humidity_min":NUMERO,"humidity_max":NUMERO,"soil_moisture_min":NUMERO,"soil_moisture_max":NUMERO}
+
+- temp_min / temp_max: temperatura del aire en °C
+- humidity_min / humidity_max: humedad relativa en %
+- soil_moisture_min / soil_moisture_max: humedad del sustrato en %
+
+Usa los valores reales y específicos de ${cropDesc}. No uses valores genéricos.`
     try {
       const result = await callAI(prompt, '')
-      const jsonStr = result.text.trim().match(/\{[\s\S]*\}/)?.[0]
+      const jsonStr = result.text.trim().match(/\{[\s\S]*?\}/)?.[0]
       if (jsonStr) {
-        const ranges = JSON.parse(jsonStr) as Partial<CropForm>
+        let ranges: Record<string, unknown> = {}
+        try { ranges = JSON.parse(jsonStr) as Record<string, unknown> } catch { /* try below */ }
+        const n = (k: string, fallback: number) => {
+          const v = Number(ranges[k])
+          return isFinite(v) && v > 0 ? v : fallback
+        }
         setForm(f => ({
           ...f,
-          temp_min:          ranges.temp_min          ?? f.temp_min,
-          temp_max:          ranges.temp_max          ?? f.temp_max,
-          humidity_min:      ranges.humidity_min      ?? f.humidity_min,
-          humidity_max:      ranges.humidity_max      ?? f.humidity_max,
-          soil_moisture_min: ranges.soil_moisture_min ?? f.soil_moisture_min,
-          soil_moisture_max: ranges.soil_moisture_max ?? f.soil_moisture_max,
+          temp_min:          n('temp_min',          f.temp_min),
+          temp_max:          n('temp_max',          f.temp_max),
+          humidity_min:      n('humidity_min',      f.humidity_min),
+          humidity_max:      n('humidity_max',      f.humidity_max),
+          soil_moisture_min: n('soil_moisture_min', f.soil_moisture_min),
+          soil_moisture_max: n('soil_moisture_max', f.soil_moisture_max),
         }))
         setAiProvider(result.provider || 'IA')
       } else { alert('La IA no pudo generar rangos. Intenta de nuevo.') }
