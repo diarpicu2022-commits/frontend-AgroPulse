@@ -62,10 +62,12 @@ export default function LoginPage() {
 
   const handleLocalLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!username || !password) { setError('Completa usuario y contraseña'); return }
+    if (!username.trim()) { setError('Ingresa tu usuario'); return }
+    if (!password)        { setError('Ingresa tu contraseña'); return }
+    if (username.trim().length > 50) { setError('Usuario inválido'); return }
     setLoading(true); setError('')
     try {
-      const response = await userRepository.login(username, password) as AppUser
+      const response = await userRepository.login(username.trim(), password) as AppUser
       if (response.active === false) {
         setError('Tu cuenta ha sido desactivada. Contacta al administrador.')
         return
@@ -78,13 +80,41 @@ export default function LoginPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(''); setSuccess('')
-    if (!regEmail || !regUser || !regPass) { setError('Completa todos los campos obligatorios'); return }
-    if (!regEmail.includes('@')) { setError('Ingresa un email válido'); return }
-    if (regPass !== regPass2) { setError('Las contraseñas no coinciden'); return }
-    if (regPass.length < 6)  { setError('Contraseña mínimo 6 caracteres'); return }
+
+    // ── Nombre (opcional — si se ingresa debe ser nombre real) ──────────
+    const nombreTrimmed = regName.trim()
+    if (nombreTrimmed) {
+      if (nombreTrimmed.length < 2) {
+        setError('El nombre debe tener al menos 2 caracteres'); return
+      }
+      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜàèìòùÀÈÌÒÙ\s'\-]{2,60}$/.test(nombreTrimmed)) {
+        setError('El nombre solo puede contener letras, espacios y guiones'); return
+      }
+    }
+
+    // ── Email ────────────────────────────────────────────────────────────
+    if (!regEmail.trim()) { setError('El email es obligatorio'); return }
+    if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(regEmail.trim())) {
+      setError('El email no tiene un formato válido (ejemplo: usuario@dominio.com)'); return
+    }
+
+    // ── Usuario ──────────────────────────────────────────────────────────
+    if (!regUser.trim()) { setError('El usuario es obligatorio'); return }
+    if (!/^[a-zA-Z][a-zA-Z0-9._\-]{2,29}$/.test(regUser.trim())) {
+      setError('El usuario debe iniciar con letra, tener 3–30 caracteres y solo contener letras, números, puntos, _ o -'); return
+    }
+
+    // ── Contraseña ───────────────────────────────────────────────────────
+    if (!regPass) { setError('La contraseña es obligatoria'); return }
+    if (regPass.length < 8)         { setError('La contraseña debe tener al menos 8 caracteres'); return }
+    if (!/[a-z]/.test(regPass))     { setError('La contraseña debe incluir al menos una letra minúscula'); return }
+    if (!/[A-Z]/.test(regPass))     { setError('La contraseña debe incluir al menos una letra mayúscula'); return }
+    if (!/[0-9]/.test(regPass))     { setError('La contraseña debe incluir al menos un número'); return }
+    if (regPass !== regPass2)       { setError('Las contraseñas no coinciden'); return }
+
     setLoading(true)
     try {
-      await userRepository.register(regUser.trim(), regPass, regName.trim() || regUser.trim(), regEmail.trim())
+      await userRepository.register(regUser.trim(), regPass, nombreTrimmed || regUser.trim(), regEmail.trim())
       const code = Math.floor(100000 + Math.random() * 900000).toString()
       setVerifyCode(code)
       setSavedCreds({ username: regUser.trim(), password: regPass, email: regEmail.trim() })
@@ -113,7 +143,14 @@ export default function LoginPage() {
         const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
         if (!reduced) anime({ targets: verifyRef.current, opacity: [0, 1], translateY: [20, 0], duration: 400, easing: 'easeOutCubic' })
       }, 30)
-    } catch (err) { setError((err as Error).message || 'Error al registrarse. Verifica los datos e intenta de nuevo.') }
+    } catch (err) {
+      const msg = (err as Error).message ?? ''
+      if (msg.includes('ya existe') || msg.includes('409')) {
+        setError('Ese nombre de usuario ya está registrado. Elige uno diferente.')
+      } else {
+        setError('No se pudo crear la cuenta. Verifica los datos e intenta de nuevo.')
+      }
+    }
     finally { setLoading(false) }
   }
 
@@ -160,12 +197,12 @@ export default function LoginPage() {
   }
 
   const handleGoogleLogin = async () => {
-    if (!supabase) { setError('Google login no configurado.'); return }
+    if (!supabase) { setError('Google login no está configurado en este entorno.'); return }
     setLoading(true); setError('')
     try {
       const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/' } })
-      if (error) setError('Error en Google: ' + error.message)
-    } catch (err) { setError('Error de conexión: ' + (err as Error).message) }
+      if (error) setError('No se pudo iniciar sesión con Google. Intenta de nuevo.')
+    } catch { setError('Error de conexión con Google. Verifica tu red e intenta de nuevo.') }
     finally { setLoading(false) }
   }
 
@@ -373,7 +410,7 @@ export default function LoginPage() {
                       { label: 'Nombre completo', val: regName,  set: setRegName,  ph: 'Tu nombre',            type: 'text',     req: false },
                       { label: 'Email *',          val: regEmail, set: setRegEmail, ph: 'tu@email.com',         type: 'email',    req: true  },
                       { label: 'Usuario *',        val: regUser,  set: setRegUser,  ph: 'usuario123',           type: 'text',     req: true  },
-                      { label: 'Contraseña *',     val: regPass,  set: setRegPass,  ph: 'Mínimo 6 caracteres',  type: 'password', req: true  },
+                      { label: 'Contraseña *',     val: regPass,  set: setRegPass,  ph: 'Mín. 8 chars, may, min, número', type: 'password', req: true  },
                       { label: 'Confirmar *',      val: regPass2, set: setRegPass2, ph: 'Repite la contraseña', type: 'password', req: true  },
                     ].map(field => (
                       <div key={field.label}>
