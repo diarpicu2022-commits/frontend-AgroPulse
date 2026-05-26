@@ -6,16 +6,24 @@ import { sensorRepository, greenhouseRepository } from '../repositories'
 import type { SensorDto, GreenhouseDto, SensorType, Protocol, SensorThresholdDto } from '../types'
 import PageHeader from '../components/ui/PageHeader'
 
-const SENSOR_TYPES: SensorType[] = ['TEMPERATURE', 'HUMIDITY', 'SOIL_MOISTURE', 'LIGHT', 'CO2', 'PRESSURE']
-const PROTOCOLS: Protocol[]      = ['DHT22', 'DHT11', 'ADC', 'ANALOG', 'I2C', 'DIGITAL', 'ONE_WIRE']
+const SENSOR_TYPES: SensorType[] = [
+  'TEMPERATURE', 'TEMPERATURE_INTERNAL', 'TEMPERATURE_EXTERNAL',
+  'HUMIDITY',    'HUMIDITY_INTERNAL',    'HUMIDITY_EXTERNAL',
+  'SOIL_MOISTURE', 'LIGHT', 'CO2', 'PRESSURE',
+]
+const PROTOCOLS: Protocol[] = ['DHT22', 'DHT11', 'ADC', 'ANALOG', 'I2C', 'DIGITAL', 'ONE_WIRE']
 
 const TYPE_LABEL: Record<string, { label: string; unit: string }> = {
-  TEMPERATURE:   { label: 'Temperatura',    unit: '°C'  },
-  HUMIDITY:      { label: 'Humedad',         unit: '%'   },
-  SOIL_MOISTURE: { label: 'Humedad Suelo',   unit: '%'   },
-  LIGHT:         { label: 'Luminosidad',     unit: 'lx'  },
-  CO2:           { label: 'CO₂',             unit: 'ppm' },
-  PRESSURE:      { label: 'Presión',         unit: 'hPa' },
+  TEMPERATURE:          { label: 'Temperatura',     unit: '°C'  },
+  TEMPERATURE_INTERNAL: { label: 'Temp. Interior',  unit: '°C'  },
+  TEMPERATURE_EXTERNAL: { label: 'Temp. Exterior',  unit: '°C'  },
+  HUMIDITY:             { label: 'Humedad',          unit: '%'   },
+  HUMIDITY_INTERNAL:    { label: 'Hum. Interior',   unit: '%'   },
+  HUMIDITY_EXTERNAL:    { label: 'Hum. Exterior',   unit: '%'   },
+  SOIL_MOISTURE:        { label: 'Humedad Suelo',   unit: '%'   },
+  LIGHT:                { label: 'Luminosidad',     unit: 'lx'  },
+  CO2:                  { label: 'CO₂',             unit: 'ppm' },
+  PRESSURE:             { label: 'Presión',         unit: 'hPa' },
 }
 
 interface SensorForm {
