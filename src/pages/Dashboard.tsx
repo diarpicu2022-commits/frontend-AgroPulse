@@ -231,15 +231,15 @@ export default function Dashboard() {
     seenTypes.add(key)
     cardEntries.push({ key: `rd-${r.sensorId}`, type: t, reading: r })
   }
-  // If DHT11 (TEMPERATURE_EXTERNAL) is registered but HUMIDITY_EXTERNAL is not yet
-  // in the DB, add a placeholder card — same sensor, just not reporting yet.
+  // If DHT11 (TEMPERATURE_EXTERNAL) is present but HUMIDITY_EXTERNAL has no reading yet,
+  // always show the card — the DHT11 humidity may recover on the next cycle.
   if (seenTypes.has('TEMPERATURE_EXTERNAL') && !seenTypes.has('HUMIDITY_EXTERNAL')) {
     const reading = latestByType.get('HUMIDITY_EXTERNAL')
     cardEntries.push({ key: 'inferred-HUMIDITY_EXTERNAL', type: 'HUMIDITY_EXTERNAL', reading })
     seenTypes.add('HUMIDITY_EXTERNAL')
   }
 
-  const sensorEntries = cardEntries.filter(e => e.reading != null)
+  const sensorEntries = cardEntries.filter(e => e.reading != null || e.key === 'inferred-HUMIDITY_EXTERNAL')
 
   const alertLevelCls: Record<string, string> = {
     CRITICAL: 'alert-danger',
