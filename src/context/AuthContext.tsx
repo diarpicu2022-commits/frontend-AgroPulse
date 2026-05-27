@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { setUserContext, saveToken, clearToken } from '../core/ApiService'
-import type { AppUser } from '../types'
+import type { AppUser, UserRole } from '../types'
 
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) || ''
 const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || ''
