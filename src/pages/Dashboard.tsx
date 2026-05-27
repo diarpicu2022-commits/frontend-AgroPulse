@@ -115,11 +115,11 @@ export default function Dashboard() {
         }
       } catch (e) { console.error('[Dashboard] crops load error:', e) }
 
-      let readingsData = await readingRepository.list(null, 200, selectedGh.id)
+      let readingsData = await readingRepository.list(null, 500, selectedGh.id)
       // Fallback: si el ghId del ESP32 en NVS no coincide con el del invernadero seleccionado,
       // la consulta filtrada devuelve 0 lecturas — cargar sin filtro para mostrar datos igualmente.
       if (!readingsData?.readings?.length) {
-        readingsData = await readingRepository.list(null, 200)
+        readingsData = await readingRepository.list(null, 500)
       }
       if (readingsData?.readings) {
         setReadings(readingsData.readings)
@@ -162,8 +162,10 @@ export default function Dashboard() {
         if (alertsData?.alerts) setAlerts(alertsData.alerts.slice(0, 5))
       } catch { /* alerts may not be ready */ }
       // Cargar sensores registrados en la BD (fuente de verdad para qué tarjetas mostrar)
+      // Fallback a lista global si el invernadero no tiene sensores registrados con su ID actual.
       try {
-        const sd = await sensorRepository.list(selectedGh.id)
+        let sd = await sensorRepository.list(selectedGh.id)
+        if (!(sd?.sensors?.length)) sd = await sensorRepository.list()
         setDbSensors((sd?.sensors ?? []).filter(s => s.active !== false))
       } catch { /* ignore */ }
       setLastUpdate(new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' }))
@@ -214,10 +216,11 @@ export default function Dashboard() {
     const t   = s.type as string
     const key = normKey(t)
     if (!key || seenTypes.has(key)) continue
-    seenTypes.add(key)
     // Prefer sensorId match (accurate when firmware uses backendId);
     // fall back to type match (when firmware uses i+1 fallback IDs).
     const reading = latestBySensorId.get(s.id) ?? latestByType.get(t) ?? latestByType.get(key)
+    // Only reserve the slot if we have a real reading — otherwise let the readings loop claim it.
+    if (reading) seenTypes.add(key)
     cardEntries.push({ key: `db-${s.id}`, type: t, reading })
   }
   // Append readings whose type wasn't covered by any DB sensor
