@@ -194,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (data.active === false) return
           // Save Spring JWT so subsequent API calls carry the correct role
           if (data.token) saveToken(data.token)
-          const role = (data.role === 'ADMIN' || data.role === 'admin' || isAdmin) ? 'ADMIN' : 'OPERATOR'
+          const role: UserRole = (data.role === 'ADMIN' || data.role === 'admin' || isAdmin) ? 'ADMIN' : 'user'
           const finalUser: AppUser = {
             ...data,
             email:     authUser.email,
