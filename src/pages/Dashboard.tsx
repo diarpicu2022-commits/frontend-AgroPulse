@@ -115,7 +115,12 @@ export default function Dashboard() {
         }
       } catch (e) { console.error('[Dashboard] crops load error:', e) }
 
-      const readingsData = await readingRepository.list(null, 200, selectedGh.id)
+      let readingsData = await readingRepository.list(null, 200, selectedGh.id)
+      // Fallback: si el ghId del ESP32 en NVS no coincide con el del invernadero seleccionado,
+      // la consulta filtrada devuelve 0 lecturas — cargar sin filtro para mostrar datos igualmente.
+      if (!readingsData?.readings?.length) {
+        readingsData = await readingRepository.list(null, 200)
+      }
       if (readingsData?.readings) {
         setReadings(readingsData.readings)
         const intType = (['TEMPERATURE_INTERNAL', 'TEMPERATURE'] as SensorType[])
