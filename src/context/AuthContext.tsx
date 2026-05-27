@@ -192,7 +192,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const data = await response.json() as AppUser
           // Block soft-deleted users — they must re-register and request access again
           if (data.active === false) return
-          const role = data.role === 'ADMIN' || isAdmin ? 'admin' : 'user'
+          // Save Spring JWT so subsequent API calls carry the correct role
+          if (data.token) saveToken(data.token)
+          const role = (data.role === 'ADMIN' || data.role === 'admin' || isAdmin) ? 'ADMIN' : 'OPERATOR'
           const finalUser: AppUser = {
             ...data,
             email:     authUser.email,
