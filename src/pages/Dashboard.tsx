@@ -231,7 +231,7 @@ export default function Dashboard() {
     seenTypes.add('HUMIDITY_EXTERNAL')
   }
 
-  const sensorEntries = cardEntries
+  const sensorEntries = cardEntries.filter(e => e.reading != null)
 
   const alertLevelCls: Record<string, string> = {
     CRITICAL: 'alert-danger',
