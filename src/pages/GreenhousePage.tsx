@@ -330,8 +330,13 @@ export default function GreenhousePage() {
     }
 
     const ALLOWED_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
-    const rawExt = (file.name.split('.').pop() ?? 'jpg').toLowerCase()
-    const ext = ALLOWED_EXTS.includes(rawExt) ? rawExt : 'jpg'
+    const rawExt = (file.name.split('.').pop() ?? '').toLowerCase()
+    if (!ALLOWED_EXTS.includes(rawExt)) {
+      setError(`Formato no soportado (.${rawExt}). Usa JPG, PNG, WebP o GIF. Los archivos .heic de iPhone deben convertirse primero.`)
+      e.target.value = ''
+      return
+    }
+    const ext = rawExt
 
     // Verificar sesión Supabase — necesaria para que la política RLS permita el INSERT
     const { data: { user: sbUser } } = await supabase.auth.getUser()
@@ -548,17 +553,14 @@ export default function GreenhousePage() {
                             href={g.photoUrl}
                             target="_blank"
                             rel="noreferrer"
-                            title={g.photoUrl}
-                            className="shrink-0"
+                            title="Ver foto completa"
+                            className="block shrink-0 w-8 h-8 rounded-lg overflow-hidden border border-green-500/20 hover:opacity-80 transition-opacity"
                           >
                             <img
                               src={g.photoUrl}
                               alt="Foto"
                               loading="lazy"
-                              className="w-8 h-8 rounded-lg object-cover border border-green-500/20 hover:opacity-80 transition-opacity"
-                              onError={(e) => {
-                                console.error('[Photo] Error cargando imagen:', (e.target as HTMLImageElement).src)
-                              }}
+                              className="w-full h-full object-cover"
                             />
                           </a>
                         )}
