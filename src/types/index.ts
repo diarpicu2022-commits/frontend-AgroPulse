@@ -56,7 +56,7 @@ export interface ActuatorDto {
   type?: ActuatorType
   gpioPin?: number | null
   active: boolean
-  status?: boolean
+  status?: boolean | string
   activeLow?: boolean
   greenhouseId?: number
   deviceSource?: string
