@@ -43,12 +43,18 @@ export default function ActuatorsPage() {
   const [form,        setForm]        = useState<ActuatorForm>({ name: '', type: 'PUMP', greenhouseId: '', gpioPin: '', activeLow: true })
   const [error,       setError]       = useState<string | null>(null)
   const [deduplicating, setDeduplicating] = useState(false)
+  const [tick,          setTick]          = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => { loadGreenhouses() }, [])
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadActuators() },  [filterGhId, allowedGreenhouseIds, greenhouses])
+  useEffect(() => { loadActuators() },  [filterGhId, allowedGreenhouseIds, greenhouses, tick])
+  // Auto-refresh cada 5 s — sincroniza cambios manuales del ESP32
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 5000)
+    return () => clearInterval(id)
+  }, [])
 
   const loadGreenhouses = async () => {
     try { const d = await greenhouseRepository.list(); setGreenhouses(d.greenhouses || []) } catch {}

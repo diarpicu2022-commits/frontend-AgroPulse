@@ -2,15 +2,15 @@ import { useState, useEffect, useRef } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import {
   Thermometer, Droplets, Leaf, Bell, RefreshCw,
-  Sun, Activity, ChevronDown, TrendingUp, type LucideIcon,
+  Sun, Activity, ChevronDown, TrendingUp, Power, PowerOff, Zap, type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Sprout } from 'lucide-react'
-import { greenhouseRepository, readingRepository, alertRepository, cropRepository, sensorRepository } from '../repositories'
+import { greenhouseRepository, readingRepository, alertRepository, cropRepository, sensorRepository, actuatorRepository } from '../repositories'
 import SensorCard from '../components/SensorCard'
 import AlertsBanner from '../components/AlertsBanner'
 import anime from 'animejs'
-import type { GreenhouseDto, CropDto, AlertDto, SensorReadingDto, SensorDto, SensorType, AutoAlert } from '../types'
+import type { GreenhouseDto, CropDto, AlertDto, SensorReadingDto, SensorDto, SensorType, AutoAlert, ActuatorDto } from '../types'
 import PageHeader from '../components/ui/PageHeader'
 import type { AccentColor } from '../styles/tokens'
 
@@ -30,6 +30,12 @@ const SENSOR_META: Record<string, SensorMeta> = {
 
 interface ChartPoint { time: string; interior: number; exterior?: number }
 
+const ACT_LABEL: Record<string, string> = {
+  PUMP: 'Bomba', FAN: 'Ventilador', LED: 'Iluminación', SERVO: 'Servo',
+  RELAY: 'Relé', MOTOR: 'Motor', EXTRACTOR: 'Extractor',
+  DOOR: 'Puerta', HEAT_GENERATOR: 'Calefactor', WATER_PUMP: 'Bomba de Agua',
+}
+
 export default function Dashboard() {
   const { allowedGreenhouseIds } = useAuth()
   const [greenhouses, setGreenhouses] = useState<GreenhouseDto[]>([])
@@ -43,6 +49,7 @@ export default function Dashboard() {
   const [loading,     setLoading]     = useState(true)
   const [lastUpdate,  setLastUpdate]  = useState<string | null>(null)
   const [error,       setError]       = useState<string | null>(null)
+  const [actuators,   setActuators]   = useState<ActuatorDto[]>([])
   const gridRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -168,10 +175,24 @@ export default function Dashboard() {
         if (!(sd?.sensors?.length)) sd = await sensorRepository.list()
         setDbSensors((sd?.sensors ?? []).filter(s => s.active !== false))
       } catch { /* ignore */ }
+      try {
+        const actData = await actuatorRepository.list(selectedGh.id)
+        setActuators((actData?.actuators ?? []).filter(a => a.active !== false))
+      } catch { /* actuadores opcionales */ }
       setLastUpdate(new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' }))
       setError(null)
     } catch (err) { setError((err as Error).message) }
     finally { setLoading(false) }
+  }
+
+  const toggleActuator = async (id: number, status: boolean | string | undefined) => {
+    const newStatus = status === true || (status as string) === 'ON' ? 'OFF' : 'ON'
+    try {
+      await actuatorRepository.update(id, { status: newStatus })
+      if (!selectedGh) return
+      const actData = await actuatorRepository.list(selectedGh.id)
+      setActuators((actData?.actuators ?? []).filter(a => a.active !== false))
+    } catch { /* ignore */ }
   }
 
   useEffect(() => {
@@ -429,7 +450,7 @@ export default function Dashboard() {
               value={selectedGh?.id ?? ''}
               onChange={e => {
                 const gh = greenhouses.find(g => g.id === parseInt(e.target.value))
-                if (gh) { setSelectedGh(gh); setReadings([]); setLoading(true) }
+                if (gh) { setSelectedGh(gh); setReadings([]); setActuators([]); setLoading(true) }
               }}
               className="appearance-none input-field py-2 pr-8 text-sm font-medium"
             >
@@ -472,6 +493,51 @@ export default function Dashboard() {
               )
             })}
           </div>
+
+          {actuators.length > 0 && (
+            <div className="card p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Zap size={15} style={{ color: '#4ade80' }} />
+                <h3 className="text-sm font-semibold" style={{ color: '#f0fdf4' }}>Actuadores</h3>
+                <span className="ml-auto text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>actualización automática</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {actuators.map(a => {
+                  const isOn  = a.status === true || (a.status as unknown as string) === 'ON'
+                  const label = ACT_LABEL[a.type || ''] || a.type || 'Actuador'
+                  return (
+                    <button key={a.id} onClick={() => toggleActuator(a.id, a.status)}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all duration-200 text-center w-full ${
+                        isOn ? 'border-green-500/30' : 'border-[rgba(74,222,128,0.12)]'
+                      }`}
+                      style={{ background: isOn ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.02)' }}
+                    >
+                      <div className="p-2 rounded-xl"
+                        style={{ background: isOn ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.06)' }}>
+                        {isOn
+                          ? <Power size={16} style={{ color: '#4ade80' }} />
+                          : <PowerOff size={16} style={{ color: 'rgba(255,255,255,0.3)' }} />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold truncate max-w-[90px]"
+                          style={{ color: isOn ? '#4ade80' : 'rgba(255,255,255,0.5)' }}>
+                          {a.name || label}
+                        </p>
+                        <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>{label}</p>
+                      </div>
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                        style={{
+                          background: isOn ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.05)',
+                          color:      isOn ? '#4ade80' : 'rgba(255,255,255,0.3)',
+                        }}>
+                        {isOn ? 'ENCENDIDO' : 'APAGADO'}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {history.length > 0 && (
             <div className="card p-5">
