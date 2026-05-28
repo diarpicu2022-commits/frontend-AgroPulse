@@ -6,6 +6,15 @@ import type { AIResult } from '../services/ai-service'
 import { readingRepository, greenhouseRepository } from '../repositories'
 import type { SensorReadingDto, GreenhouseDto } from '../types'
 
+const DEFAULT_ML_PROMPT =
+  'Basándote en el historial reciente de sensores del invernadero, predice los valores de cada sensor para las próximas 6 horas (en intervalos de 1 hora).\n\n' +
+  'Presenta los resultados con:\n- Hora estimada\n- Valores predichos para cada sensor\n- Tendencia (subiendo, bajando, estable)\n- Acciones recomendadas si algún valor saldrá de rango\n\nSé conciso y práctico.'
+
+const getMlPrompt = (): string => {
+  try { return localStorage.getItem('agropulse_ai_prompt_ml') || DEFAULT_ML_PROMPT }
+  catch { return DEFAULT_ML_PROMPT }
+}
+
 const SENSOR_LABELS: Record<string, string> = {
   TEMPERATURE: 'Temperatura', TEMPERATURE_INTERNAL: 'Temp. Interior',
   TEMPERATURE_EXTERNAL: 'Temp. Exterior', HUMIDITY: 'Humedad',
@@ -60,15 +69,11 @@ export default function MLPage() {
   const predict = async () => {
     setLoading(true); setPrediction(null); setError(null)
     const ghLabel = ghFilter !== '' ? greenhouses.find(g => g.id === ghFilter)?.name : undefined
-    const prompt = `Basándote en el historial reciente de sensores${ghLabel ? ` del invernadero "${ghLabel}"` : ' del invernadero'}, predice los valores de cada sensor para las próximas 6 horas (en intervalos de 1 hora).
-
-Presenta los resultados con:
-- Hora estimada
-- Valores predichos para cada sensor
-- Tendencia (subiendo, bajando, estable)
-- Acciones recomendadas si algún valor saldrá de rango
-
-Sé conciso y práctico.`
+    // Lee el prompt desde localStorage/BD en el momento de ejecutar
+    const basePrompt = getMlPrompt()
+    const prompt = ghLabel
+      ? basePrompt.replace('del invernadero', `del invernadero "${ghLabel}"`)
+      : basePrompt
     try {
       const result = await callAI(prompt, sensorContext)
       setPrediction(result)

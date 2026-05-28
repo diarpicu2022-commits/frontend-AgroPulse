@@ -1,8 +1,17 @@
 import { useState, useEffect } from 'react'
-import { Bot, Bell, Save, RefreshCw, CheckCircle, Database, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Bot, Bell, Save, RefreshCw, CheckCircle, Database, ToggleLeft, ToggleRight, MessageSquare } from 'lucide-react'
 import { systemSettingRepository } from '../repositories'
 import { useGsapReveal } from '../hooks/useGsapReveal'
 import type { SystemSettingDto } from '../types'
+
+// Prompts por defecto — se usan como placeholder y como valor inicial en DB
+const DEFAULT_PROMPTS: Record<string, string> = {
+  'ai.prompt.system':         'Eres un experto agrónomo e ingeniero de invernaderos. Tu nombre es AgroPulse IA.\nRespondes en español, de forma concisa y práctica.\nSiempre das recomendaciones basadas en datos reales de sensores cuando están disponibles.',
+  'ai.prompt.recommendation': 'Basándote en las condiciones actuales del invernadero, proporciona recomendaciones específicas para optimizar el cultivo. Considera temperatura, humedad y luminosidad.',
+  'ai.prompt.prediction':     'Predice qué actuadores será necesario activar en las próximas horas y por qué. Considera las tendencias actuales de los sensores.',
+  'ai.prompt.analysis':       'Analiza el estado completo del invernadero. Proporciona: 1) Estado general, 2) Problemas detectados, 3) Acciones recomendadas. Sé conciso y práctico.',
+  'ai.prompt.ml':             'Basándote en el historial reciente de sensores del invernadero, predice los valores de cada sensor para las próximas 6 horas (en intervalos de 1 hora).\n\nPresenta los resultados con:\n- Hora estimada\n- Valores predichos para cada sensor\n- Tendencia (subiendo, bajando, estable)\n- Acciones recomendadas si algún valor saldrá de rango\n\nSé conciso y práctico.',
+}
 
 const AI_PROVIDERS = [
   { value: 'groq',   label: 'Groq',          desc: 'LLaMA / Mistral — gratuito, rápido' },
@@ -39,6 +48,18 @@ export default function SystemSettingsPage() {
     try {
       const data = await systemSettingRepository.list()
       setSettings(data)
+      // Sincronizar localStorage con los valores guardados en BD.
+      // Esto asegura que ai-service.ts use el modelo correcto incluso
+      // al recargar la página sin pasar por la pantalla de configuración.
+      const prov  = data.find(s => s.key === 'ai.provider')?.value
+      const model = data.find(s => s.key === 'ai.model')?.value
+      if (prov)  try { localStorage.setItem('agropulse_ai_provider', prov)  } catch {}
+      if (model) try { localStorage.setItem('agropulse_ai_model',    model) } catch {}
+      // Sync prompts to localStorage for offline use
+      Object.keys(DEFAULT_PROMPTS).forEach(k => {
+        const v = data.find(s => s.key === k)?.value
+        if (v) try { localStorage.setItem(`agropulse_${k.replace(/\./g, '_')}`, v) } catch {}
+      })
     } catch (e) { setError((e as Error).message) }
     setLoading(false)
   }
@@ -52,10 +73,8 @@ export default function SystemSettingsPage() {
     try {
       const updated = await systemSettingRepository.update(key, value)
       setSettings(prev => prev.map(s => s.key === key ? updated : s))
-      // Cache AI settings locally so ai-service.ts can read them immediately
-      if (key === 'ai.provider' || key === 'ai.model') {
-        try { localStorage.setItem(`agropulse_${key.replace('.', '_')}`, value) } catch {}
-      }
+      // Sync to localStorage so ai-service.ts and prompt loaders read updated values
+      try { localStorage.setItem(`agropulse_${key.replace(/\./g, '_')}`, value) } catch {}
       setSaved(key)
       setTimeout(() => setSaved(null), 2500)
     } catch (e) { setError((e as Error).message) }
@@ -121,7 +140,12 @@ export default function SystemSettingsPage() {
             {AI_PROVIDERS.map(p => (
               <button
                 key={p.value}
-                onClick={() => save('ai.provider', p.value)}
+                onClick={() => {
+                  save('ai.provider', p.value)
+                  // Al cambiar proveedor, guarda el primer modelo válido de la nueva lista
+                  const defaultModel = p.value === 'github' ? GITHUB_MODELS[0] : GROQ_MODELS[0]
+                  if (!modelList.includes(model)) save('ai.model', defaultModel)
+                }}
                 disabled={saving === 'ai.provider'}
                 className={`flex flex-col items-start gap-0.5 px-4 py-3 rounded-xl border text-left transition-all ${
                   provider === p.value
@@ -225,6 +249,64 @@ export default function SystemSettingsPage() {
             </button>
           </div>
         ))}
+      </div>
+
+      {/* ── Prompts de IA ─────────────────────────────────────────── */}
+      <div className="card p-6 space-y-5">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="p-2 rounded-xl" style={{ background: 'rgba(74,222,128,0.1)' }}>
+            <MessageSquare size={18} style={{ color: '#4ade80' }} />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>Prompts de IA</h3>
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Instrucciones almacenadas en base de datos — edita y guarda para personalizar el asistente
+            </p>
+          </div>
+        </div>
+
+        {([
+          { key: 'ai.prompt.system',         label: 'Prompt del Sistema (rol del asistente)', rows: 4 },
+          { key: 'ai.prompt.recommendation', label: 'Acción Rápida — Recomendación',         rows: 3 },
+          { key: 'ai.prompt.prediction',     label: 'Acción Rápida — Predicción',            rows: 3 },
+          { key: 'ai.prompt.analysis',       label: 'Acción Rápida — Análisis',              rows: 3 },
+          { key: 'ai.prompt.ml',             label: 'Prompt Machine Learning',               rows: 5 },
+        ] as { key: string; label: string; rows: number }[]).map(({ key, label, rows }) => {
+          const currentVal = getValue(key, DEFAULT_PROMPTS[key] ?? '')
+          return (
+            <div key={key} className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  {label}
+                </label>
+                {saved === key && <CheckCircle size={13} className="text-green-400" />}
+              </div>
+              <div className="flex gap-2">
+                <textarea
+                  key={`${key}-${settings.length}`}
+                  defaultValue={currentVal}
+                  rows={rows}
+                  className="flex-1 rounded-xl px-3 py-2.5 text-sm resize-y font-mono focus:outline-none focus:ring-2 focus:ring-green-500/30"
+                  style={{ background: '#051a0a', color: '#e2ffe9', border: '1px solid rgba(74,222,128,0.12)', minHeight: 60 }}
+                  onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) save(key, (e.target as HTMLTextAreaElement).value.trim()) }}
+                  id={`prompt-${key.replace(/\./g, '-')}`}
+                />
+                <button
+                  disabled={saving === key}
+                  onClick={() => {
+                    const el = document.getElementById(`prompt-${key.replace(/\./g, '-')}`) as HTMLTextAreaElement | null
+                    if (el) save(key, el.value.trim())
+                  }}
+                  className="self-start flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0"
+                  style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.2)' }}
+                >
+                  {saving === key ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
+                </button>
+              </div>
+              <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.2)' }}>Ctrl+Enter para guardar</p>
+            </div>
+          )
+        })}
       </div>
 
       {/* ── Tabla raw ─────────────────────────────────────────────── */}

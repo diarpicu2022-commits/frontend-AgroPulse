@@ -239,7 +239,10 @@ export default function Dashboard() {
     seenTypes.add('HUMIDITY_EXTERNAL')
   }
 
-  const sensorEntries = cardEntries.filter(e => e.reading != null || e.key === 'inferred-HUMIDITY_EXTERNAL')
+  // Muestra TODOS los sensores registrados en BD, tengan lectura reciente o no.
+  // Sin este cambio, sensores recién registrados o sin datos del ciclo actual
+  // no aparecen como tarjeta aunque el usuario pueda verlos en el popup del mapa.
+  const sensorEntries = cardEntries
 
   const alertLevelCls: Record<string, string> = {
     CRITICAL: 'alert-danger',

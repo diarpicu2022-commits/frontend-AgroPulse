@@ -33,11 +33,17 @@ function resolveGithubModel(m: string): string {
   return GITHUB_MODEL_MAP[m] ?? `openai/${m}`
 }
 
+const DEFAULT_SYSTEM_PROMPT =
+  'Eres un experto agrónomo e ingeniero de invernaderos. Tu nombre es AgroPulse IA.\n' +
+  'Respondes en español, de forma concisa y práctica.\n' +
+  'Siempre das recomendaciones basadas en datos reales de sensores cuando están disponibles.'
+
 export async function callAI(prompt: string, sensorContext = ''): Promise<AIResult> {
-  const systemPrompt = `Eres un experto agrónomo e ingeniero de invernaderos. Tu nombre es AgroPulse IA.
-Respondes en español, de forma concisa y práctica.
-Siempre das recomendaciones basadas en datos reales de sensores cuando están disponibles.
-${sensorContext ? `\nDatos actuales del invernadero:\n${sensorContext}` : ''}`
+  // Lee el prompt del sistema desde localStorage (sincronizado con BD por SystemSettingsPage).
+  // Si el admin lo personaliza, se refleja de inmediato sin reiniciar la sesión.
+  const storedSystem = safeGet('agropulse_ai_prompt_system')
+  const base = storedSystem || DEFAULT_SYSTEM_PROMPT
+  const systemPrompt = base + (sensorContext ? `\n\nDatos actuales del invernadero:\n${sensorContext}` : '')
 
   const preferredProvider = getPreferredProvider()
   const preferredModel    = getPreferredModel()

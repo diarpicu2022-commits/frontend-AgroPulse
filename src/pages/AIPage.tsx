@@ -8,10 +8,24 @@ import type { SensorReadingDto, GreenhouseDto } from '../types'
 
 type AIPromptType = 'recommendation' | 'prediction' | 'analysis' | 'custom'
 
-const QUICK_ACTIONS: { type: AIPromptType; label: string; icon: typeof Lightbulb; prompt: string }[] = [
-  { type: 'recommendation', label: 'Recomendación', icon: Lightbulb,   prompt: 'Eres un agrónomo experto. Basándote en las condiciones actuales del invernadero, proporciona recomendaciones específicas para optimizar el cultivo. Considera temperatura, humedad y luminosidad.' },
-  { type: 'prediction',     label: 'Predicción',    icon: TrendingUp,  prompt: 'Eres experto en invernaderos. Predice qué actuadores será necesario activar en las próximas horas y por qué. Considera las tendencias actuales de los sensores.' },
-  { type: 'analysis',       label: 'Análisis',      icon: Search,      prompt: 'Analiza el estado completo del invernadero. Proporciona: 1) Estado general, 2) Problemas detectados, 3) Acciones recomendadas. Sé conciso y práctico.' },
+// Prompts por defecto — se usan si el admin no ha configurado nada en SystemSettings
+const DEFAULT_PROMPTS: Record<string, string> = {
+  recommendation: 'Basándote en las condiciones actuales del invernadero, proporciona recomendaciones específicas para optimizar el cultivo. Considera temperatura, humedad y luminosidad.',
+  prediction:     'Predice qué actuadores será necesario activar en las próximas horas y por qué. Considera las tendencias actuales de los sensores.',
+  analysis:       'Analiza el estado completo del invernadero. Proporciona: 1) Estado general, 2) Problemas detectados, 3) Acciones recomendadas. Sé conciso y práctico.',
+}
+
+// Lee el prompt desde localStorage (sincronizado con BD por SystemSettingsPage).
+// Si el admin personalizó el prompt, se usa el personalizado; si no, el default.
+const getPrompt = (key: string): string => {
+  try { return localStorage.getItem(`agropulse_ai_prompt_${key}`) || DEFAULT_PROMPTS[key] || '' }
+  catch { return DEFAULT_PROMPTS[key] || '' }
+}
+
+const QUICK_ACTIONS: { type: AIPromptType; label: string; icon: typeof Lightbulb }[] = [
+  { type: 'recommendation', label: 'Recomendación', icon: Lightbulb  },
+  { type: 'prediction',     label: 'Predicción',    icon: TrendingUp },
+  { type: 'analysis',       label: 'Análisis',      icon: Search     },
 ]
 
 const SENSOR_LABELS: Record<string, string> = {
@@ -66,8 +80,8 @@ export default function AIPage() {
   }, [response])
 
   const sendToAI = async (type: AIPromptType) => {
-    const action = QUICK_ACTIONS.find(a => a.type === type)
-    const text   = type === 'custom' ? prompt : (action?.prompt ?? prompt)
+    // Lee el prompt desde localStorage/BD en el momento del click (captura cambios en caliente)
+    const text = type === 'custom' ? prompt : getPrompt(type)
     if (!text.trim()) return
     setLoading(true); setResponse(null)
     try {

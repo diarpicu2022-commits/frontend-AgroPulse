@@ -32,9 +32,9 @@ const FREQUENCY_LABELS: Record<Frequency, string> = {
 }
 
 const FREQ_CONFIG: Record<Frequency, { label: string; color: string; bg: string; border: string }> = {
-  daily:   { label: 'Diario',  color: 'text-blue-700',   bg: 'bg-blue-50',   border: 'border-blue-100' },
-  weekly:  { label: 'Semanal', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-100' },
-  monthly: { label: 'Mensual', color: 'text-amber-700',  bg: 'bg-amber-50',  border: 'border-amber-100' },
+  daily:   { label: 'Diario',  color: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/20' },
+  weekly:  { label: 'Semanal', color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+  monthly: { label: 'Mensual', color: 'text-amber-400',  bg: 'bg-amber-500/10',  border: 'border-amber-500/20' },
 }
 
 function saveCache(items: ScheduleItem[]) {
@@ -127,7 +127,7 @@ export default function ReportsPage() {
         if (!listRef.current) return
         const last = listRef.current.lastElementChild as HTMLElement | null
         if (!last) return
-        anime({ targets: last, backgroundColor: ['#dcfce7', '#ffffff'], duration: 800, easing: 'easeOutCubic' })
+        anime({ targets: last, backgroundColor: ['rgba(74,222,128,0.18)', 'rgba(5,26,10,0)'], duration: 1000, easing: 'easeOutCubic' })
       }, 60)
     } catch (err) { alert('Error: ' + (err as Error).message) }
   }
@@ -234,7 +234,7 @@ export default function ReportsPage() {
 
       {/* Create gate banner */}
       {ghFilter === '' && !showForm && (
-        <div className="flex items-center gap-2.5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-2xl text-xs text-blue-700 font-medium">
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-medium" style={{ background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.2)', color:'#93c5fd' }}>
           <Building2 size={14} className="shrink-0" />
           Selecciona un invernadero para agendar reportes
         </div>
@@ -253,7 +253,7 @@ export default function ReportsPage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-100 rounded-xl text-xs text-green-700">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs" style={{ background:'rgba(74,222,128,0.08)', border:'1px solid rgba(74,222,128,0.18)', color:'#4ade80' }}>
             <Building2 size={13} />
             <span className="font-semibold">Invernadero:</span> {ghName(ghFilter as number)}
           </div>
@@ -333,7 +333,7 @@ export default function ReportsPage() {
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{FREQUENCY_LABELS[s.frequency] || s.frequency}</p>
                       {gName && (
-                        <span className="flex items-center gap-1 text-[10px] font-semibold text-green-700 bg-green-50 border border-green-100 px-1.5 py-0.5 rounded-lg">
+                        <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-lg" style={{ color:'#4ade80', background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.2)' }}>
                           <Building2 size={9} /> {gName}
                         </span>
                       )}
@@ -344,7 +344,8 @@ export default function ReportsPage() {
                       {cfg.label}
                     </span>
                     <button onClick={() => sendReport(s.email, s.frequency)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 text-xs font-semibold transition-colors">
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+                      style={{ background:'rgba(74,222,128,0.1)', color:'#4ade80', border:'1px solid rgba(74,222,128,0.15)' }}>
                       <Send size={12} /> Enviar
                     </button>
                     <button onClick={() => handleDelete(s.id)}
