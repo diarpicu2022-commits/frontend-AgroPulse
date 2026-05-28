@@ -55,6 +55,7 @@ export default function GreenhousePage() {
   const [recipientError,  setRecipientError]  = useState<string | null>(null)
   const [savingRecipient, setSavingRecipient] = useState(false)
   const [locationEdit,    setLocationEdit]    = useState<Record<number, { lat: string; lng: string; show: boolean; saving: boolean }>>({})
+  const [lightbox,        setLightbox]        = useState<{ url: string; name: string } | null>(null)
 
   const cardsRef = useRef<HTMLDivElement>(null)
   const formRef  = useRef<HTMLFormElement>(null)
@@ -549,12 +550,10 @@ export default function GreenhousePage() {
                           </div>
                         </label>
                         {g.photoUrl && (
-                          <a
-                            href={g.photoUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            title="Ver foto completa"
-                            className="block shrink-0 w-8 h-8 rounded-lg overflow-hidden border border-green-500/20 hover:opacity-80 transition-opacity"
+                          <button
+                            onClick={() => setLightbox({ url: g.photoUrl!, name: g.name })}
+                            title="Ver foto"
+                            className="block shrink-0 w-8 h-8 rounded-lg overflow-hidden border border-green-500/20 hover:opacity-80 transition-opacity cursor-pointer"
                           >
                             <img
                               src={g.photoUrl}
@@ -562,7 +561,7 @@ export default function GreenhousePage() {
                               loading="lazy"
                               className="w-full h-full object-cover"
                             />
-                          </a>
+                          </button>
                         )}
                       </div>
                     )}
@@ -942,6 +941,36 @@ export default function GreenhousePage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)' }}
+          onClick={() => setLightbox(null)}
+        >
+          <div
+            className="relative max-w-3xl w-full"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-2 px-1">
+              <p className="text-sm font-semibold text-white/80 truncate">{lightbox.name}</p>
+              <button
+                onClick={() => setLightbox(null)}
+                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <X size={18} className="text-white/70" />
+              </button>
+            </div>
+            <img
+              src={lightbox.url}
+              alt={lightbox.name}
+              className="w-full rounded-xl object-contain shadow-2xl"
+              style={{ maxHeight: '80vh' }}
+            />
+          </div>
         </div>
       )}
     </div>
