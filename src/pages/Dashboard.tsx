@@ -26,6 +26,8 @@ const SENSOR_META: Record<string, SensorMeta> = {
   SOIL_MOISTURE:        { label: 'Hum. Suelo',     unit: '%',   icon: Leaf,        accent: 'green',  source: 'Capacitivo' },
   LIGHT:                { label: 'Luminosidad',    unit: 'lx',  icon: Sun,         accent: 'golden', source: 'LDR' },
   CO2:                  { label: 'CO₂',            unit: 'ppm', icon: Activity,    accent: 'amber',  source: 'MQ135' },
+  CURRENT:              { label: 'Corriente',      unit: 'A',   icon: Zap,         accent: 'amber',  source: 'ACS712' },
+  POWER:                { label: 'Potencia',       unit: 'W',   icon: Activity,    accent: 'amber',  source: 'ACS712' },
 }
 
 interface ChartPoint { time: string; interior: number; exterior?: number }
@@ -262,6 +264,21 @@ export default function Dashboard() {
     const reading = latestByType.get('HUMIDITY_EXTERNAL')
     cardEntries.push({ key: 'inferred-HUMIDITY_EXTERNAL', type: 'HUMIDITY_EXTERNAL', reading })
     seenTypes.add('HUMIDITY_EXTERNAL')
+  }
+
+  // Tarjeta de Potencia derivada del sensor de Corriente (P = I × 12 V DC)
+  // El ACS712 solo envía amperios; la potencia se calcula en el frontend.
+  if (!seenTypes.has('POWER')) {
+    const currentEntry = cardEntries.find(e => e.type === 'CURRENT')
+    if (currentEntry?.reading) {
+      const watts = parseFloat((currentEntry.reading.value * 12.0).toFixed(1))
+      cardEntries.push({
+        key: 'synthetic-POWER',
+        type: 'POWER',
+        reading: { ...currentEntry.reading, value: watts },
+      })
+      seenTypes.add('POWER')
+    }
   }
 
   // Muestra TODOS los sensores registrados en BD, tengan lectura reciente o no.
