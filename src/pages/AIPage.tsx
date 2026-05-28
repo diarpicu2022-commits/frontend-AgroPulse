@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { Bot, Send, Sparkles, Lightbulb, TrendingUp, Search, Zap } from 'lucide-react'
+import { Bot, Send, Sparkles, Lightbulb, TrendingUp, Search, Zap, Building2, Sprout } from 'lucide-react'
 import anime from 'animejs'
 import { callAI, getGroqKey, getGitHubToken, getGemmaKey } from '../services/ai-service'
 import type { AIResult } from '../services/ai-service'
-import { readingRepository } from '../repositories'
-import type { SensorReadingDto } from '../types'
+import { readingRepository, greenhouseRepository } from '../repositories'
+import type { SensorReadingDto, GreenhouseDto } from '../types'
 
 type AIPromptType = 'recommendation' | 'prediction' | 'analysis' | 'custom'
 
@@ -26,14 +26,15 @@ const SENSOR_UNITS: Record<string, string> = {
   SOIL_MOISTURE: '%', LIGHT: ' lx', CO2: ' ppm', PRESSURE: ' hPa',
 }
 
-function buildSensorContext(readings: SensorReadingDto[]): string {
+function buildSensorContext(readings: SensorReadingDto[], ghName?: string): string {
   const seen = new Map<string, SensorReadingDto>()
   for (const r of readings) {
     if (r.sensorType && !seen.has(r.sensorType)) seen.set(r.sensorType, r)
   }
-  return Array.from(seen.values())
+  const lines = Array.from(seen.values())
     .map(r => `${SENSOR_LABELS[r.sensorType!] ?? r.sensorType}: ${r.value}${SENSOR_UNITS[r.sensorType!] ?? ''}`)
-    .join('\n')
+  if (ghName) lines.unshift(`Invernadero: ${ghName}`)
+  return lines.join('\n')
 }
 
 export default function AIPage() {
@@ -41,14 +42,21 @@ export default function AIPage() {
   const [response,      setResponse]     = useState<AIResult | null>(null)
   const [loading,       setLoading]      = useState(false)
   const [sensorContext, setSensorContext] = useState('')
+  const [greenhouses,   setGreenhouses]  = useState<GreenhouseDto[]>([])
+  const [ghFilter,      setGhFilter]     = useState<number | ''>('')
   const responseRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    readingRepository.list(null, 50).then(d => {
-      const ctx = buildSensorContext(d.readings ?? [])
-      setSensorContext(ctx)
-    }).catch(() => {})
+    greenhouseRepository.list().then(d => setGreenhouses(d.greenhouses ?? [])).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    const ghId = ghFilter !== '' ? (ghFilter as number) : undefined
+    readingRepository.list(null, 50, ghId ?? null).then(d => {
+      const gh = ghFilter !== '' ? greenhouses.find(g => g.id === ghFilter) : undefined
+      setSensorContext(buildSensorContext(d.readings ?? [], gh?.name))
+    }).catch(() => {})
+  }, [ghFilter, greenhouses])
 
   useEffect(() => {
     if (!responseRef.current || !response) return
@@ -75,10 +83,10 @@ export default function AIPage() {
   const githubActive = getGitHubToken()
   const gemmaActive  = getGemmaKey()
   const hasAI        = groqActive || githubActive || gemmaActive
+  const currentGh    = greenhouses.find(g => g.id === ghFilter)
 
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div>
         <h2 className="section-title">IA Agronómica</h2>
         <p className="section-subtitle">Consulta inteligente para optimizar tu invernadero</p>
@@ -91,6 +99,37 @@ export default function AIPage() {
         {gemmaActive  && <span className="badge-green"><Bot size={10} />Gemma activa</span>}
         {!hasAI && <span className="badge-yellow">Sin IA configurada — ve a Configuración</span>}
       </div>
+
+      {/* Greenhouse selector */}
+      {greenhouses.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.35)' }}>Invernadero a consultar</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setGhFilter('')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border ${ghFilter === '' ? 'bg-green-600 text-white border-green-600' : 'border-[rgba(74,222,128,0.12)]'}`}
+              style={ghFilter !== '' ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
+            >
+              <Sprout size={11} /> Todos
+            </button>
+            {greenhouses.map(gh => (
+              <button key={gh.id}
+                onClick={() => setGhFilter(gh.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border ${ghFilter === gh.id ? 'bg-green-600 text-white border-green-600' : 'border-[rgba(74,222,128,0.12)]'}`}
+                style={ghFilter !== gh.id ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
+              >
+                <Building2 size={11} /> {gh.name}
+              </button>
+            ))}
+          </div>
+          {currentGh && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)', color: '#4ade80' }}>
+              <Building2 size={12} />
+              <span>Consultando: <strong>{currentGh.name}</strong>{currentGh.location ? ` · ${currentGh.location}` : ''}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quick actions */}
       <div className="grid grid-cols-3 gap-3">
@@ -112,7 +151,7 @@ export default function AIPage() {
         <textarea
           value={prompt}
           onChange={e => setPrompt(e.target.value)}
-          placeholder="Escribe tu pregunta sobre el invernadero..."
+          placeholder={currentGh ? `Pregunta sobre ${currentGh.name}...` : 'Escribe tu pregunta sobre el invernadero...'}
           className="input-field resize-none"
           rows={3}
         />
@@ -135,9 +174,9 @@ export default function AIPage() {
               <div className="p-2 rounded-xl" style={{ background: 'rgba(74,222,128,0.1)' }}>
                 <Bot size={15} className="text-green-400" />
               </div>
-              <span className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>Respuesta</span>
+              <span className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>Respuesta{currentGh ? ` · ${currentGh.name}` : ''}</span>
             </div>
-            {response.provider && <span className="badge-green"><Sparkles size={10} />{response.provider}</span>}
+            {response.provider && <span className="badge-purple"><Sparkles size={10} />{response.provider}</span>}
           </div>
           <div className="rounded-2xl p-4" style={{ background: '#051a0a', border: '1px solid rgba(74,222,128,0.12)' }}>
             <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: 'rgba(255,255,255,0.7)' }}>{response.text}</p>

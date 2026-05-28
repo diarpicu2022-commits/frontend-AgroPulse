@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { Cpu, TrendingUp, Sparkles } from 'lucide-react'
+import { Cpu, TrendingUp, Sparkles, Building2, Sprout } from 'lucide-react'
 import anime from 'animejs'
 import { callAI } from '../services/ai-service'
 import type { AIResult } from '../services/ai-service'
-import { readingRepository } from '../repositories'
-import type { SensorReadingDto } from '../types'
+import { readingRepository, greenhouseRepository } from '../repositories'
+import type { SensorReadingDto, GreenhouseDto } from '../types'
 
 const SENSOR_LABELS: Record<string, string> = {
   TEMPERATURE: 'Temperatura', TEMPERATURE_INTERNAL: 'Temp. Interior',
@@ -18,14 +18,15 @@ const SENSOR_UNITS: Record<string, string> = {
   SOIL_MOISTURE: '%', LIGHT: ' lx', CO2: ' ppm', PRESSURE: ' hPa',
 }
 
-function buildSensorContext(readings: SensorReadingDto[]): string {
+function buildSensorContext(readings: SensorReadingDto[], ghName?: string): string {
   const seen = new Map<string, SensorReadingDto>()
   for (const r of readings) {
     if (r.sensorType && !seen.has(r.sensorType)) seen.set(r.sensorType, r)
   }
-  return Array.from(seen.values())
+  const lines = Array.from(seen.values())
     .map(r => `${SENSOR_LABELS[r.sensorType!] ?? r.sensorType}: ${r.value}${SENSOR_UNITS[r.sensorType!] ?? ''}`)
-    .join('\n')
+  if (ghName) lines.unshift(`Invernadero: ${ghName}`)
+  return lines.join('\n')
 }
 
 export default function MLPage() {
@@ -33,13 +34,21 @@ export default function MLPage() {
   const [loading,       setLoading]       = useState(false)
   const [error,         setError]         = useState<string | null>(null)
   const [sensorContext, setSensorContext] = useState('')
+  const [greenhouses,   setGreenhouses]   = useState<GreenhouseDto[]>([])
+  const [ghFilter,      setGhFilter]      = useState<number | ''>('')
   const resultRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    readingRepository.list(null, 100).then(d => {
-      setSensorContext(buildSensorContext(d.readings ?? []))
-    }).catch(() => {})
+    greenhouseRepository.list().then(d => setGreenhouses(d.greenhouses ?? [])).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    const ghId = ghFilter !== '' ? (ghFilter as number) : undefined
+    readingRepository.list(null, 100, ghId ?? null).then(d => {
+      const gh = ghFilter !== '' ? greenhouses.find(g => g.id === ghFilter) : undefined
+      setSensorContext(buildSensorContext(d.readings ?? [], gh?.name))
+    }).catch(() => {})
+  }, [ghFilter, greenhouses])
 
   useEffect(() => {
     if (!resultRef.current || !prediction) return
@@ -50,7 +59,8 @@ export default function MLPage() {
 
   const predict = async () => {
     setLoading(true); setPrediction(null); setError(null)
-    const prompt = `Basándote en el historial reciente de sensores del invernadero, predice los valores de cada sensor para las próximas 6 horas (en intervalos de 1 hora).
+    const ghLabel = ghFilter !== '' ? greenhouses.find(g => g.id === ghFilter)?.name : undefined
+    const prompt = `Basándote en el historial reciente de sensores${ghLabel ? ` del invernadero "${ghLabel}"` : ' del invernadero'}, predice los valores de cada sensor para las próximas 6 horas (en intervalos de 1 hora).
 
 Presenta los resultados con:
 - Hora estimada
@@ -66,19 +76,50 @@ Sé conciso y práctico.`
     setLoading(false)
   }
 
+  const currentGh = greenhouses.find(g => g.id === ghFilter)
+
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div>
         <h2 className="section-title">Machine Learning</h2>
         <p className="section-subtitle">Predicciones de sensores con inteligencia artificial</p>
       </div>
 
-      {/* Info chip */}
       <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5 w-fit" style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)' }}>
         <Cpu size={14} className="text-green-400" />
         <span className="text-sm font-medium" style={{ color: '#4ade80' }}>Predicción basada en histórico de sensores</span>
       </div>
+
+      {/* Greenhouse selector */}
+      {greenhouses.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.35)' }}>Invernadero a predecir</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setGhFilter('')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border ${ghFilter === '' ? 'bg-green-600 text-white border-green-600' : 'border-[rgba(74,222,128,0.12)]'}`}
+              style={ghFilter !== '' ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
+            >
+              <Sprout size={11} /> Todos
+            </button>
+            {greenhouses.map(gh => (
+              <button key={gh.id}
+                onClick={() => setGhFilter(gh.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-semibold transition-all border ${ghFilter === gh.id ? 'bg-green-600 text-white border-green-600' : 'border-[rgba(74,222,128,0.12)]'}`}
+                style={ghFilter !== gh.id ? { background: '#051a0a', color: 'rgba(255,255,255,0.5)' } : {}}
+              >
+                <Building2 size={11} /> {gh.name}
+              </button>
+            ))}
+          </div>
+          {currentGh && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)', color: '#4ade80' }}>
+              <Building2 size={12} />
+              <span>Prediciendo: <strong>{currentGh.name}</strong>{currentGh.location ? ` · ${currentGh.location}` : ''}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {error && <div className="alert-danger text-sm">{error}</div>}
 
@@ -89,7 +130,9 @@ Sé conciso y práctico.`
             <TrendingUp size={20} className="text-green-400" />
           </div>
           <div>
-            <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>Predicción a 6 horas</h3>
+            <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>
+              Predicción a 6 horas{currentGh ? ` — ${currentGh.name}` : ''}
+            </h3>
             <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
               Analiza las tendencias actuales de los sensores y predice los valores futuros con recomendaciones de acción.
             </p>
@@ -98,7 +141,7 @@ Sé conciso y práctico.`
         <button onClick={predict} disabled={loading} className="w-full btn-primary py-3 text-sm">
           {loading
             ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Calculando predicción...</>
-            : <><TrendingUp size={15} /> Predecir próximas 6 horas</>
+            : <><TrendingUp size={15} /> Predecir próximas 6 horas{currentGh ? ` · ${currentGh.name}` : ''}</>
           }
         </button>
       </div>
@@ -111,7 +154,9 @@ Sé conciso y práctico.`
               <div className="p-2 rounded-xl" style={{ background: 'rgba(34,211,238,0.1)' }}>
                 <Cpu size={15} style={{ color: '#22d3ee' }} />
               </div>
-              <span className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>Predicción generada</span>
+              <span className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>
+                Predicción generada{currentGh ? ` · ${currentGh.name}` : ''}
+              </span>
             </div>
             {prediction.provider && <span className="badge-blue"><Sparkles size={10} />{prediction.provider}</span>}
           </div>

@@ -100,7 +100,7 @@ export default function AnalyticsPage() {
   const loadReadings = async () => {
     setLoading(true)
     try {
-      const limit = range === '24h' ? 500 : range === '7d' ? 2000 : 5000
+      const limit = range === '24h' ? 1000 : range === '7d' ? 3000 : 8000
       const data = await readingRepository.list(null, limit, ghFilter !== '' ? (ghFilter as number) : null)
       setReadings(data.readings || [])
       setError(null)
@@ -124,24 +124,17 @@ export default function AnalyticsPage() {
   const getTimeKey = (timestamp: string): string => {
     const d = parseTs(timestamp)
     if (range === '24h') return d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false })
-    if (range === '7d')  return d.toLocaleDateString('es-CO', { weekday: 'short', day: '2-digit' })
+    if (range === '7d')  return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }) + ' ' +
+                                d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false })
     return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })
   }
 
   const getChartData = (sensorType: string, source: SensorReadingDto[]) => {
-    // Ordenar cronológicamente primero: el API devuelve newest-first, lo que
-    // hace que Object.entries preserve ese orden invertido y slice(-30) tome
-    // los datos más antiguos en vez de los más recientes.
-    const sorted = [...source].sort((a, b) => parseTs(a.timestamp).getTime() - parseTs(b.timestamp).getTime())
-    const byTime: Record<string, number[]> = {}
-    sorted.filter(r => typeMatches(r.sensorType, sensorType)).forEach(r => {
-      const key = getTimeKey(r.timestamp)
-      if (!byTime[key]) byTime[key] = []
-      byTime[key].push(r.value)
-    })
-    return Object.entries(byTime)
-      .map(([time, values]) => ({ time, value: parseFloat((values.reduce((a, b) => a + b, 0) / values.length).toFixed(1)) }))
-      .slice(-30)
+    return source
+      .filter(r => typeMatches(r.sensorType, sensorType))
+      .sort((a, b) => parseTs(a.timestamp).getTime() - parseTs(b.timestamp).getTime())
+      .map(r => ({ time: getTimeKey(r.timestamp), value: r.value }))
+      .slice(-150)
   }
 
   const getStats = (sensorType: string, source: SensorReadingDto[]): Stats => {
@@ -318,7 +311,7 @@ export default function AnalyticsPage() {
 
       {/* Per-greenhouse info banner */}
       {currentGh && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-100 rounded-2xl">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
           <div className="p-2 rounded-xl shrink-0" style={{ background: 'rgba(74,222,128,0.1)' }}>
             <Building2 size={16} className="text-green-400" />
           </div>
@@ -382,12 +375,12 @@ export default function AnalyticsPage() {
                   ) : (
                     <ResponsiveContainer width="100%" height={200}>
                       <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f4f0" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(74,222,128,0.08)" />
                         <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false}
                           domain={['auto', 'auto']} tickCount={5} />
                         <Tooltip
-                          contentStyle={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 4px 16px rgba(0,0,0,0.06)', fontSize: 12 }}
+                          contentStyle={{ background: '#0f2d17', border: '1px solid rgba(74,222,128,0.2)', borderRadius: '12px', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', fontSize: 12, color: '#e2ffe9' }}
                           formatter={(v: number) => [`${v}${unit}`, label]}
                         />
                         <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2}

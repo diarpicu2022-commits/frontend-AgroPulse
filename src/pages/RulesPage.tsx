@@ -259,7 +259,7 @@ export default function RulesPage() {
 
       {/* Create gate banner */}
       {ghFilter === '' && !showForm && (
-        <div className="flex items-center gap-2.5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-2xl text-xs text-blue-700 font-medium">
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-medium" style={{ background: 'rgba(99,179,237,0.08)', border: '1px solid rgba(99,179,237,0.2)', color: 'rgba(147,210,255,0.8)' }}>
           <Building2 size={14} className="shrink-0" />
           Selecciona un invernadero para crear reglas de automatización
         </div>
@@ -280,15 +280,15 @@ export default function RulesPage() {
 
           {/* Greenhouse indicator */}
           {(form.greenhouse_id !== '' || ghFilter !== '') && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-100 rounded-xl text-xs text-green-700">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs" style={{ background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)', color: '#4ade80' }}>
               <Building2 size={13} />
               <span className="font-semibold">Invernadero:</span>
               {ghName(Number(form.greenhouse_id !== '' ? form.greenhouse_id : ghFilter))}
             </div>
           )}
 
-          <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 space-y-3">
-            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">IF — Condición</p>
+          <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgba(253,211,77,0.9)' }}>IF — Condición</p>
             <select value={form.condition_type}
               onChange={e => setForm({ ...form, condition_type: e.target.value })} className="input-field">
               {Object.entries(CONDITION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -301,8 +301,8 @@ export default function RulesPage() {
             </div>
           </div>
 
-          <div className="bg-green-50 rounded-2xl p-4 border border-green-100 space-y-3">
-            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">THEN — Acción</p>
+          <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgba(134,239,172,0.9)' }}>THEN — Acción</p>
             <select value={form.action_type}
               onChange={e => setForm({ ...form, action_type: e.target.value })} className="input-field">
               {Object.entries(ACTION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -354,17 +354,17 @@ export default function RulesPage() {
             const gName = ghName(rule.greenhouseId)
             return (
               <div key={rule.id} id={`rule-card-${rule.id}`}
-                className={`card p-4 transition-all duration-200 ${rule.enabled ? 'ring-1 ring-green-200' : 'opacity-70'}`}>
+                className={`card p-4 transition-all duration-200 ${rule.enabled ? 'ring-1 ring-green-500/30' : 'opacity-70'}`}>
                 <div className="flex items-center gap-3">
                   {/* IF block */}
-                  <div className="flex-1 min-w-0 bg-amber-50 rounded-xl px-3 py-2 border border-amber-100">
-                    <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide mb-0.5">IF</p>
+                  <div className="flex-1 min-w-0 rounded-xl px-3 py-2" style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.18)' }}>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: 'rgba(253,211,77,0.8)' }}>IF</p>
                     <p className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>
                       {CONDITION_LABELS[rule.condition_type] || rule.condition_type}
                     </p>
                     <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>umbral: {rule.condition_value}</p>
                     {gName && (
-                      <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold text-green-700 bg-green-50 border border-green-100 px-1.5 py-0.5 rounded-lg">
+                      <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-lg" style={{ color: '#4ade80', background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.18)' }}>
                         <Building2 size={9} /> {gName}
                       </span>
                     )}
@@ -373,8 +373,8 @@ export default function RulesPage() {
                   <ArrowRight size={16} className="text-gray-300 shrink-0" />
 
                   {/* THEN block */}
-                  <div className="flex-1 min-w-0 bg-green-50 rounded-xl px-3 py-2 border border-green-100">
-                    <p className="text-[10px] font-semibold text-green-600 uppercase tracking-wide mb-0.5">THEN</p>
+                  <div className="flex-1 min-w-0 rounded-xl px-3 py-2" style={{ background: 'rgba(74,222,128,0.07)', border: '1px solid rgba(74,222,128,0.18)' }}>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: 'rgba(134,239,172,0.8)' }}>THEN</p>
                     <p className="text-sm font-semibold" style={{ color: '#e2ffe9' }}>
                       {ACTION_LABELS[rule.action_type] || rule.action_type}
                     </p>
@@ -391,7 +391,7 @@ export default function RulesPage() {
                         {rule.enabled ? 'Pausar' : 'Activar'}
                       </button>
                       <button onClick={() => handleEdit(rule)}
-                        className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-400 hover:text-blue-600 transition-colors">
+                        className="p-1.5 rounded-lg hover:bg-blue-500/10 text-blue-400 hover:text-blue-300 transition-colors">
                         <Edit2 size={13} />
                       </button>
                       <button onClick={() => handleDelete(rule.id)}
