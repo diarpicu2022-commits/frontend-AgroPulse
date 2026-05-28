@@ -42,6 +42,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(_userCtx.id ? { 'X-User-Id': String(_userCtx.id) } : {}),
       ...(optHeaders ?? {}),
     },
     ...restOptions,
