@@ -184,7 +184,7 @@ export default function MapPage({ onNavigate }: MapPageProps) {
                 latitude={gh.latitude!}
                 onClick={() => handleMarkerClick(gh.id)}
               >
-                <MarkerContent>
+                <MarkerContent className="drop-shadow-lg">
                   <div className="map-marker-pin w-8 h-8 bg-green-500 rounded-full border-2 border-white
                                   flex items-center justify-center shadow-lg cursor-pointer
                                   hover:scale-110 transition-transform duration-200">
@@ -192,7 +192,7 @@ export default function MapPage({ onNavigate }: MapPageProps) {
                   </div>
                 </MarkerContent>
                 <MarkerTooltip>{gh.name}</MarkerTooltip>
-                <MarkerPopup>
+                <MarkerPopup className="!p-0 !bg-transparent !border-0 !shadow-none !max-w-none">
                   <div className="w-64 bg-[#0f2d17] border border-green-900/40 rounded-xl overflow-hidden shadow-xl">
                     {gh.photoUrl ? (
                       <img

@@ -285,7 +285,7 @@ export default function ActuatorsPage() {
             const esp32gh = a.deviceSource ? greenhouses.find(g => g.deviceId && g.deviceId === a.deviceSource) : null
             return (
               <div key={a.id}
-                className={`card p-4 transition-all duration-200 ${isOn ? 'ring-1 ring-green-200 bg-green-50/30' : ''}`}>
+                className={`card p-4 transition-all duration-200 ${isOn ? 'ring-1 ring-green-500/30 bg-green-500/5' : ''}`}>
                 <div className="flex items-center gap-4">
                   {/* Icon */}
                   <div className="p-3 rounded-2xl shrink-0" style={{ background: isOn ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.06)' }}>

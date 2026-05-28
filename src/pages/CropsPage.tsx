@@ -125,16 +125,21 @@ export default function CropsPage() {
     if (!form.name.trim()) { alert('Ingresa el nombre del cultivo primero'); return }
     setAiLoading(true); setAiProvider('')
     const cropDesc = `${form.name}${form.variety ? ` variedad "${form.variety}"` : ''}`
-    const prompt = `Eres un agrónomo experto. Necesito los parámetros de cultivo en invernadero para: ${cropDesc}.
+    const prompt = `Eres un agrónomo experto en cultivos en invernadero. Dame los rangos óptimos de cultivo para: ${cropDesc}.
 
-Devuelve SOLO este JSON con los valores numéricos reales para ese cultivo (sin texto adicional, sin markdown):
-{"temp_min":NUMERO,"temp_max":NUMERO,"humidity_min":NUMERO,"humidity_max":NUMERO,"soil_moisture_min":NUMERO,"soil_moisture_max":NUMERO}
+Responde ÚNICAMENTE con este JSON (sin markdown, sin texto extra, sin comentarios):
+{"temp_min":N,"temp_max":N,"humidity_min":N,"humidity_max":N,"soil_moisture_min":N,"soil_moisture_max":N}
 
-- temp_min / temp_max: temperatura del aire en °C
-- humidity_min / humidity_max: humedad relativa en %
-- soil_moisture_min / soil_moisture_max: humedad del sustrato en %
+Definiciones:
+- temp_min / temp_max: temperatura del aire en °C dentro del invernadero
+- humidity_min / humidity_max: humedad relativa del ambiente en %
+- soil_moisture_min / soil_moisture_max: humedad del sustrato/suelo en %
 
-Usa los valores reales y específicos de ${cropDesc}. No uses valores genéricos.`
+Reglas:
+- Usa los valores específicos y reales de literatura agrícola para ${cropDesc}
+- Si hay variedad, ajusta según sus requerimientos particulares
+- Todos los valores deben ser números enteros o decimales, nunca null ni texto
+- Los rangos deben ser coherentes: min < max, temp 0-50, humedad 0-100, suelo 0-100`
     try {
       const result = await callAI(prompt, '')
       // Limpiar posibles code fences de markdown (```json ... ```) antes de extraer JSON
@@ -167,6 +172,7 @@ Usa los valores reales y específicos de ${cropDesc}. No uses valores genéricos
 
   const toApiPayload = (f: CropForm): Partial<CropDto> => ({
     name: f.name,
+    ...(f.variety.trim() ? { variety: f.variety.trim() } : {}),
     ...(f.greenhouse_id !== '' ? { greenhouseId: f.greenhouse_id as number } : {}),
     temp_min: f.temp_min, temp_max: f.temp_max,
     humidity_min: f.humidity_min, humidity_max: f.humidity_max,
@@ -291,7 +297,7 @@ Usa los valores reales y específicos de ${cropDesc}. No uses valores genéricos
 
       {/* Create gate banner */}
       {filterGhId === '' && !showForm && (
-        <div className="flex items-center gap-2.5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-2xl text-xs text-blue-700 font-medium">
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-medium" style={{ background: 'rgba(99,179,237,0.08)', border: '1px solid rgba(99,179,237,0.2)', color: 'rgba(147,210,255,0.8)' }}>
           <Building2 size={14} className="shrink-0" />
           Selecciona un invernadero para crear cultivos
         </div>
@@ -351,29 +357,29 @@ Usa los valores reales y específicos de ${cropDesc}. No uses valores genéricos
           </div>
 
           {/* Temp range */}
-          <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
-            <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-3">Temperatura (°C)</p>
+          <div className="rounded-2xl p-4" style={{ background: 'rgba(251,146,60,0.08)', border: '1px solid rgba(251,146,60,0.2)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'rgba(253,186,116,0.9)' }}>🌡 Temperatura (°C)</p>
             <div className="grid grid-cols-2 gap-4">
-              {numInput('Mínima', 'temp_min', 'orange-200')}
-              {numInput('Máxima', 'temp_max', 'orange-200')}
+              {numInput('Mínima', 'temp_min', 'orange-500/30')}
+              {numInput('Máxima', 'temp_max', 'orange-500/30')}
             </div>
           </div>
 
           {/* Humidity range */}
-          <div className="bg-sky-50 rounded-2xl p-4 border border-sky-100">
-            <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide mb-3">Humedad Aire (%)</p>
+          <div className="rounded-2xl p-4" style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'rgba(125,211,252,0.9)' }}>💧 Humedad Aire (%)</p>
             <div className="grid grid-cols-2 gap-4">
-              {numInput('Mínima', 'humidity_min', 'sky-200')}
-              {numInput('Máxima', 'humidity_max', 'sky-200')}
+              {numInput('Mínima', 'humidity_min', 'sky-500/30')}
+              {numInput('Máxima', 'humidity_max', 'sky-500/30')}
             </div>
           </div>
 
           {/* Soil range */}
-          <div className="bg-green-50 rounded-2xl p-4 border border-green-100">
-            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-3">Humedad Suelo (%)</p>
+          <div className="rounded-2xl p-4" style={{ background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'rgba(134,239,172,0.9)' }}>🌱 Humedad Suelo (%)</p>
             <div className="grid grid-cols-2 gap-4">
-              {numInput('Mínima', 'soil_moisture_min', 'green-200')}
-              {numInput('Máxima', 'soil_moisture_max', 'green-200')}
+              {numInput('Mínima', 'soil_moisture_min', 'green-500/30')}
+              {numInput('Máxima', 'soil_moisture_max', 'green-500/30')}
             </div>
           </div>
 
