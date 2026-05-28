@@ -130,11 +130,16 @@ export default function AnalyticsPage() {
   }
 
   const getChartData = (sensorType: string, source: SensorReadingDto[]) => {
-    return source
+    const sorted = source
       .filter(r => typeMatches(r.sensorType, sensorType))
       .sort((a, b) => parseTs(a.timestamp).getTime() - parseTs(b.timestamp).getTime())
+    // Muestreo uniforme sobre TODO el rango — antes slice(-150) hacía que
+    // 7d y 30d mostraran los mismos 150 datos más recientes.
+    const MAX = 120
+    const step = sorted.length > MAX ? Math.ceil(sorted.length / MAX) : 1
+    return sorted
+      .filter((_, i) => i % step === 0)
       .map(r => ({ time: getTimeKey(r.timestamp), value: r.value }))
-      .slice(-150)
   }
 
   const getStats = (sensorType: string, source: SensorReadingDto[]): Stats => {
