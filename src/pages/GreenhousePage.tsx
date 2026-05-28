@@ -361,9 +361,12 @@ export default function GreenhousePage() {
         .from('greenhouse-photos')
         .getPublicUrl(path)
 
-      await greenhouseRepository.update(ghId, { photoUrl: urlData.publicUrl })
+      const publicUrl = urlData.publicUrl
+      console.log('[Photo] URL generada:', publicUrl)
+
+      await greenhouseRepository.update(ghId, { photoUrl: publicUrl })
       setGreenhouses(prev =>
-        prev.map(g => g.id === ghId ? { ...g, photoUrl: urlData.publicUrl } : g)
+        prev.map(g => g.id === ghId ? { ...g, photoUrl: publicUrl } : g)
       )
     } catch (err) {
       const msg = (err as { message?: string })?.message ?? String(err)
@@ -541,12 +544,23 @@ export default function GreenhousePage() {
                           </div>
                         </label>
                         {g.photoUrl && (
-                          <img
-                            src={g.photoUrl}
-                            alt="Foto"
-                            loading="lazy"
-                            className="w-8 h-8 rounded-lg object-cover border border-green-500/20"
-                          />
+                          <a
+                            href={g.photoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={g.photoUrl}
+                            className="shrink-0"
+                          >
+                            <img
+                              src={g.photoUrl}
+                              alt="Foto"
+                              loading="lazy"
+                              className="w-8 h-8 rounded-lg object-cover border border-green-500/20 hover:opacity-80 transition-opacity"
+                              onError={(e) => {
+                                console.error('[Photo] Error cargando imagen:', (e.target as HTMLImageElement).src)
+                              }}
+                            />
+                          </a>
                         )}
                       </div>
                     )}
