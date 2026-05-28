@@ -205,6 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           if (authUser.email) cacheProfile(authUser.email, { avatar: avatarUrl, full_name: fullName })
           setUser(finalUser)
+          setUserContext({ id: finalUser.id, role: finalUser.role })
           if (isAdminRole(role)) {
             setAllowedGreenhouseIds(null)
           } else {
@@ -240,6 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (d.active === false) return
               if (d.id && d.id > 0) {
                 setUser(prev => prev ? { ...prev, id: d.id, email: authUser.email } : prev)
+                setUserContext({ id: d.id, role: d.role })
                 // Also update greenhouse access now that we have real id and backend is up
                 if (d.greenhouseIds && d.greenhouseIds.length > 0) {
                   setAllowedGreenhouseIds(d.greenhouseIds)
@@ -335,8 +337,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const d = await r.json() as AppUser
             if (d.active === false) return
             if (d.id && d.id > 0) {
-              if (!user.id || user.id === 0)
+              if (!user.id || user.id === 0) {
                 setUser(prev => prev ? { ...prev, id: d.id } : prev)
+                setUserContext({ id: d.id, role: d.role })
+              }
               setAllowedGreenhouseIds(d.greenhouseIds ?? [])
               return
             }
