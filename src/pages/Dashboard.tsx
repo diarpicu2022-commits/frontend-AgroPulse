@@ -103,22 +103,19 @@ export default function Dashboard() {
   const loadData = async () => {
     if (!selectedGh) return
     try {
-      // Cargar cultivo: primero caché local (mismo que CropsPage), luego API
+      // Cargar cultivo siempre desde API — el caché localStorage puede quedar
+      // desactualizado cuando el admin elimina cultivos, lo que hace que el
+      // operador siga viendo un cultivo inexistente.
       try {
-        let cropsList: import('../types').CropDto[] = []
-        try {
-          const cached = localStorage.getItem('agropulse_crops_v1')
-          if (cached) cropsList = JSON.parse(cached) as import('../types').CropDto[]
-        } catch { /* ignore */ }
-        if (cropsList.length === 0) {
-          const cropsRaw = await cropRepository.list()
-          cropsList = Array.isArray(cropsRaw)
-            ? (cropsRaw as unknown as import('../types').CropDto[])
-            : (cropsRaw?.crops ?? [])
-        }
+        const cropsRaw = await cropRepository.list()
+        const cropsList: import('../types').CropDto[] = Array.isArray(cropsRaw)
+          ? (cropsRaw as unknown as import('../types').CropDto[])
+          : (cropsRaw?.crops ?? [])
         if (cropsList.length > 0) {
           const activeCrop = cropsList.find(c => Boolean(c.active)) ?? cropsList[0]
           setCrop(activeCrop)
+        } else {
+          setCrop(null)
         }
       } catch (e) { console.error('[Dashboard] crops load error:', e) }
 
@@ -212,13 +209,25 @@ export default function Dashboard() {
   // Force UTC parsing: backend timestamps may lack 'Z' suffix
   const parseTs = (ts: string) => new Date(/Z|[+-]\d{2}:\d{2}$/.test(ts) ? ts : ts + 'Z')
 
-  // Build reading lookup maps (readings are newest-first)
+  // Normalize aliases so TEMPERATURE_INTERNAL and TEMPERATURE share one card slot,
+  // and HUMIDITY_INTERNAL and HUMIDITY share one card slot.
+  const normKey = (t: string) =>
+    t === 'TEMPERATURE_INTERNAL' ? 'TEMPERATURE' :
+    t === 'HUMIDITY_INTERNAL'    ? 'HUMIDITY' : t
+
+  // Build reading lookup maps (readings are newest-first).
+  // latestByNormType indexes readings by their normalized type so that a DB
+  // sensor registered as 'TEMPERATURE' still finds readings sent as
+  // 'TEMPERATURE_INTERNAL' (and vice-versa) without missing the card.
   const latestBySensorId = new Map<number, SensorReadingDto>()
   const latestByType     = new Map<string, SensorReadingDto>()
+  const latestByNormType = new Map<string, SensorReadingDto>()
   for (const r of readings) {
     if (!r.sensorType) continue
     if (!latestBySensorId.has(r.sensorId)) latestBySensorId.set(r.sensorId, r)
     if (!latestByType.has(r.sensorType))   latestByType.set(r.sensorType, r)
+    const nk = normKey(r.sensorType)
+    if (!latestByNormType.has(nk))         latestByNormType.set(nk, r)
   }
 
   // Card list: DB sensors are the source of truth (show card even with no recent reading).
@@ -227,19 +236,14 @@ export default function Dashboard() {
   const cardEntries: CardEntry[] = []
   const seenTypes = new Set<string>()
 
-  // Normalize aliases so TEMPERATURE_INTERNAL and TEMPERATURE share one card slot,
-  // and HUMIDITY_INTERNAL and HUMIDITY share one card slot.
-  const normKey = (t: string) =>
-    t === 'TEMPERATURE_INTERNAL' ? 'TEMPERATURE' :
-    t === 'HUMIDITY_INTERNAL'    ? 'HUMIDITY' : t
-
   for (const s of dbSensors) {
     const t   = s.type as string
     const key = normKey(t)
     if (!key || seenTypes.has(key)) continue
-    // Prefer sensorId match (accurate when firmware uses backendId);
-    // fall back to type match (when firmware uses i+1 fallback IDs).
-    const reading = latestBySensorId.get(s.id) ?? latestByType.get(t) ?? latestByType.get(key)
+    // 1. Match by sensorId (exact, firmwares with backendId set).
+    // 2. Match by exact type string.
+    // 3. Match by normalized type — fixes TEMPERATURE vs TEMPERATURE_INTERNAL mismatch.
+    const reading = latestBySensorId.get(s.id) ?? latestByType.get(t) ?? latestByNormType.get(key)
     // Only reserve the slot if we have a real reading — otherwise let the readings loop claim it.
     if (reading) seenTypes.add(key)
     cardEntries.push({ key: `db-${s.id}`, type: t, reading })
