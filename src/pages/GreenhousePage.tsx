@@ -295,15 +295,24 @@ export default function GreenhousePage() {
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, ghId: number) => {
     const file = e.target.files?.[0]
-    if (!file || !supabase) return
+    if (!file) return
+    if (!supabase) {
+      setError('Supabase no está configurado (revisa VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY).')
+      return
+    }
 
     const ALLOWED_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
     const rawExt = (file.name.split('.').pop() ?? 'jpg').toLowerCase()
     const ext = ALLOWED_EXTS.includes(rawExt) ? rawExt : 'jpg'
 
-    // Include Supabase auth UID in path so RLS policy (auth.uid() = folder) is satisfied
+    // Verificar sesión Supabase — necesaria para que la política RLS permita el INSERT
     const { data: { user: sbUser } } = await supabase.auth.getUser()
-    const uid = sbUser?.id ?? 'public'
+    if (!sbUser) {
+      setError('Sesión de Supabase no activa. Cierra sesión, vuelve a iniciar con Google e intenta de nuevo.')
+      e.target.value = ''
+      return
+    }
+    const uid = sbUser.id
     const path = `${uid}/${ghId}.${ext}`
 
     setPhotoUploading(prev => ({ ...prev, [ghId]: true }))
@@ -331,7 +340,10 @@ export default function GreenhousePage() {
     } catch (err) {
       const msg = (err as { message?: string })?.message ?? String(err)
       console.error('Error subiendo foto:', err)
-      setError(`No se pudo subir la foto: ${msg}`)
+      const isRls = msg.toLowerCase().includes('row-level security') || msg.toLowerCase().includes('rls')
+      setError(isRls
+        ? '⚠️ Error de permisos en Supabase Storage. Ve a Supabase → Storage → greenhouse-photos → Policies y agrega una política INSERT para usuarios autenticados (WITH CHECK: bucket_id = \'greenhouse-photos\' AND auth.uid()::text = split_part(name, \'/\', 1)).'
+        : `No se pudo subir la foto: ${msg}`)
     } finally {
       setPhotoUploading(prev => ({ ...prev, [ghId]: false }))
       e.target.value = ''

@@ -129,8 +129,12 @@ export default function AnalyticsPage() {
   }
 
   const getChartData = (sensorType: string, source: SensorReadingDto[]) => {
+    // Ordenar cronológicamente primero: el API devuelve newest-first, lo que
+    // hace que Object.entries preserve ese orden invertido y slice(-30) tome
+    // los datos más antiguos en vez de los más recientes.
+    const sorted = [...source].sort((a, b) => parseTs(a.timestamp).getTime() - parseTs(b.timestamp).getTime())
     const byTime: Record<string, number[]> = {}
-    source.filter(r => typeMatches(r.sensorType, sensorType)).forEach(r => {
+    sorted.filter(r => typeMatches(r.sensorType, sensorType)).forEach(r => {
       const key = getTimeKey(r.timestamp)
       if (!byTime[key]) byTime[key] = []
       byTime[key].push(r.value)

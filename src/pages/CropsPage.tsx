@@ -137,10 +137,15 @@ Devuelve SOLO este JSON con los valores numéricos reales para ese cultivo (sin 
 Usa los valores reales y específicos de ${cropDesc}. No uses valores genéricos.`
     try {
       const result = await callAI(prompt, '')
-      const jsonStr = result.text.trim().match(/\{[\s\S]*?\}/)?.[0]
+      // Limpiar posibles code fences de markdown (```json ... ```) antes de extraer JSON
+      const cleaned = result.text.trim()
+        .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/g, '').trim()
+      // Extraer el primer objeto JSON plano (sin objetos anidados)
+      const jsonStr = cleaned.match(/\{[^{}]+\}/)?.[0] ?? cleaned.match(/\{[\s\S]*\}/)?.[0]
       if (jsonStr) {
         let ranges: Record<string, unknown> = {}
-        try { ranges = JSON.parse(jsonStr) as Record<string, unknown> } catch { /* try below */ }
+        try { ranges = JSON.parse(jsonStr) as Record<string, unknown> }
+        catch { alert('La IA devolvió un formato inesperado. Intenta de nuevo.'); setAiLoading(false); return }
         const n = (k: string, fallback: number) => {
           const v = Number(ranges[k])
           return isFinite(v) && v > 0 ? v : fallback
@@ -296,7 +301,7 @@ Usa los valores reales y específicos de ${cropDesc}. No uses valores genéricos
 
       {/* Form */}
       {showForm && (
-        <form ref={formRef} onSubmit={handleSubmit} className="card p-5 space-y-5">
+        <form key={editingId ?? 'new'} ref={formRef} onSubmit={handleSubmit} className="card p-5 space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold" style={{ color: '#e2ffe9' }}>{editingId ? 'Editar Cultivo' : 'Nuevo Cultivo'}</h3>
             <button type="button" onClick={() => { setShowForm(false); resetForm() }}
