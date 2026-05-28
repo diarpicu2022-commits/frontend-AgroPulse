@@ -353,7 +353,7 @@ export default function GreenhousePage() {
     try {
       const { error: uploadError } = await supabase.storage
         .from('greenhouse-photos')
-        .upload(path, file, { upsert: true })
+        .upload(path, file, { upsert: true, contentType: file.type })
 
       if (uploadError) throw uploadError
 
