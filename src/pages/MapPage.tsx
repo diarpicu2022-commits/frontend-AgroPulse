@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { MapPin, Activity } from 'lucide-react'
+import { MapPin, Activity, ChevronRight, Wifi, WifiOff } from 'lucide-react'
 import anime from 'animejs'
 import { Map, MapMarker, MarkerContent, MarkerPopup, MarkerTooltip, MapControls, useMap } from '@/components/ui/map'
 import { fetchWeather, owmTileUrl, hasOwmKey, uvLabel, type WeatherData } from '../lib/weather'
@@ -192,100 +192,207 @@ export default function MapPage({ onNavigate }: MapPageProps) {
                   </div>
                 </MarkerContent>
                 <MarkerTooltip>{gh.name}</MarkerTooltip>
-                <MarkerPopup className="!p-0 !bg-transparent !border-0 !shadow-none !max-w-none">
-                  <div className="w-64 bg-[#0f2d17] border border-green-900/40 rounded-xl overflow-hidden shadow-xl">
-                    {gh.photoUrl ? (
-                      <img
-                        src={gh.photoUrl}
-                        alt={gh.name}
-                        className="w-full h-32 object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-20 bg-gradient-to-br from-green-900/40 to-green-800/20
-                                      flex items-center justify-center">
-                        <MapPin size={28} className="text-green-500/40" />
-                      </div>
-                    )}
-
-                    <div className="p-3 space-y-2">
-                      <h3 className="text-sm font-bold text-white font-heading">{gh.name}</h3>
-                      {gh.description && (
-                        <p className="text-xs text-white/50 line-clamp-2">{gh.description}</p>
-                      )}
-
-                      {/* Clima exterior */}
-                      {weatherLoading[gh.id] && (
-                        <div className="space-y-1.5 mb-2">
-                          <div className="skeleton h-3 rounded-lg w-1/2" />
-                          <div className="skeleton h-10 rounded-lg" />
-                          <div className="skeleton h-6 rounded-lg" />
+                <MarkerPopup className="!p-0 !m-0 !bg-transparent !border-0 !shadow-none !max-w-none !rounded-none">
+                  {/* ── Popup card ────────────────────────────────────────── */}
+                  <div
+                    className="w-72 rounded-2xl overflow-hidden"
+                    style={{
+                      background: '#071a0c',
+                      border: '1px solid rgba(74,222,128,0.15)',
+                      boxShadow: '0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(74,222,128,0.08)',
+                    }}
+                  >
+                    {/* ── Foto / header ─────────────────────────────── */}
+                    <div className="relative h-36 overflow-hidden">
+                      {gh.photoUrl ? (
+                        <img
+                          src={gh.photoUrl}
+                          alt={gh.name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          style={{ filter: 'brightness(0.85)' }}
+                        />
+                      ) : (
+                        <div
+                          className="w-full h-full flex flex-col items-center justify-center gap-2"
+                          style={{ background: 'linear-gradient(135deg,#0b2714 0%,#163d22 60%,#0f2d1a 100%)' }}
+                        >
+                          <MapPin size={36} style={{ color: 'rgba(74,222,128,0.25)' }} />
+                          <span className="text-[10px]" style={{ color: 'rgba(74,222,128,0.3)' }}>
+                            Sin foto
+                          </span>
                         </div>
                       )}
+
+                      {/* gradiente oscuro en la parte inferior sobre la foto */}
+                      <div
+                        className="absolute inset-0"
+                        style={{ background: 'linear-gradient(to top, rgba(7,26,12,1) 0%, rgba(7,26,12,0.5) 45%, transparent 100%)' }}
+                      />
+
+                      {/* badge WiFi top-right */}
+                      <div
+                        className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold"
+                        style={{
+                          background: 'rgba(7,26,12,0.75)',
+                          border: '1px solid rgba(74,222,128,0.3)',
+                          color: '#4ade80',
+                          backdropFilter: 'blur(6px)',
+                        }}
+                      >
+                        <Wifi size={9} />
+                        Activo
+                      </div>
+
+                      {/* nombre + descripción sobre foto (bottom) */}
+                      <div className="absolute bottom-0 left-0 right-0 px-3 pb-3">
+                        <h3 className="text-sm font-bold text-white leading-tight drop-shadow">
+                          {gh.name}
+                        </h3>
+                        {gh.description && (
+                          <p className="text-[10px] mt-0.5 line-clamp-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                            {gh.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ── Cuerpo del popup ──────────────────────────── */}
+                    <div className="px-3 pt-2.5 pb-3 space-y-2.5">
+
+                      {/* Clima exterior ───────────────────────────── */}
+                      {weatherLoading[gh.id] && (
+                        <div className="space-y-1.5">
+                          <div className="skeleton h-2.5 w-24 rounded" />
+                          <div className="skeleton h-8 rounded-xl" />
+                        </div>
+                      )}
+
                       {weather[gh.id] && !weatherLoading[gh.id] && (() => {
                         const w = weather[gh.id]
                         const uv = uvLabel(w.uvIndex)
                         return (
-                          <div className="mb-2">
-                            <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                              🌦 Clima exterior
-                            </p>
-                            <div className="flex items-center gap-2 mb-2">
+                          <div
+                            className="rounded-xl px-3 py-2"
+                            style={{ background: 'rgba(125,211,252,0.06)', border: '1px solid rgba(125,211,252,0.1)' }}
+                          >
+                            {/* fila principal: icono + temp + descripcion */}
+                            <div className="flex items-center gap-2.5">
                               <span className="text-2xl leading-none">{w.icon}</span>
-                              <div>
-                                <div className="text-sm font-bold" style={{ color: '#7dd3fc' }}>{w.temperature}°C</div>
-                                <div className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{w.description}</div>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm font-bold" style={{ color: '#7dd3fc' }}>
+                                  {w.temperature}°C
+                                </span>
+                                <span className="text-[10px] ml-2 truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                                  {w.description}
+                                </span>
                               </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-1">
-                              {([
-                                { label: 'Humedad',     value: `${w.humidity}%`,          color: '#7dd3fc' },
-                                { label: 'Lluvia (1h)', value: `${w.precipitation} mm`,   color: '#7dd3fc' },
-                                { label: 'Viento',      value: `${w.windSpeed} km/h`,     color: '#7dd3fc' },
-                                { label: 'UV',          value: uv.label,                  color: uv.color  },
-                              ]).map(({ label, value, color }) => (
-                                <div key={label} className="rounded-lg px-2 py-1.5" style={{ background: 'rgba(0,120,255,0.1)' }}>
-                                  <div className="text-[9px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</div>
-                                  <div className="text-[11px] font-semibold" style={{ color }}>{value}</div>
-                                </div>
+                            {/* fila secundaria: 4 métricas en línea */}
+                            <div className="flex items-center gap-3 mt-1.5">
+                              {[
+                                { e: '💧', v: `${w.humidity}%` },
+                                { e: '🌬', v: `${w.windSpeed} km/h` },
+                                { e: '🌧', v: `${w.precipitation} mm` },
+                                { e: '☀️', v: uv.label, c: uv.color },
+                              ].map(({ e, v, c }) => (
+                                <span key={e} className="text-[10px] flex items-center gap-0.5">
+                                  <span>{e}</span>
+                                  <span style={{ color: c ?? 'rgba(255,255,255,0.55)' }}>{v}</span>
+                                </span>
                               ))}
                             </div>
                           </div>
                         )
                       })()}
 
-                      {lastReadings.length > 0 ? (
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">
-                            Últimas lecturas
-                          </p>
-                          {lastReadings.map(r => (
-                            <div key={r.id} className="flex justify-between items-center
-                                                         bg-green-900/20 rounded-lg px-2 py-1">
-                              <span className="text-[11px] text-white/60">
-                                {r.sensorType ?? `Sensor ${r.sensorId}`}
-                              </span>
-                              <span className="text-[11px] font-bold text-green-400">
-                                {r.value.toFixed(1)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-white/30">
-                          <Activity size={12} />
-                          <span className="text-[11px]">Toca para ver sensores</span>
-                        </div>
-                      )}
+                      {/* Sensores en tiempo real ─────────────────── */}
+                      {(() => {
+                        const META: Record<string, { label: string; emoji: string; unit: string; max: number }> = {
+                          TEMPERATURE_INTERNAL: { label: 'Temp. Interior', emoji: '🌡', unit: '°C', max: 50 },
+                          TEMPERATURE_EXTERNAL: { label: 'Temp. Exterior', emoji: '🌡', unit: '°C', max: 50 },
+                          TEMPERATURE:          { label: 'Temperatura',    emoji: '🌡', unit: '°C', max: 50 },
+                          HUMIDITY:             { label: 'Humedad',        emoji: '💧', unit: '%',  max: 100 },
+                          HUMIDITY_EXTERNAL:    { label: 'Hum. Exterior',  emoji: '💧', unit: '%',  max: 100 },
+                          SOIL_MOISTURE:        { label: 'Suelo',          emoji: '🌱', unit: '%',  max: 100 },
+                          CURRENT:              { label: 'Corriente',      emoji: '⚡', unit: 'A',  max: 20  },
+                          LIGHT:                { label: 'Luz',            emoji: '🔆', unit: ' lx', max: 1000 },
+                          CO2:                  { label: 'CO₂',            emoji: '🫧', unit: ' ppm', max: 2000 },
+                        }
 
+                        if (lastReadings.length === 0) return (
+                          <div className="flex items-center gap-2 py-0.5" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                            <Activity size={11} />
+                            <span className="text-[11px]">Sin lecturas recientes</span>
+                          </div>
+                        )
+
+                        return (
+                          <div className="space-y-1.5">
+                            <p className="text-[9px] font-semibold uppercase tracking-widest"
+                               style={{ color: 'rgba(255,255,255,0.22)' }}>
+                              Sensores · tiempo real
+                            </p>
+                            {lastReadings.slice(0, 5).map(r => {
+                              const m = META[r.sensorType ?? ''] ?? {
+                                label: r.sensorType ?? `Sensor ${r.sensorId}`,
+                                emoji: '📊', unit: '', max: 100,
+                              }
+                              const isPct = m.unit === '%'
+                              const isTemp = m.unit === '°C'
+                              const pct = Math.min(100, Math.max(0, (r.value / m.max) * 100))
+                              const barColor = isTemp
+                                ? r.value > 30 ? '#f97316' : r.value < 15 ? '#7dd3fc' : '#4ade80'
+                                : '#4ade80'
+
+                              return (
+                                <div key={r.id} className="flex items-center gap-2">
+                                  <span className="text-xs w-4 shrink-0 text-center">{m.emoji}</span>
+                                  <span className="text-[11px] flex-1 truncate"
+                                        style={{ color: 'rgba(255,255,255,0.5)' }}>
+                                    {m.label}
+                                  </span>
+                                  <span className="text-[11px] font-bold tabular-nums shrink-0"
+                                        style={{ color: '#d1fae5' }}>
+                                    {r.value.toFixed(1)}{m.unit}
+                                  </span>
+                                  {(isPct || isTemp) && (
+                                    <div className="w-12 h-1 rounded-full shrink-0 overflow-hidden"
+                                         style={{ background: 'rgba(255,255,255,0.08)' }}>
+                                      <div className="h-full rounded-full"
+                                           style={{ width: `${pct}%`, background: barColor }} />
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )
+                      })()}
+
+                      {/* Botón CTA ───────────────────────────────── */}
                       <button
                         onClick={() => onNavigate('dashboard')}
-                        className="w-full mt-1 py-1.5 bg-green-500/20 hover:bg-green-500/30
-                                   border border-green-500/30 rounded-lg text-xs font-semibold
-                                   text-green-400 transition-colors duration-200 cursor-pointer"
+                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl
+                                   text-xs font-semibold transition-all duration-200 cursor-pointer group"
+                        style={{
+                          background: 'rgba(74,222,128,0.1)',
+                          border: '1px solid rgba(74,222,128,0.22)',
+                          color: '#4ade80',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'rgba(74,222,128,0.2)'
+                          e.currentTarget.style.borderColor = 'rgba(74,222,128,0.4)'
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'rgba(74,222,128,0.1)'
+                          e.currentTarget.style.borderColor = 'rgba(74,222,128,0.22)'
+                        }}
                       >
-                        Ir al Dashboard →
+                        Ver Dashboard
+                        <ChevronRight size={13} className="transition-transform duration-200 group-hover:translate-x-0.5" />
                       </button>
+
                     </div>
                   </div>
                 </MarkerPopup>

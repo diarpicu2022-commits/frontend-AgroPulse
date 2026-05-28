@@ -260,10 +260,30 @@
 /* ── MapLibre popup overrides — fuera de @layer para máxima prioridad ──────── */
 /* Deben estar aquí (después de todos los @layer) para que el CSS unlayered     */
 /* gane sobre maplibre-gl.css que también es unlayered pero se carga antes.     */
+
+/* contenedor raíz — elimina max-width que fuerza scroll o recorte */
+.maplibregl-popup { max-width: none !important; }
+
+/* caja blanca que maplibre dibuja (padding, sombra, fondo) */
 .maplibregl-popup-content {
   background: transparent !important;
   box-shadow: none !important;
   padding: 0 !important;
   border-radius: 0 !important;
+  border: none !important;
 }
-.maplibregl-popup-tip { display: none !important; }
+
+/* div "container" de map.tsx (document.createElement) y el wrapper
+   interno de MarkerPopup — ambos deben ser invisibles */
+.maplibregl-popup-content > div,
+.maplibregl-popup-content > div > div {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  max-width: none !important;
+  border-radius: 0 !important;
+}
+
+.maplibregl-popup-tip            { display: none !important; }
+.maplibregl-popup-close-button   { display: none !important; }
