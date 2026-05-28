@@ -135,7 +135,7 @@ export default function ActuatorsPage() {
         ...form,
         gpioPin:      form.gpioPin !== '' ? parseInt(String(form.gpioPin)) : null,
         greenhouseId: form.greenhouseId !== '' ? parseInt(String(form.greenhouseId)) : undefined,
-        status: false,
+        status: 'OFF',
       } as Partial<ActuatorDto>
       if (editingId) await actuatorRepository.update(editingId, payload)
       else           await actuatorRepository.create(payload)
@@ -159,7 +159,7 @@ export default function ActuatorsPage() {
 
   const toggleStatus = async (id: number, currentStatus: boolean | string | undefined) => {
     try {
-      const newStatus = currentStatus === true || currentStatus === 'ON' ? false : true
+      const newStatus = currentStatus === true || currentStatus === 'ON' ? 'OFF' : 'ON'
       await actuatorRepository.update(id, { status: newStatus })
       loadActuators()
     } catch (err) { alert('Error: ' + (err as Error).message) }
