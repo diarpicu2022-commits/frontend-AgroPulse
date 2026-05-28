@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Building2, UserPlus, Cpu, Zap, ChevronDown, ChevronUp, Wifi, Loader2, Camera, Plus, X, Bell } from 'lucide-react'
+import { Building2, UserPlus, Cpu, Zap, ChevronDown, ChevronUp, Wifi, Loader2, Camera, Plus, X, Bell, MapPin, Check } from 'lucide-react'
 import anime from 'animejs'
 import PageHeader from '../components/ui/PageHeader'
 import { useAuth, saveAccess, readAccess, saveAccessByEmail, readAccessByEmail, supabase } from '../context/AuthContext'
@@ -54,6 +54,7 @@ export default function GreenhousePage() {
   const [recipientForm,   setRecipientForm]   = useState({ name: '', email: '', phone: '+57', callmebotApikey: '' })
   const [recipientError,  setRecipientError]  = useState<string | null>(null)
   const [savingRecipient, setSavingRecipient] = useState(false)
+  const [locationEdit,    setLocationEdit]    = useState<Record<number, { lat: string; lng: string; show: boolean; saving: boolean }>>({})
 
   const cardsRef = useRef<HTMLDivElement>(null)
   const formRef  = useRef<HTMLFormElement>(null)
@@ -154,6 +155,33 @@ export default function GreenhousePage() {
       const el = document.getElementById(`gh-panel-${id}`)
       if (el) anime({ targets: el, opacity: [0, 1], translateY: [-10, 0], duration: 280, easing: 'easeOutCubic' })
     }, 10)
+  }
+
+  const openLocationEdit = (g: GreenhouseDto) => {
+    setLocationEdit(prev => ({
+      ...prev,
+      [g.id]: { lat: g.latitude?.toString() ?? '', lng: g.longitude?.toString() ?? '', show: true, saving: false },
+    }))
+  }
+
+  const saveLocation = async (ghId: number) => {
+    const ed = locationEdit[ghId]
+    if (!ed) return
+    const lat = parseFloat(ed.lat)
+    const lng = parseFloat(ed.lng)
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      alert('Coordenadas inválidas. Lat: -90 a 90, Lng: -180 a 180')
+      return
+    }
+    setLocationEdit(prev => ({ ...prev, [ghId]: { ...prev[ghId], saving: true } }))
+    try {
+      await greenhouseRepository.update(ghId, { latitude: lat, longitude: lng })
+      setGreenhouses(prev => prev.map(g => g.id === ghId ? { ...g, latitude: lat, longitude: lng } : g))
+      setLocationEdit(prev => ({ ...prev, [ghId]: { ...prev[ghId], show: false, saving: false } }))
+    } catch (err) {
+      alert('Error guardando coordenadas: ' + (err as Error).message)
+      setLocationEdit(prev => ({ ...prev, [ghId]: { ...prev[ghId], saving: false } }))
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -440,6 +468,55 @@ export default function GreenhousePage() {
                         <Wifi size={11} /> ESP32: <span className="font-mono">{g.deviceId}</span>
                       </p>
                     )}
+
+                    {/* Coordenadas GPS */}
+                    {isAdmin && !locationEdit[g.id]?.show && (
+                      <button
+                        onClick={() => openLocationEdit(g)}
+                        className="mt-1.5 flex items-center gap-1 text-xs transition-colors"
+                        style={{ color: g.latitude != null ? 'rgba(74,222,128,0.7)' : 'rgba(255,200,0,0.6)' }}
+                      >
+                        <MapPin size={11} />
+                        {g.latitude != null
+                          ? `${g.latitude.toFixed(4)}, ${g.longitude?.toFixed(4)}`
+                          : 'Sin GPS — click para fijar'}
+                      </button>
+                    )}
+                    {isAdmin && locationEdit[g.id]?.show && (
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <MapPin size={11} className="text-green-400 shrink-0" />
+                        <input
+                          type="number" step="0.0001" placeholder="Lat"
+                          value={locationEdit[g.id].lat}
+                          onChange={e => setLocationEdit(prev => ({ ...prev, [g.id]: { ...prev[g.id], lat: e.target.value } }))}
+                          className="w-24 rounded px-2 py-1 text-xs"
+                          style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.3)', color: '#e2ffe9' }}
+                        />
+                        <input
+                          type="number" step="0.0001" placeholder="Lng"
+                          value={locationEdit[g.id].lng}
+                          onChange={e => setLocationEdit(prev => ({ ...prev, [g.id]: { ...prev[g.id], lng: e.target.value } }))}
+                          className="w-24 rounded px-2 py-1 text-xs"
+                          style={{ background: '#0a1e0f', border: '1px solid rgba(74,222,128,0.3)', color: '#e2ffe9' }}
+                        />
+                        <button
+                          onClick={() => saveLocation(g.id)}
+                          disabled={locationEdit[g.id].saving}
+                          className="p-1 rounded bg-green-600/20 hover:bg-green-600/40 transition-colors disabled:opacity-50"
+                        >
+                          {locationEdit[g.id].saving
+                            ? <Loader2 size={12} className="text-green-400 animate-spin" />
+                            : <Check size={12} className="text-green-400" />}
+                        </button>
+                        <button
+                          onClick={() => setLocationEdit(prev => ({ ...prev, [g.id]: { ...prev[g.id], show: false } }))}
+                          className="p-1 rounded hover:bg-red-500/10 transition-colors"
+                        >
+                          <X size={12} className="text-red-400" />
+                        </button>
+                      </div>
+                    )}
+
                     {isAdmin && (
                       <div className="mt-2 flex items-center gap-2">
                         <input
